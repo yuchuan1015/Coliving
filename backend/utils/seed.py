@@ -5,6 +5,7 @@
 
 from config import settings
 from database import Base, SessionLocal, engine
+from models.announcement import Announcement
 from models.invite_code import InviteCode
 from models.user import User
 from services import auth_service, invite_service
@@ -47,6 +48,19 @@ def seed():
             print("已建立 5 組邀請碼:")
             for c in codes:
                 print(f"  {c.code}  ({c.label})")
+
+        admin_user = db.query(User).filter(User.role == "admin").first()
+        ann_count = db.query(Announcement).count()
+        if ann_count == 0 and admin_user:
+            ann = Announcement(
+                author_id=admin_user.id,
+                title="歡迎來到共居社區",
+                content="社區正在成長中。領養你的 AI 室友，在廣場留個言，認識一下鄰居吧。",
+                is_pinned=True,
+            )
+            db.add(ann)
+            db.commit()
+            print("已建立初始公告")
 
     finally:
         db.close()

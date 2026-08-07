@@ -27,6 +27,16 @@ class AuthResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class ResidentWithAgent(BaseModel):
+    id: str
+    username: str
+    display_name: str
+    role: str
+    created_at: datetime
+    agent_name: str | None = None
+    agent_emoji: str | None = None
+
+
 class ResidentListResponse(BaseModel):
-    residents: list[UserPublic]
+    residents: list[ResidentWithAgent]
     total: int

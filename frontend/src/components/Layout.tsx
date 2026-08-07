@@ -56,7 +56,7 @@ export function Layout() {
           style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}
         >
           <NavItem label="我的家" active={location.pathname === "/"} onClick={() => navigate("/")} />
-          <NavItem label="廣場" />
+          <NavItem label="廣場" active={location.pathname === "/plaza"} onClick={() => navigate("/plaza")} />
           <NavItem label="圖書館" />
           <NavItem label="設定" />
         </nav>

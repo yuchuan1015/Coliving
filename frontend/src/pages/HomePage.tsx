@@ -75,20 +75,25 @@ export function HomePage() {
           社區空間
         </h3>
         <div className="grid grid-cols-2 gap-3">
-          {(data?.spaces || []).map((space) => (
-            <div
-              key={space.id}
-              className="rounded-lg p-4 opacity-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
-              <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-                {space.name}
-              </span>
-              <span className="mt-1 block text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                即將開放
-              </span>
-            </div>
-          ))}
+          {(data?.spaces || []).map((space) => {
+            const isOpen = space.status === "open";
+            const route = isOpen ? `/${space.id}` : undefined;
+            return (
+              <div
+                key={space.id}
+                onClick={route ? () => navigate(route) : undefined}
+                className={`rounded-lg p-4${isOpen ? " cursor-pointer" : " opacity-50"}`}
+                style={{ background: "var(--surface)", border: `1px solid ${isOpen ? "var(--accent)" : "var(--border)"}` }}
+              >
+                <span className="text-sm font-medium" style={{ color: isOpen ? "var(--accent)" : "var(--ink)" }}>
+                  {space.name}
+                </span>
+                <span className="mt-1 block text-[10px]" style={{ color: "var(--ink-soft)" }}>
+                  {isOpen ? "開放中" : "即將開放"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </section>
 

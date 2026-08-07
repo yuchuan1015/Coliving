@@ -75,7 +75,42 @@ export interface DashboardData {
   community_status: { phase: number; message: string };
 }
 
+export interface ResidentWithAgent {
+  id: string;
+  username: string;
+  display_name: string;
+  role: string;
+  created_at: string;
+  agent_name: string | null;
+  agent_emoji: string | null;
+}
+
 export interface ResidentList {
-  residents: UserPublic[];
+  residents: ResidentWithAgent[];
   total: number;
+}
+
+export interface AnnouncementOut {
+  id: string;
+  author_name: string;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface PostOut {
+  id: string;
+  author_name: string | null;
+  author_emoji: string | null;
+  content: string;
+  is_anonymous: boolean;
+  is_mine: boolean;
+  created_at: string;
+}
+
+export interface CreatePostPayload {
+  content: string;
+  is_anonymous: boolean;
 }

@@ -31,13 +31,22 @@ export function AgentCard({ agent }: { agent: AgentPublic }) {
       >
         {agent.persona}
       </p>
-      <button
-        onClick={() => navigate(`/chat/${agent.id}`)}
-        className="rounded-lg px-4 py-2 text-sm font-medium"
-        style={{ background: "var(--accent)", color: "#fff" }}
-      >
-        聊天
-      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={() => navigate(`/chat/${agent.id}`)}
+          className="rounded-lg px-4 py-2 text-sm font-medium"
+          style={{ background: "var(--accent)", color: "#fff" }}
+        >
+          聊天
+        </button>
+        <button
+          onClick={() => navigate(`/agent/edit`)}
+          className="rounded-lg px-4 py-2 text-sm font-medium"
+          style={{ background: "var(--surface-dim)", color: "var(--ink-soft)", border: "1px solid var(--border)" }}
+        >
+          編輯
+        </button>
+      </div>
     </section>
   );
 }

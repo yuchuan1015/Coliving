@@ -52,14 +52,14 @@ def get_dashboard(
         agents=agents_list,
         agent_placeholder=placeholder,
         spaces=[
-            SpaceInfo(id="plaza", name="中央廣場", status="coming_soon"),
+            SpaceInfo(id="plaza", name="中央廣場", status="open"),
             SpaceInfo(id="library", name="圖書館", status="coming_soon"),
             SpaceInfo(id="park", name="公園", status="coming_soon"),
             SpaceInfo(id="workshop", name="工坊", status="coming_soon"),
         ],
         resident_count=resident_count,
         community_status=CommunityStatus(
-            phase=2,
-            message="社區正在成長中，AI 室友已開放領養！",
+            phase=3,
+            message="公共區域已開放，去廣場逛逛吧！",
         ),
     )
