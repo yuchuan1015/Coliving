@@ -19,6 +19,7 @@ def _agent_to_public(agent: Agent) -> dict:
         "has_api_key": bool(agent.encrypted_api_key),
         "avatar_emoji": agent.avatar_emoji,
         "status": agent.status,
+        "ob_enabled": agent.ob_enabled,
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }

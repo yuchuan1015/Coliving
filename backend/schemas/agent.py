@@ -18,6 +18,9 @@ class UpdateAgentRequest(BaseModel):
     api_key: str | None = Field(default=None, min_length=1, max_length=256)
     avatar_emoji: str | None = Field(default=None, max_length=8)
     status: str | None = Field(default=None, pattern=r"^(active|inactive)$")
+    ob_enabled: bool | None = None
+    ob_endpoint: str | None = Field(default=None, max_length=256)
+    ob_token: str | None = Field(default=None, max_length=256)
 
 
 class AgentPublic(BaseModel):
@@ -29,6 +32,7 @@ class AgentPublic(BaseModel):
     has_api_key: bool
     avatar_emoji: str
     status: str
+    ob_enabled: bool
     created_at: str
     updated_at: str | None
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -19,5 +19,8 @@ class Agent(Base):
     encrypted_api_key: Mapped[str] = mapped_column(Text, nullable=False)
     avatar_emoji: Mapped[str] = mapped_column(String(8), nullable=False, default="\U0001f916")
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    ob_endpoint: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ob_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ob_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

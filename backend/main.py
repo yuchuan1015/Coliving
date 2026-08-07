@@ -1,3 +1,4 @@
+import sqlite3
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,9 +9,29 @@ from database import Base, engine
 from routers import agents, announcements, auth, chat, home, posts, users
 
 
+def _migrate_sqlite():
+    if "sqlite" not in settings.database_url:
+        return
+    db_path = settings.database_url.replace("sqlite:///", "")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("PRAGMA table_info(agents)")
+    existing = {row[1] for row in cursor.fetchall()}
+    migrations = [
+        ("ob_endpoint", "ALTER TABLE agents ADD COLUMN ob_endpoint VARCHAR(256)"),
+        ("ob_token", "ALTER TABLE agents ADD COLUMN ob_token TEXT"),
+        ("ob_enabled", "ALTER TABLE agents ADD COLUMN ob_enabled BOOLEAN DEFAULT 0 NOT NULL"),
+    ]
+    for col, sql in migrations:
+        if col not in existing:
+            conn.execute(sql)
+    conn.commit()
+    conn.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    _migrate_sqlite()
     yield
 
 

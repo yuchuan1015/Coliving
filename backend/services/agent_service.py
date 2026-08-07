@@ -53,6 +53,13 @@ def update_agent(db: Session, agent_id: str, user_id: str, updates: dict) -> Age
             raise ValueError("API 金鑰驗證失敗，請確認金鑰是否正確")
         agent.encrypted_api_key = crypto_service.encrypt_api_key(updates.pop("api_key"))
 
+    if "ob_token" in updates:
+        raw_token = updates.pop("ob_token")
+        if raw_token:
+            agent.ob_token = crypto_service.encrypt_api_key(raw_token)
+        else:
+            agent.ob_token = None
+
     for key, value in updates.items():
         if value is not None and hasattr(agent, key):
             setattr(agent, key, value)

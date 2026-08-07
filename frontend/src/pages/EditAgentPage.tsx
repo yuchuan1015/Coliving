@@ -37,6 +37,7 @@ export function EditAgentPage() {
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [emoji, setEmoji] = useState("\u{1F916}");
+  const [obEnabled, setObEnabled] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -53,6 +54,7 @@ export function EditAgentPage() {
       setProvider(a.llm_provider as "claude" | "openai" | "xai");
       setModel(a.llm_model);
       setEmoji(a.avatar_emoji);
+      setObEnabled(a.ob_enabled);
     });
   }, [navigate]);
 
@@ -68,13 +70,14 @@ export function EditAgentPage() {
     setSaved(false);
     setLoading(true);
     try {
-      const payload: Record<string, string> = {};
+      const payload: Record<string, string | boolean> = {};
       if (name !== agent.name) payload.name = name;
       if (persona !== agent.persona) payload.persona = persona;
       if (provider !== agent.llm_provider) payload.llm_provider = provider;
       if (model !== agent.llm_model) payload.llm_model = model;
       if (emoji !== agent.avatar_emoji) payload.avatar_emoji = emoji;
       if (apiKey) payload.api_key = apiKey;
+      if (obEnabled !== agent.ob_enabled) payload.ob_enabled = obEnabled;
 
       if (Object.keys(payload).length === 0) {
         setError("沒有修改任何欄位");
@@ -249,6 +252,32 @@ export function EditAgentPage() {
               border: "1px solid var(--border)",
             }}
           />
+        </div>
+
+        {/* OB Memory */}
+        <div
+          className="flex items-center justify-between rounded-xl p-4"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          <div>
+            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
+              長期記憶
+            </span>
+            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>
+              啟用後室友能記住對話中的重要事情
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setObEnabled(!obEnabled)}
+            className="rounded-full px-3 py-1 text-xs font-medium"
+            style={{
+              background: obEnabled ? "var(--accent)" : "var(--surface-dim)",
+              color: obEnabled ? "#fff" : "var(--ink-soft)",
+            }}
+          >
+            {obEnabled ? "已啟用" : "未啟用"}
+          </button>
         </div>
 
         {error && (
