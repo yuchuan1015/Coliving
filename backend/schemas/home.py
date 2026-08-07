@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from schemas.agent import AgentPublic
+
 
 class SpaceInfo(BaseModel):
     id: str
@@ -20,8 +22,8 @@ class AgentPlaceholder(BaseModel):
 class DashboardResponse(BaseModel):
     welcome_message: str
     user: dict
-    agents: list
-    agent_placeholder: AgentPlaceholder
+    agents: list[AgentPublic]
+    agent_placeholder: AgentPlaceholder | None
     spaces: list[SpaceInfo]
     resident_count: int
     community_status: CommunityStatus

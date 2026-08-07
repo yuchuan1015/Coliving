@@ -24,11 +24,52 @@ export interface SpaceInfo {
   status: string;
 }
 
+export interface AgentPublic {
+  id: string;
+  name: string;
+  persona: string;
+  llm_provider: "claude" | "openai" | "xai";
+  llm_model: string;
+  has_api_key: boolean;
+  avatar_emoji: string;
+  status: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface CreateAgentPayload {
+  name: string;
+  persona: string;
+  llm_provider: "claude" | "openai" | "xai";
+  llm_model: string;
+  api_key: string;
+  avatar_emoji?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  created_at: string;
+}
+
+export interface SendMessageResponse {
+  user_message: ChatMessage;
+  assistant_message: ChatMessage;
+  conversation_id: string;
+}
+
+export interface MessageHistoryResponse {
+  messages: ChatMessage[];
+  conversation_id: string;
+  has_more: boolean;
+}
+
 export interface DashboardData {
   welcome_message: string;
   user: { id: string; display_name: string; role: string };
-  agents: unknown[];
-  agent_placeholder: { message: string; hint: string };
+  agents: AgentPublic[];
+  agent_placeholder: { message: string; hint: string } | null;
   spaces: SpaceInfo[];
   resident_count: number;
   community_status: { phase: number; message: string };

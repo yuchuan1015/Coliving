@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import Base, engine
-from routers import auth, home, users
+from routers import agents, auth, chat, home, users
 
 
 @asynccontextmanager
@@ -27,6 +27,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(home.router)
+app.include_router(agents.router)
+app.include_router(chat.router)
 
 
 @app.get("/api/health")
