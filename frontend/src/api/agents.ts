@@ -16,6 +16,11 @@ export async function getMyAgent(): Promise<AgentPublic | null> {
   }
 }
 
+export async function generateMcpToken(): Promise<string> {
+  const res = await client.post<{ mcp_token: string }>("/agents/mine/mcp-token");
+  return res.data.mcp_token;
+}
+
 export async function updateAgent(
   id: string,
   payload: Partial<CreateAgentPayload>,

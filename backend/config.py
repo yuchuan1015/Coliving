@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     first_admin_password: str = "changeme"
     ob_default_endpoint: str = ""
     ob_default_token: str = ""
+    mcp_token_expire_days: int = 90
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from models.user import User
 from schemas.agent import AgentPublic, CreateAgentRequest, UpdateAgentRequest
-from services import agent_service
+from services import agent_service, auth_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
@@ -56,6 +56,18 @@ def get_my_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
     return _agent_to_public(agent)
+
+
+@router.post("/mine/mcp-token")
+def generate_mcp_token(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    agent = agent_service.get_user_agent(db, current_user.id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
+    token = auth_service.create_mcp_token(current_user.id, current_user.username)
+    return {"mcp_token": token}
 
 
 @router.patch("/{agent_id}", response_model=AgentPublic)

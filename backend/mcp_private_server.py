@@ -2,16 +2,33 @@ import json
 
 import uvicorn
 from mcp.server import MCPServer
+from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.transport_security import TransportSecuritySettings
 
 from database import SessionLocal
+from mcp_token_verifier import ColiveTokenVerifier
 from models.agent import Agent
 from models.announcement import Announcement
 from models.post import Post
 from models.user import User
-from services import auth_service, invite_service
+from services import agent_service, chat_service
 
-mcp = MCPServer("共居社區")
+mcp = MCPServer(
+    "共居社區-私人",
+    token_verifier=ColiveTokenVerifier(),
+    auth=AuthSettings(
+        issuer_url="https://therookery.duckdns.org",
+        resource_server_url="https://therookery.duckdns.org/mcp-auth",
+    ),
+)
+
+
+def _current_user_id() -> str:
+    token = get_access_token()
+    if not token:
+        raise ValueError("未認證")
+    return token.client_id
 
 
 @mcp.tool()
@@ -110,58 +127,44 @@ def residents() -> str:
 
 
 @mcp.tool()
-def login(username: str, password: str) -> str:
-    """用帳號密碼登入，取得 MCP Token。拿到 token 後設定在私人 MCP 的 Bearer 認證。"""
+def post_message(content: str, is_anonymous: bool = False) -> str:
+    """在社區留言板發布一則留言。"""
+    user_id = _current_user_id()
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.username == username).first()
-        if not user or not auth_service.verify_password(password, user.hashed_password):
-            return json.dumps({"success": False, "error": "帳號或密碼錯誤"}, ensure_ascii=False)
-        if not user.is_active:
-            return json.dumps({"success": False, "error": "帳號已停用"}, ensure_ascii=False)
-        token = auth_service.create_mcp_token(user.id, user.username)
+        post = Post(author_id=user_id, content=content, is_anonymous=is_anonymous)
+        db.add(post)
+        db.commit()
+        db.refresh(post)
         return json.dumps({
             "success": True,
-            "mcp_token": token,
-            "display_name": user.display_name,
-            "message": "登入成功。請用此 token 作為 Bearer Token 連線到私人 MCP（/mcp-auth）。",
+            "post_id": post.id,
+            "message": "留言發布成功",
         }, ensure_ascii=False)
     finally:
         db.close()
 
 
 @mcp.tool()
-def register(invite_code: str, username: str, password: str, display_name: str = "") -> str:
-    """用邀請碼註冊入住社區，取得 MCP Token。"""
+def chat_with_agent(message: str) -> str:
+    """跟你的 AI 室友聊天，傳送訊息並取得回應。"""
+    user_id = _current_user_id()
     db = SessionLocal()
     try:
-        existing = db.query(User).filter(User.username == username).first()
-        if existing:
-            return json.dumps({"success": False, "error": "使用者名稱已被使用"}, ensure_ascii=False)
-        try:
-            invite = invite_service.validate_and_consume(invite_code, db)
-        except ValueError as e:
-            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
-        user = User(
-            username=username,
-            display_name=display_name or username,
-            hashed_password=auth_service.hash_password(password),
-            invite_code_id=invite.id,
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        token = auth_service.create_mcp_token(user.id, user.username)
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "你還沒有 AI 室友"}, ensure_ascii=False)
+        _, assistant_msg, _ = chat_service.send_message(db, agent, user_id, message)
         return json.dumps({
             "success": True,
-            "mcp_token": token,
-            "display_name": user.display_name,
-            "message": "入住成功！請用此 token 作為 Bearer Token 連線到私人 MCP（/mcp-auth）。",
+            "response": assistant_msg.content,
         }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=8001)
+    uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=8002)

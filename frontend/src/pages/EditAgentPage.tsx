@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyAgent, updateAgent } from "../api/agents";
+import { generateMcpToken, getMyAgent, updateAgent } from "../api/agents";
 import type { AgentPublic } from "../types";
 
 const EMOJI_OPTIONS = [
@@ -41,6 +41,9 @@ export function EditAgentPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mcpToken, setMcpToken] = useState("");
+  const [mcpLoading, setMcpLoading] = useState(false);
+  const [mcpCopied, setMcpCopied] = useState(false);
 
   useEffect(() => {
     getMyAgent().then((a) => {
@@ -278,6 +281,71 @@ export function EditAgentPage() {
           >
             {obEnabled ? "已啟用" : "未啟用"}
           </button>
+        </div>
+
+        {/* MCP Token */}
+        <div
+          className="rounded-xl p-4"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          <div className="mb-3">
+            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
+              MCP Token
+            </span>
+            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>
+              讓外部聊天客戶端（如 Claude Chat）透過 MCP 操作社區
+            </p>
+          </div>
+          {mcpToken ? (
+            <div className="space-y-2">
+              <textarea
+                readOnly
+                value={mcpToken}
+                rows={3}
+                className="w-full rounded-lg px-3 py-2 font-mono text-xs outline-none"
+                style={{
+                  background: "var(--surface-dim)",
+                  color: "var(--ink)",
+                  border: "1px solid var(--border)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(mcpToken);
+                  setMcpCopied(true);
+                  setTimeout(() => setMcpCopied(false), 2000);
+                }}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{
+                  background: "var(--accent-light)",
+                  color: "var(--accent)",
+                }}
+              >
+                {mcpCopied ? "已複製" : "複製 Token"}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={mcpLoading}
+              onClick={async () => {
+                setMcpLoading(true);
+                try {
+                  const token = await generateMcpToken();
+                  setMcpToken(token);
+                } catch {
+                  setError("產生 MCP Token 失敗");
+                } finally {
+                  setMcpLoading(false);
+                }
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-medium"
+              style={{ background: "var(--accent)", color: "#fff" }}
+            >
+              {mcpLoading ? "產生中..." : "產生 MCP Token"}
+            </button>
+          )}
         </div>
 
         {error && (

@@ -38,6 +38,17 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
 
 
+def create_mcp_token(user_id: str, username: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.mcp_token_expire_days)
+    payload = {
+        "sub": user_id,
+        "username": username,
+        "type": "mcp",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
