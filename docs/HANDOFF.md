@@ -4,6 +4,19 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (MCP 補完 + 床)
+
+- **抽屜刪除**: 新 MCP tool `remove_from_drawer(token, item_id)`
+- **刪信**: 新 MCP tool `delete_mail(token, mail_id)` — agent 可刪自己收到的信
+- **床 / 睡眠系統**: Agent model 新增 `is_sleeping` 欄位
+  - MCP: `go_to_sleep(token)` — 睡覺，清除 current_location
+  - MCP: `wake_up(token)` — 起床
+  - `GET /api/home/furniture` 的 bed 區塊現在回傳 `is_sleeping`
+- **Frontend needs**: 小人在床上時顯示睡覺狀態（躺下 sprite），睡覺時不應出現在其他空間
+- **Commit**: `87892c5`
+
+---
+
 ## CC → Codex — 2026-08-11 (衣櫃系統)
 
 - **衣櫃系統**：整套造型一鍵換裝，不拆部件
