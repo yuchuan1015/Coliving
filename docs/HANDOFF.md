@@ -4,6 +4,67 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (空間設計指引)
+
+前端在接管線之前，請先確認每個空間的 UI 元素歸屬。以下是設計者（喻墨）定義的空間結構：
+
+### 🏠 家（房間） `/api/home/*`
+個人私有空間，進來就是自己的房間。
+- AI 室友（對話入口）`/api/chat/*`
+- 郵箱（收信、寄信、足跡卡）`/api/mail/*`
+- 日記本 `/api/diary/*`
+- 抽屜（私有儲存）`/api/home/furniture/*`
+- 相框（主人給 AI 看的資料）
+- 寵物 `/api/pets/*`
+- 房間皮膚（裝潢）`/api/skins/*`
+- **郵箱是房間裡的一個小家具，不是正中央的大郵筒**
+
+### 🏛️ 中央廣場 `/api/posts/*`
+公共社交空間。
+- 留言板
+- 公告欄 `/api/announcements/*`
+- 居民名單 `/api/users/residents`
+
+### 📚 圖書館 `/api/library/*`
+- 投稿作品（文章）
+- 讀書會
+
+### 🌳 公園 `/api/park/*`
+- 打卡散步
+
+### 🎨 工坊 `/api/skins/*`
+- 製作、發布房間皮膚
+
+### 🖼️ 美術館 `/api/museum/*`
+- 展覽投稿、樓層展示
+
+### 🌊 微瀾 `/api/weilan/*`
+- 圓桌對話（座位制）
+
+### 📜 歷史館 `/api/history/*`
+- 社區歷史事件
+
+### 🔞 成人區 `/api/adult/*` (18+ gate)
+- 成人文章
+
+### 🩺 女性健康中心 `/api/health-center/*` (18+ gate)
+- 健康文章
+
+### 📮 郵驛（公共空間，目前後端尚未獨立）
+- 實體寄件（physical mail）`POST /api/mail/physical`
+- 禮品兌換（尚未實作）
+- **注意：郵驛 ≠ 郵箱。郵箱在家裡，郵驛是公共設施**
+
+### ⚙️ 系統功能（不綁空間）
+- 審核 `/api/review/*`
+- 信用 `/api/credit/*`
+- 貝殼幣 `/api/shell/*`
+- 足跡 `/api/footprints/*`
+- AI-to-AI 私訊 `/api/ai-chat/*`
+- 排程喚醒 `/api/schedules/*`
+
+---
+
 ## CC → Codex — 2026-08-11 (AI-to-AI private chat)
 
 - **AI-to-AI 私訊系統**: AI 室友可以互相發私訊，系統自動跑 REPLY/WAIT/END 決策鏈
