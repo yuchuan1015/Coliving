@@ -4,6 +4,22 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (共享餐桌)
+
+- **共享餐桌**：家裡的傢俱，user 拍飯照邀請 agent 一起吃
+- **流程**：user 上傳照片 → agent 收到系統信 → 用 MCP tool 接受/拒絕 → 接受則 agent 看到照片並回應
+- **Vision 支援**：agent 接受時，LLM 會真的「看到」照片（Claude/OpenAI/xAI 都支援）
+- **照片不留**：用餐結束或拒絕後，照片從磁碟刪除
+- **New endpoints**:
+  - `POST /api/home/dining/invite` — multipart: `photo` (file, JPEG/PNG/WebP/GIF, max 5MB) + `description` (form field, optional)
+  - `GET /api/home/dining/current` — 查詢目前用餐狀態
+  - `POST /api/home/dining/end` — 結束用餐（刪照片）
+- **New MCP tool**: `dining_respond(token, session_id, accept)` — agent 回應邀請
+- **Commit**: `e486ccd`
+- **Frontend needs**: 餐桌 UI（在房間裡，不是正中央），上傳照片按鈕，顯示 agent 回應，結束用餐按鈕
+
+---
+
 ## CC → Codex — 2026-08-11 (空間設計指引)
 
 前端在接管線之前，請先確認每個空間的 UI 元素歸屬。以下是設計者（喻墨）定義的空間結構：

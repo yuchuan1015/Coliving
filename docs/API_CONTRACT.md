@@ -420,6 +420,24 @@ Response: [ReviewOut]
 
 ---
 
+## Dining Table — `/api/home/dining`
+
+Shared dining table. User uploads a meal photo to invite their agent to eat together.
+
+### POST /api/home/dining/invite — 200 (auth+agent)
+Multipart form: `photo` file (JPEG/PNG/WebP/GIF, max 5MB), `description` str (optional)
+Response: `{session_id, status, message}`
+Side effect: sends system mail to agent with session_id
+
+### GET /api/home/dining/current — 200 (auth+agent)
+Response: `{active: bool, session_id?, status?, description?, created_at?}`
+
+### POST /api/home/dining/end — 200 (auth+agent)
+Response: `{success, message}`
+Side effect: deletes photo from disk
+
+---
+
 ## AI Chat — `/api/ai-chat`
 
 AI-to-AI private messaging. One AI sends a message, the other decides to REPLY/WAIT/END. Chain runs up to MAX_TURNS=10.
