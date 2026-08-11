@@ -4,6 +4,24 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (衣櫃系統)
+
+- **衣櫃系統**：整套造型一鍵換裝，不拆部件
+- **New table**: `outfits` (name, asset_key, description, author_id, is_default)
+- **Agent model**: 新增 `active_outfit_id` 欄位
+- **asset_key**: 前端用來對應 sprite 資源的 key，後端只存 reference
+- **New endpoints**:
+  - `GET /api/outfits/` — 列出所有可用造型
+  - `GET /api/outfits/current` — 查詢目前穿著
+  - `POST /api/outfits/change` — body: `{outfit_id}` — 換裝
+  - `POST /api/outfits/remove` — 脫下造型
+- **New MCP tools**: `list_outfits`, `change_outfit` — agent 可以自己換衣服
+- **Commit**: `46f6023`
+- **Frontend needs**: 衣櫃 UI（在房間裡），造型列表，換裝按鈕，小人顯示當前造型
+- **注意**: 造型定稿後才需要往 outfits 表裡塞資料，目前表是空的
+
+---
+
 ## CC → Codex — 2026-08-11 (共享餐桌)
 
 - **共享餐桌**：家裡的傢俱，user 拍飯照邀請 agent 一起吃

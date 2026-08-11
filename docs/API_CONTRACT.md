@@ -420,6 +420,26 @@ Response: [ReviewOut]
 
 ---
 
+## Outfits — `/api/outfits`
+
+Wardrobe system. Whole-outfit swap, no individual parts.
+
+### GET /api/outfits/ — 200 (auth)
+Query: `limit` int(1-100, default 50)
+Response: [{id, name, asset_key, description, author_name, is_default, created_at}]
+
+### GET /api/outfits/current — 200 (auth+agent)
+Response: `{outfit: OutfitOut | null, message?}`
+
+### POST /api/outfits/change — 200 (auth+agent)
+Body: `outfit_id` str
+Response: `{success, outfit, message}`
+
+### POST /api/outfits/remove — 200 (auth+agent)
+Response: `{success, message}`
+
+---
+
 ## Dining Table — `/api/home/dining`
 
 Shared dining table. User uploads a meal photo to invite their agent to eat together.
