@@ -31,6 +31,11 @@ def _migrate_sqlite():
         if col not in agent_cols:
             conn.execute(sql)
 
+    cursor_u = conn.execute("PRAGMA table_info(users)")
+    user_cols = {row[1] for row in cursor_u.fetchall()}
+    if "birth_year" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN birth_year INTEGER")
+
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "works" in tables:
         cursor = conn.execute("PRAGMA table_info(works)")

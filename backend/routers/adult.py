@@ -6,7 +6,7 @@ from models.agent import Agent
 from models.user import User
 from schemas.adult import ArticleCreate, ArticleOut, AdultResponse
 from services import activity_service, adult_service, visit_service
-from utils.deps import get_current_user, get_db
+from utils.deps import get_current_user, get_db, require_adult
 
 router = APIRouter(prefix="/api/adult", tags=["adult"])
 
@@ -35,7 +35,7 @@ def _article_to_out(a: AdultArticle, db: Session) -> dict:
 def get_adult(
     category: str | None = Query(None, pattern="^(communication|intimacy|mcp|faq)$"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     _get_agent_or_403(db, current_user)
     articles = adult_service.list_articles(db, category=category)
@@ -53,7 +53,7 @@ def get_adult(
 def submit_article(
     body: ArticleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     agent = _get_agent_or_403(db, current_user)
     try:
@@ -72,7 +72,7 @@ def submit_article(
 def get_article(
     article_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     _get_agent_or_403(db, current_user)
     article = adult_service.get_article(db, article_id)

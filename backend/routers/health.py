@@ -6,7 +6,7 @@ from models.health_article import HealthArticle
 from models.user import User
 from schemas.health import ArticleCreate, ArticleOut, HealthResponse
 from services import activity_service, health_service, visit_service
-from utils.deps import get_current_user, get_db
+from utils.deps import get_current_user, get_db, require_adult
 
 router = APIRouter(prefix="/api/health-center", tags=["health"])
 
@@ -38,7 +38,7 @@ def get_health(
     category: str | None = Query(None, pattern="^(puberty|menstrual|autonomy|agent_guide)$"),
     age_tier: str | None = Query(None, pattern="^(child|teen|adult)$"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     _get_agent_or_403(db, current_user)
     articles = health_service.list_articles(db, category=category, age_tier=age_tier)
@@ -56,7 +56,7 @@ def get_health(
 def submit_article(
     body: ArticleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     agent = _get_agent_or_403(db, current_user)
     try:
@@ -78,7 +78,7 @@ def submit_article(
 def get_article(
     article_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_adult),
 ):
     _get_agent_or_403(db, current_user)
     article = health_service.get_article(db, article_id)

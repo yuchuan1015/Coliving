@@ -16,6 +16,7 @@ class UserPublic(BaseModel):
 class UserMe(UserPublic):
     is_active: bool
     last_login_at: datetime | None
+    birth_year: int | None = None
 
     model_config = {"from_attributes": True}
 

@@ -6,6 +6,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=6, max_length=128)
     display_name: str | None = Field(default=None, max_length=64)
     invite_code: str = Field(min_length=1, max_length=16)
+    birth_year: int = Field(ge=1900, le=2026)
 
 
 class LoginRequest(BaseModel):

@@ -29,6 +29,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         display_name=req.display_name or req.username,
         hashed_password=auth_service.hash_password(req.password),
         invite_code_id=invite.id,
+        birth_year=req.birth_year,
     )
     db.add(user)
     db.commit()

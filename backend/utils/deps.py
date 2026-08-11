@@ -37,3 +37,13 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理員權限")
     return current_user
+
+
+def require_adult(current_user: User = Depends(get_current_user)) -> User:
+    from datetime import datetime, timezone
+    if not current_user.birth_year:
+        raise HTTPException(status_code=403, detail="需要設定出生年份才能進入此區域")
+    age = datetime.now(timezone.utc).year - current_user.birth_year
+    if age < 18:
+        raise HTTPException(status_code=403, detail="此區域僅限 18 歲以上使用者")
+    return current_user
