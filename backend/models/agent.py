@@ -24,6 +24,7 @@ class Agent(Base):
     ob_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     external_mcps: Mapped[str | None] = mapped_column(Text, nullable=True)
     active_skin_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    active_outfit_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     credit_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     credit_spent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     shell_balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")

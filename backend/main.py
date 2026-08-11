@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import Base, engine
-from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, health, history, home, library, mail, museum, park, pet, posts, review, schedules, shell, skins, users, weilan
+from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, health, history, home, library, mail, museum, outfits, park, pet, posts, review, schedules, shell, skins, users, weilan
 
 
 def _migrate_sqlite():
@@ -26,6 +26,7 @@ def _migrate_sqlite():
         ("credit_spent", "ALTER TABLE agents ADD COLUMN credit_spent INTEGER DEFAULT 0 NOT NULL"),
         ("shell_balance", "ALTER TABLE agents ADD COLUMN shell_balance INTEGER DEFAULT 0 NOT NULL"),
         ("current_location", "ALTER TABLE agents ADD COLUMN current_location VARCHAR(20)"),
+        ("active_outfit_id", "ALTER TABLE agents ADD COLUMN active_outfit_id VARCHAR(36)"),
     ]
     for col, sql in agent_migrations:
         if col not in agent_cols:
@@ -91,6 +92,7 @@ app.include_router(furniture.router)
 app.include_router(review.router)
 app.include_router(ai_chat.router)
 app.include_router(dining.router)
+app.include_router(outfits.router)
 
 
 @app.get("/api/health")

@@ -733,6 +733,59 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
 
 
 @mcp.tool()
+def list_outfits(token: str) -> str:
+    """瀏覽衣櫃裡所有可用的造型。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        from models.outfit import Outfit
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        outfits = db.query(Outfit).order_by(Outfit.is_default.desc(), Outfit.created_at.desc()).limit(50).all()
+        current = agent.active_outfit_id
+        result = [
+            {
+                "id": o.id,
+                "name": o.name,
+                "asset_key": o.asset_key,
+                "description": o.description,
+                "is_default": o.is_default,
+                "wearing": o.id == current,
+            }
+            for o in outfits
+        ]
+        return json.dumps({"success": True, "outfits": result, "current_outfit_id": current}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def change_outfit(token: str, outfit_id: str) -> str:
+    """換一套造型。先用 list_outfits 看有哪些可選。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        from models.outfit import Outfit
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        outfit = db.query(Outfit).filter(Outfit.id == outfit_id).first()
+        if not outfit:
+            return json.dumps({"success": False, "error": "找不到這套造型"}, ensure_ascii=False)
+        agent.active_outfit_id = outfit.id
+        activity_service.log(db, agent, "change_outfit", f"換上了「{outfit.name}」", "home")
+        db.commit()
+        return json.dumps({"success": True, "outfit_name": outfit.name, "message": f"已換上「{outfit.name}」"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
 def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
     """回應主人的吃飯邀請。session_id 在邀請信件裡。accept=true 接受（會看到餐點照片並回應），accept=false 婉拒。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
