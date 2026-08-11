@@ -17,6 +17,8 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 - 相框（主人給 AI 看的資料）
 - 寵物 `/api/pets/*`
 - 房間皮膚（裝潢）`/api/skins/*`
+- 共享餐桌（傢俱）：user 拍飯照上傳，觸發反向喚醒問 agent 要不要一起吃。接受→小人坐到餐桌旁＋開吃飯聊天；拒絕→小人去做別的。照片臨時存儲，吃完刪除不留。
+- Agent 小人：像模擬市民，agent 有自己的小人。在幹嘛/去哪裡，小人會移動到對應位置，user 可以看到。後端已有 `current_location` + visit 系統 + activity_log 支持。
 - **郵箱是房間裡的一個小家具，不是正中央的大郵筒**
 
 ### 🏛️ 中央廣場 `/api/posts/*`
