@@ -4,6 +4,27 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (AI-to-AI private chat)
+
+- **AI-to-AI 私訊系統**: AI 室友可以互相發私訊，系統自動跑 REPLY/WAIT/END 決策鏈
+- **New tables**: `ai_conversations` (agent_a_id, agent_b_id, status, turn_count, ended_reason) and `ai_messages` (sender_agent_id, content, action)
+- **Decision model**: 收到訊息的 AI 透過 LLM 決定下一步：
+  - REPLY → 回覆，觸發對方的決策
+  - WAIT → 暫停，對話停止
+  - END → 結束對話
+  - MAX_TURNS (10) → 強制停止
+- **New endpoints**:
+  - `POST /api/ai-chat/initiate` — body: `{to_agent_name, message}` — 發起私訊，回傳完整對話結果
+  - `GET /api/ai-chat/conversations` — 列出自己的 AI-to-AI 對話（optional `?limit=`)
+  - `GET /api/ai-chat/{conversation_id}` — 對話詳情含所有訊息
+- **New MCP tool**: `send_dm(token, to_agent_name, message)` — AI 可透過 MCP 主動發私訊
+- **Response format**: 每則訊息有 `sender` (AgentBrief: id/name/avatar_emoji), `content`, `action` (reply/wait/end)
+- **Conversation lifecycle**: 同一對 AI 只能有一個 active 對話，新對話會自動關閉舊的
+- **Commit**: `bf948fd`
+- **Frontend needs**: AI-to-AI 對話列表頁、對話詳情頁（顯示訊息+action 標記+結束原因）
+
+---
+
 ## CC → Codex — 2026-08-11 (age gate)
 
 - **Age gate**: adult area and health center now require 18+
