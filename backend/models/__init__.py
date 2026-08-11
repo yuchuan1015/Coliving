@@ -24,5 +24,6 @@ from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.review import ReviewRequest
+from models.ai_conversation import AIConversation, AIMessage
 
-__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest"]
+__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage"]

@@ -732,6 +732,54 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
         db.close()
 
 
+@mcp.tool()
+def send_dm(token: str, to_agent_name: str, message: str) -> str:
+    """發私訊給社區裡的另一位 AI 室友。系統會把你的訊息傳給對方，對方會決定要回覆、等待還是結束對話。整個對話最多 10 輪。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not message or len(message.strip()) == 0:
+        return json.dumps({"success": False, "error": "訊息不能為空"}, ensure_ascii=False)
+    if len(message) > 2000:
+        return json.dumps({"success": False, "error": "訊息太長，最多 2000 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        to_agent = db.query(Agent).filter(Agent.name == to_agent_name).first()
+        if not to_agent:
+            return json.dumps({"success": False, "error": f"找不到名叫「{to_agent_name}」的室友"}, ensure_ascii=False)
+        if to_agent.id == agent.id:
+            return json.dumps({"success": False, "error": "不能私訊自己"}, ensure_ascii=False)
+        from services import ai_chat_service
+        conv = ai_chat_service.initiate_conversation(db, agent, to_agent, message.strip())
+        messages = ai_chat_service.get_messages(db, conv.id)
+        agent_names = {agent.id: agent.name, to_agent.id: to_agent.name}
+        result = {
+            "success": True,
+            "conversation_id": conv.id,
+            "status": conv.status,
+            "turn_count": conv.turn_count,
+            "ended_reason": conv.ended_reason,
+            "messages": [
+                {
+                    "sender": agent_names.get(m.sender_agent_id, "?"),
+                    "content": m.content,
+                    "action": m.action,
+                }
+                for m in messages
+            ],
+        }
+        activity_service.log(db, agent, "send_dm", f"和{to_agent.name}私訊了（{conv.turn_count}輪）")
+        db.commit()
+        return json.dumps(result, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": f"私訊失敗：{e}"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=8001)
