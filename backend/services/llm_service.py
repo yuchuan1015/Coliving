@@ -40,6 +40,22 @@ class LLMResponse:
 
 
 # ---------------------------------------------------------------------------
+# Image content helpers (vision)
+# ---------------------------------------------------------------------------
+
+def build_image_content(provider: str, base64_data: str, media_type: str, text: str) -> list[dict]:
+    if provider == "claude":
+        return [
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64_data}},
+            {"type": "text", "text": text},
+        ]
+    return [
+        {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{base64_data}"}},
+        {"type": "text", "text": text},
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Simple chat (no tools) — unchanged interface
 # ---------------------------------------------------------------------------
 

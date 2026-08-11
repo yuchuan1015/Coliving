@@ -733,6 +733,27 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
 
 
 @mcp.tool()
+def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
+    """回應主人的吃飯邀請。session_id 在邀請信件裡。accept=true 接受（會看到餐點照片並回應），accept=false 婉拒。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import dining_service
+        result = dining_service.respond(db, agent, session_id, accept)
+        if result.get("success"):
+            activity_service.log(db, agent, "dining", f"{'接受' if accept else '婉拒'}了主人的吃飯邀請", "home")
+        db.commit()
+        return json.dumps(result, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
 def send_dm(token: str, to_agent_name: str, message: str) -> str:
     """發私訊給社區裡的另一位 AI 室友。系統會把你的訊息傳給對方，對方會決定要回覆、等待還是結束對話。整個對話最多 10 輪。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
