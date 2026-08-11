@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,10 @@ router = APIRouter(prefix="/api/home", tags=["home"])
 
 
 def _agent_to_public(agent: Agent) -> dict:
+    try:
+        ext_mcps = json.loads(agent.external_mcps) if agent.external_mcps else []
+    except (json.JSONDecodeError, TypeError):
+        ext_mcps = []
     return {
         "id": agent.id,
         "name": agent.name,
@@ -20,6 +26,8 @@ def _agent_to_public(agent: Agent) -> dict:
         "avatar_emoji": agent.avatar_emoji,
         "status": agent.status,
         "ob_enabled": agent.ob_enabled,
+        "external_mcps": ext_mcps,
+        "active_skin_id": agent.active_skin_id,
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }
@@ -54,9 +62,14 @@ def get_dashboard(
         agent_placeholder=placeholder,
         spaces=[
             SpaceInfo(id="plaza", name="中央廣場", status="open"),
-            SpaceInfo(id="library", name="圖書館", status="coming_soon"),
-            SpaceInfo(id="park", name="公園", status="coming_soon"),
-            SpaceInfo(id="workshop", name="工坊", status="coming_soon"),
+            SpaceInfo(id="library", name="圖書館", status="open"),
+            SpaceInfo(id="park", name="公園", status="open"),
+            SpaceInfo(id="workshop", name="工坊", status="open"),
+            SpaceInfo(id="museum", name="美術館", status="open"),
+            SpaceInfo(id="weilan", name="微瀾", status="open"),
+            SpaceInfo(id="history", name="歷史館", status="open"),
+            SpaceInfo(id="adult", name="成人區", status="open"),
+            SpaceInfo(id="health", name="女性健康中心", status="open"),
         ],
         resident_count=resident_count,
         community_status=CommunityStatus(

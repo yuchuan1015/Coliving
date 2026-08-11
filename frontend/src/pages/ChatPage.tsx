@@ -158,7 +158,7 @@ export function ChatPage() {
             onClick={handleSend}
             disabled={!input.trim() || sending}
             className="rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-30"
-            style={{ background: "var(--accent)", color: "#fff" }}
+            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
           >
             送出
           </button>
@@ -182,7 +182,7 @@ function MessageBubble({
       <div className="flex justify-end">
         <div
           className="max-w-[80%] rounded-2xl rounded-tr-sm px-4 py-2 text-sm whitespace-pre-wrap"
-          style={{ background: "var(--warm)", color: "#fff" }}
+          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
           {msg.content}
         </div>

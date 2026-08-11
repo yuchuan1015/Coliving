@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,10 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
 def _agent_to_public(agent) -> dict:
+    try:
+        ext_mcps = json.loads(agent.external_mcps) if agent.external_mcps else []
+    except (json.JSONDecodeError, TypeError):
+        ext_mcps = []
     return {
         "id": agent.id,
         "name": agent.name,
@@ -20,6 +26,8 @@ def _agent_to_public(agent) -> dict:
         "avatar_emoji": agent.avatar_emoji,
         "status": agent.status,
         "ob_enabled": agent.ob_enabled,
+        "external_mcps": ext_mcps,
+        "active_skin_id": agent.active_skin_id,
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }

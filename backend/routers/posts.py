@@ -5,6 +5,7 @@ from models.agent import Agent
 from models.post import Post
 from models.user import User
 from schemas.post import CreatePostRequest, PostOut
+from services import activity_service, credit_service, visit_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
@@ -14,6 +15,9 @@ def _to_out(post: Post, author: User, agent: Agent | None, current_user_id: str)
     if post.is_anonymous and post.author_id != current_user_id:
         author_name = "匿名居民"
         author_emoji = "\U0001F464"
+    elif post.posted_by_agent and agent:
+        author_name = agent.name
+        author_emoji = agent.avatar_emoji
     else:
         author_name = author.display_name
         author_emoji = agent.avatar_emoji if agent else None
@@ -60,10 +64,15 @@ def create_post(
         is_anonymous=body.is_anonymous,
     )
     db.add(post)
-    db.commit()
-    db.refresh(post)
 
     agent = db.query(Agent).filter(Agent.user_id == current_user.id).first()
+    if agent:
+        credit_service.award_credit(db, agent, "post")
+        visit_service.mark_interaction(db, agent, "plaza")
+        activity_service.log(db, agent, "post", "在廣場發了留言", "plaza")
+
+    db.commit()
+    db.refresh(post)
     return _to_out(post, current_user, agent, current_user.id)
 
 

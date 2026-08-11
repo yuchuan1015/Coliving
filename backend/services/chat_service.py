@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -6,8 +8,11 @@ from models.agent import Agent
 from models.conversation import Conversation
 from models.message import Message
 from services import crypto_service, llm_service
+from services.external_mcp_client import ExternalMCPClient
 from services.llm_service import LLMResponse, ToolResult
-from services.tool_registry import ToolContext, find_tool, get_agent_tools
+from services.tool_registry import RegisteredTool, ToolContext, get_agent_tools
+
+logger = logging.getLogger(__name__)
 
 _HISTORY_WINDOW = 50
 _MAX_TOOL_ITERATIONS = 5
@@ -26,6 +31,45 @@ def get_or_create_conversation(db: Session, agent_id: str, user_id: str) -> Conv
     db.commit()
     db.refresh(conv)
     return conv
+
+
+def _load_external_tools(agent: Agent) -> list[RegisteredTool]:
+    if not agent.external_mcps:
+        return []
+    try:
+        mcps = json.loads(agent.external_mcps)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+    extra_tools: list[RegisteredTool] = []
+    for mcp_config in mcps:
+        name = mcp_config.get("name", "ext")
+        url = mcp_config.get("url", "")
+        token = mcp_config.get("token")
+        if not url:
+            continue
+        try:
+            client = ExternalMCPClient(name, url, token)
+            tool_defs = client.list_tools()
+            for td in tool_defs:
+                prefixed = f"{name}__{td.name}"
+
+                def _make_executor(c: ExternalMCPClient, real_name: str):
+                    def executor(args: dict, ctx: ToolContext) -> str:
+                        return c.call_tool(real_name, args)
+                    return executor
+
+                extra_tools.append(RegisteredTool(
+                    definition=llm_service.ToolDef(
+                        name=prefixed,
+                        description=f"[{name}] {td.description}",
+                        parameters=td.parameters,
+                    ),
+                    execute=_make_executor(client, td.name),
+                ))
+        except Exception as e:
+            logger.warning("Failed to connect to external MCP %s (%s): %s", name, url, e)
+    return extra_tools
 
 
 def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple[Message, Message, str]:
@@ -48,6 +92,8 @@ def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple
 
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
     registered_tools = get_agent_tools(agent)
+    registered_tools.extend(_load_external_tools(agent))
+    tools_map = {t.definition.name: t for t in registered_tools}
     tool_defs = [t.definition for t in registered_tools]
     context = ToolContext(db=db, agent=agent, user_id=user_id)
 
@@ -69,7 +115,7 @@ def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple
 
             results = []
             for tc in response.tool_calls:
-                tool = find_tool(tc.name)
+                tool = tools_map.get(tc.name)
                 if tool:
                     try:
                         output = tool.execute(tc.arguments, context)

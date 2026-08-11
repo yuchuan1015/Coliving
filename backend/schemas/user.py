@@ -33,6 +33,7 @@ class ResidentWithAgent(BaseModel):
     display_name: str
     role: str
     created_at: datetime
+    agent_id: str | None = None
     agent_name: str | None = None
     agent_emoji: str | None = None
 

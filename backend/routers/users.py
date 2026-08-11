@@ -33,6 +33,7 @@ def list_residents(
             display_name=u.display_name,
             role=u.role,
             created_at=u.created_at,
+            agent_id=a.id if a else None,
             agent_name=a.name if a else None,
             agent_emoji=a.avatar_emoji if a else None,
         )

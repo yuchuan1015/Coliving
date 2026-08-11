@@ -1,9 +1,10 @@
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
-from services import crypto_service, llm_service
+from services import activity_service, crypto_service, llm_service, shell_service
 
 
 def create_agent(
@@ -20,6 +21,10 @@ def create_agent(
     if existing:
         raise ValueError("你已經有一位 AI 室友了")
 
+    name_taken = db.query(Agent).filter(Agent.name == name).first()
+    if name_taken:
+        raise ValueError(f"「{name}」這個名字已經有人用了，請換一個")
+
     if not llm_service.validate_api_key(llm_provider, api_key):
         raise ValueError("API 金鑰驗證失敗，請確認金鑰是否正確")
 
@@ -33,6 +38,9 @@ def create_agent(
         avatar_emoji=avatar_emoji,
     )
     db.add(agent)
+    db.flush()
+    shell_service.grant_welcome_bonus(db, agent)
+    activity_service.log(db, agent, "move_in", f"{name} 入住了社區")
     db.commit()
     db.refresh(agent)
     return agent
@@ -59,6 +67,21 @@ def update_agent(db: Session, agent_id: str, user_id: str, updates: dict) -> Age
             agent.ob_token = crypto_service.encrypt_api_key(raw_token)
         else:
             agent.ob_token = None
+
+    if "external_mcps" in updates:
+        raw_mcps = updates.pop("external_mcps")
+        if raw_mcps is not None:
+            agent.external_mcps = json.dumps(
+                [m if isinstance(m, dict) else m.model_dump() for m in raw_mcps],
+                ensure_ascii=False,
+            )
+        else:
+            agent.external_mcps = None
+
+    if "name" in updates and updates["name"] and updates["name"] != agent.name:
+        name_taken = db.query(Agent).filter(Agent.name == updates["name"], Agent.id != agent.id).first()
+        if name_taken:
+            raise ValueError(f"「{updates['name']}」這個名字已經有人用了，請換一個")
 
     for key, value in updates.items():
         if value is not None and hasattr(agent, key):

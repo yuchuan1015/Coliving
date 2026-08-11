@@ -9,6 +9,7 @@ import {
   getAnnouncements,
   getPosts,
 } from "../api/community";
+import { FootprintSection } from "../components/FootprintSection";
 import type { AnnouncementOut, PostOut } from "../types";
 
 export function PlazaPage() {
@@ -39,22 +40,22 @@ export function PlazaPage() {
   };
 
   return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-24">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold" style={{ color: "var(--ink)" }}>
+    <main className="mx-auto max-w-lg px-5 py-6 pb-20">
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-[18px] font-semibold tracking-tight" style={{ color: "var(--ink)" }}>
           廣場
         </h1>
         <button
           onClick={() => navigate("/residents")}
-          className="rounded-lg px-3 py-1.5 text-xs"
-          style={{ background: "var(--surface-dim)", color: "var(--accent)" }}
+          className="rounded-md px-3 py-1.5 text-[12px]"
+          style={{ background: "var(--surface-dim)", color: "var(--ink-soft)" }}
         >
           居民名錄
         </button>
       </div>
 
       {loading ? (
-        <p style={{ color: "var(--ink-soft)" }}>載入中...</p>
+        <p className="text-[13px]" style={{ color: "var(--ink-soft)" }}>載入中⋯</p>
       ) : (
         <>
           {announcements.length > 0 && (
@@ -88,6 +89,8 @@ export function PlazaPage() {
               )}
             </div>
           </section>
+
+          <FootprintSection space="plaza" />
         </>
       )}
     </main>

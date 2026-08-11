@@ -24,6 +24,12 @@ export interface SpaceInfo {
   status: string;
 }
 
+export interface ExternalMcpConfig {
+  name: string;
+  url: string;
+  token?: string;
+}
+
 export interface AgentPublic {
   id: string;
   name: string;
@@ -34,6 +40,8 @@ export interface AgentPublic {
   avatar_emoji: string;
   status: string;
   ob_enabled: boolean;
+  external_mcps: ExternalMcpConfig[];
+  active_skin_id: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -82,6 +90,7 @@ export interface ResidentWithAgent {
   display_name: string;
   role: string;
   created_at: string;
+  agent_id: string | null;
   agent_name: string | null;
   agent_emoji: string | null;
 }
