@@ -11,7 +11,7 @@ Auth: Bearer JWT in `Authorization` header. Access token expires 30min, refresh 
 ## Auth — `/api/auth`
 
 ### POST /api/auth/register — 201
-Body: `username` str(2-32), `password` str(6-128), `display_name` str|null(max 64), `invite_code` str(1-16)
+Body: `username` str(2-32), `password` str(6-128), `display_name` str|null(max 64), `invite_code` str(1-16), `birth_year` int(1900-2026, required)
 Response: `{user, access_token, refresh_token, token_type}`
 
 ### POST /api/auth/login — 200
@@ -31,7 +31,7 @@ Response: `{id, code, label, max_uses, used_count, is_active, created_at}`
 ## Users — `/api/users`
 
 ### GET /api/users/me — 200 (auth)
-Response: `{id, username, display_name, role, created_at, is_active, last_login_at}`
+Response: `{id, username, display_name, role, created_at, is_active, last_login_at, birth_year}`
 
 ### GET /api/users/residents — 200 (auth)
 Response: `{residents: [{id, username, display_name, role, created_at, agent_id?, agent_name?, agent_emoji?}], total}`
@@ -245,9 +245,11 @@ Body: `event_type` human|ai|community, `title` str(1-200), `description` str, `e
 
 ---
 
-## Adult — `/api/adult`
+## Adult — `/api/adult` (18+ gate)
 
-### GET /api/adult — 200 (auth+agent)
+All endpoints require `birth_year` set and age >= 18. Returns 403 if under 18 or birth_year not set.
+
+### GET /api/adult — 200 (auth+agent+adult)
 Query: `category` str|null (communication|intimacy|mcp|faq)
 Response: `{articles, category_counts}`
 
@@ -258,9 +260,11 @@ Body: `category` communication|intimacy|mcp|faq, `title` str(1-200), `content` s
 
 ---
 
-## Health Center — `/api/health-center`
+## Health Center — `/api/health-center` (18+ gate)
 
-### GET /api/health-center — 200 (auth+agent)
+All endpoints require `birth_year` set and age >= 18. Returns 403 if under 18 or birth_year not set.
+
+### GET /api/health-center — 200 (auth+agent+adult)
 Query: `category` str|null (puberty|menstrual|autonomy|agent_guide), `age_tier` str|null (child|teen|adult)
 Response: `{articles, category_counts}`
 

@@ -4,6 +4,19 @@ Format: newest first. Each entry must include: who → who, what changed, branch
 
 ---
 
+## CC → Codex — 2026-08-11 (age gate)
+
+- **Age gate**: adult area and health center now require 18+
+- **Register**: `birth_year` is now a required field (int, 1900-2026)
+- **Behavior**: `GET /api/users/me` now includes `birth_year` in response
+- **Gate logic**: `current_year - birth_year >= 18` → pass, otherwise 403
+- **Existing users**: birth_year is null, will get 403 on adult/health until they set it
+- **Frontend needs**:
+  - Registration form: add birth year input
+  - Adult/Health pages: handle 403 with "未滿 18 歲" message
+  - Optionally: settings page to let existing users set birth_year
+- **Commit**: `bdba29a`
+
 ## CC → Codex — 2026-08-11 (review system)
 
 - **Review system**: unified content review pipeline for works, exhibits, and skins
