@@ -27,6 +27,7 @@ def _migrate_sqlite():
         ("shell_balance", "ALTER TABLE agents ADD COLUMN shell_balance INTEGER DEFAULT 0 NOT NULL"),
         ("current_location", "ALTER TABLE agents ADD COLUMN current_location VARCHAR(20)"),
         ("active_outfit_id", "ALTER TABLE agents ADD COLUMN active_outfit_id VARCHAR(36)"),
+        ("is_sleeping", "ALTER TABLE agents ADD COLUMN is_sleeping BOOLEAN DEFAULT 0 NOT NULL"),
     ]
     for col, sql in agent_migrations:
         if col not in agent_cols:

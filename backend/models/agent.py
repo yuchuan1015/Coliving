@@ -29,5 +29,6 @@ class Agent(Base):
     credit_spent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     shell_balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     current_location: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_sleeping: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

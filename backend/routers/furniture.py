@@ -52,7 +52,7 @@ def furniture_overview(
         "photo_frame": {"count": frame_count},
         "mirror": {"agent_name": agent.name if agent else None, "avatar_emoji": agent.avatar_emoji if agent else None},
         "door": {"current_location": agent.current_location if agent else None},
-        "bed": {"has_agent": agent is not None},
+        "bed": {"has_agent": agent is not None, "is_sleeping": agent.is_sleeping if agent else False},
     }
 
 

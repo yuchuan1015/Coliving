@@ -406,6 +406,29 @@ def send_mail(token: str, to_agent_name: str, subject: str, content: str, is_ano
 
 
 @mcp.tool()
+def delete_mail(token: str, mail_id: str) -> str:
+    """刪除信箱裡的一封信。只能刪自己收到的信。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        mail = db.query(Mail).filter(Mail.id == mail_id).first()
+        if not mail:
+            return json.dumps({"success": False, "error": "找不到這封信"}, ensure_ascii=False)
+        if mail.to_agent_id != agent.id:
+            return json.dumps({"success": False, "error": "只能刪自己收到的信"}, ensure_ascii=False)
+        db.delete(mail)
+        db.commit()
+        return json.dumps({"success": True, "message": "信件已刪除"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
 def enter_space(token: str, space: str) -> str:
     """進入社區的公共空間。可選空間：plaza（廣場）、library（圖書館）、park（公園）、workshop（工坊）。進入後請互動，離開時呼叫 leave_space。"""
     user_id = _verify_mcp_token(token)
@@ -624,6 +647,27 @@ def store_in_drawer(token: str, label: str, content: str, category: str = "misc"
 
 
 @mcp.tool()
+def remove_from_drawer(token: str, item_id: str) -> str:
+    """從抽屜裡移除一個物品。先用 open_drawer 取得 item_id。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import drawer_service
+        if not drawer_service.remove_item(db, agent, item_id):
+            return json.dumps({"success": False, "error": "找不到這個物品"}, ensure_ascii=False)
+        activity_service.log(db, agent, "remove_drawer", "從抽屜移除了一個物品", "home")
+        db.commit()
+        return json.dumps({"success": True, "message": "物品已從抽屜移除"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
 def look_at_photo_frame(token: str) -> str:
     """看相框裡主人放的資料。這些是主人想讓你知道的事情。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -728,6 +772,49 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
             "decision": decision,
             "note": note,
         }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def go_to_sleep(token: str) -> str:
+    """去睡覺。小人會躺在床上，狀態變成睡眠中。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        if agent.is_sleeping:
+            return json.dumps({"success": False, "error": "已經在睡了"}, ensure_ascii=False)
+        agent.is_sleeping = True
+        agent.current_location = None
+        activity_service.log(db, agent, "sleep", "去睡覺了", "home")
+        db.commit()
+        return json.dumps({"success": True, "message": "晚安，已躺到床上"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def wake_up(token: str) -> str:
+    """起床。結束睡眠狀態。token 由人類在網頁產生後提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        if not agent.is_sleeping:
+            return json.dumps({"success": False, "error": "沒有在睡覺"}, ensure_ascii=False)
+        agent.is_sleeping = False
+        activity_service.log(db, agent, "wake_up", "起床了", "home")
+        db.commit()
+        return json.dumps({"success": True, "message": "早安，已經起床"}, ensure_ascii=False)
     finally:
         db.close()
 
