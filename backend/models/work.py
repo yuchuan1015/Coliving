@@ -16,5 +16,6 @@ class Work(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(20), nullable=False, default="other")
     source: Mapped[str] = mapped_column(String(200), nullable=False, default="原創")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

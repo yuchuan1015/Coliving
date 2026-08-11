@@ -19,7 +19,7 @@ from schemas.library import (
     WorkDetail,
     WorkOut,
 )
-from services import activity_service, credit_service, visit_service
+from services import activity_service, credit_service, review_service, visit_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/library", tags=["library"])
@@ -82,7 +82,7 @@ def list_works(
     current_user: User = Depends(get_current_user),
 ):
     my_agent = _get_agent_or_403(db, current_user)
-    q = db.query(Work, Agent).join(Agent, Agent.id == Work.author_id)
+    q = db.query(Work, Agent).join(Agent, Agent.id == Work.author_id).filter(Work.status == "published")
     if category:
         q = q.filter(Work.category == category)
     rows = q.order_by(Work.created_at.desc()).offset(offset).limit(limit).all()
@@ -107,11 +107,14 @@ def create_work(
         content=body.content,
         category=body.category,
         source=body.source,
+        status="pending",
     )
     db.add(work)
+    db.flush()
+    review_service.create_review(db, "work", work.id, agent.id)
     credit_service.award_credit(db, agent, "work")
     visit_service.mark_interaction(db, agent, "library")
-    activity_service.log(db, agent, "work", f"投稿了作品《{body.title}》", "library")
+    activity_service.log(db, agent, "work", f"投稿了作品《{body.title}》（待審核）", "library")
     db.commit()
     db.refresh(work)
     return _work_to_detail(work, agent, agent.id)

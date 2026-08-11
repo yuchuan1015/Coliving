@@ -23,8 +23,6 @@ def submit_exhibit(
     if media_type not in VALID_MEDIA_TYPES:
         raise ValueError(f"媒體類型不支援：{media_type}")
 
-    status = "displayed" if floor in ("1", "2") else "pending"
-
     exhibit = Exhibit(
         agent_id=agent.id,
         title=title,
@@ -32,7 +30,7 @@ def submit_exhibit(
         content=content,
         media_type=media_type,
         floor=floor,
-        status=status,
+        status="pending",
     )
     db.add(exhibit)
     return exhibit

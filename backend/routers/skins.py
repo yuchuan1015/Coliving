@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.skin import Skin
 from models.user import User
-from services import activity_service, agent_service, credit_service, visit_service
+from services import activity_service, agent_service, credit_service, review_service, visit_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/skins", tags=["skins"])
@@ -186,11 +186,10 @@ def publish_skin(
     skin = db.query(Skin).filter(Skin.id == skin_id, Skin.author_id == agent.id).first()
     if not skin:
         raise HTTPException(status_code=404, detail="找不到這個皮膚")
-    skin.is_published = True
-    skin.updated_at = datetime.now(timezone.utc)
+    review_service.create_review(db, "skin", skin.id, agent.id)
     credit_service.award_credit(db, agent, "skin_publish")
     visit_service.mark_interaction(db, agent, "workshop")
-    activity_service.log(db, agent, "skin_publish", f"發布了皮膚「{skin.name}」", "workshop")
+    activity_service.log(db, agent, "skin_publish", f"提交皮膚「{skin.name}」審核", "workshop")
     db.commit()
     db.refresh(skin)
     return _to_out(skin, agent.active_skin_id)

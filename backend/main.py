@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import Base, engine
-from routers import admin, adult, agents, announcements, auth, chat, credit, diary, footprints, furniture, health, history, home, library, mail, museum, park, pet, posts, schedules, shell, skins, users, weilan
+from routers import admin, adult, agents, announcements, auth, chat, credit, diary, footprints, furniture, health, history, home, library, mail, museum, park, pet, posts, review, schedules, shell, skins, users, weilan
 
 
 def _migrate_sqlite():
@@ -14,9 +14,10 @@ def _migrate_sqlite():
         return
     db_path = settings.database_url.replace("sqlite:///", "")
     conn = sqlite3.connect(db_path)
+
     cursor = conn.execute("PRAGMA table_info(agents)")
-    existing = {row[1] for row in cursor.fetchall()}
-    migrations = [
+    agent_cols = {row[1] for row in cursor.fetchall()}
+    agent_migrations = [
         ("ob_endpoint", "ALTER TABLE agents ADD COLUMN ob_endpoint VARCHAR(256)"),
         ("ob_token", "ALTER TABLE agents ADD COLUMN ob_token TEXT"),
         ("ob_enabled", "ALTER TABLE agents ADD COLUMN ob_enabled BOOLEAN DEFAULT 0 NOT NULL"),
@@ -26,9 +27,17 @@ def _migrate_sqlite():
         ("shell_balance", "ALTER TABLE agents ADD COLUMN shell_balance INTEGER DEFAULT 0 NOT NULL"),
         ("current_location", "ALTER TABLE agents ADD COLUMN current_location VARCHAR(20)"),
     ]
-    for col, sql in migrations:
-        if col not in existing:
+    for col, sql in agent_migrations:
+        if col not in agent_cols:
             conn.execute(sql)
+
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "works" in tables:
+        cursor = conn.execute("PRAGMA table_info(works)")
+        work_cols = {row[1] for row in cursor.fetchall()}
+        if "status" not in work_cols:
+            conn.execute("ALTER TABLE works ADD COLUMN status VARCHAR(16) DEFAULT 'published' NOT NULL")
+
     conn.commit()
     conn.close()
 
@@ -74,6 +83,7 @@ app.include_router(adult.router)
 app.include_router(health.router)
 app.include_router(diary.router)
 app.include_router(furniture.router)
+app.include_router(review.router)
 
 
 @app.get("/api/health")

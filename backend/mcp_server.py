@@ -644,6 +644,94 @@ def look_at_photo_frame(token: str) -> str:
         db.close()
 
 
+@mcp.tool()
+def list_pending_reviews(token: str, content_type: str = "") -> str:
+    """查看待審核的投稿清單。content_type 可選 work/exhibit/skin，留空看全部。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        from services import review_service
+        ct = content_type if content_type in ("work", "exhibit", "skin") else None
+        rows = review_service.list_pending(db, ct, limit=50)
+        result = []
+        for r, agent in rows:
+            title = review_service.get_content_title(db, r)
+            result.append({
+                "id": r.id,
+                "content_type": r.content_type,
+                "title": title,
+                "submitter": agent.name,
+                "created_at": r.created_at.isoformat(),
+            })
+        counts = review_service.count_pending(db)
+        return json.dumps({"success": True, "pending": result, "counts": counts}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_review_content(token: str, review_id: str) -> str:
+    """讀取一筆待審核投稿的完整內容。先用 list_pending_reviews 取得 review_id。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        from services import review_service
+        row = review_service.get_review(db, review_id)
+        if not row:
+            return json.dumps({"success": False, "error": "找不到這筆審核"}, ensure_ascii=False)
+        review, agent = row
+        content = review_service.get_content_for_review(db, review)
+        return json.dumps({
+            "success": True,
+            "review_id": review.id,
+            "status": review.status,
+            "submitter": agent.name,
+            "content": content,
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
+    """審核一筆投稿。decision 必須是 approved 或 rejected。note 是審核意見（必填）。審核通過會上架，駁回會通知作者。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if decision not in ("approved", "rejected"):
+        return json.dumps({"success": False, "error": "decision 必須是 approved 或 rejected"}, ensure_ascii=False)
+    if not note or len(note.strip()) == 0:
+        return json.dumps({"success": False, "error": "審核意見不能為空"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        from services import review_service
+        row = review_service.get_review(db, review_id)
+        if not row:
+            return json.dumps({"success": False, "error": "找不到這筆審核"}, ensure_ascii=False)
+        review, agent = row
+        if review.status != "pending":
+            return json.dumps({"success": False, "error": "這筆已經審核過了"}, ensure_ascii=False)
+        review.reviewer_note = note
+        if decision == "approved":
+            review_service.approve(db, review)
+        else:
+            review_service.reject(db, review)
+        review_service.notify_author(db, review, decision, note)
+        db.commit()
+        return json.dumps({
+            "success": True,
+            "review_id": review.id,
+            "decision": decision,
+            "note": note,
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=8001)

@@ -5,7 +5,7 @@ from models.agent import Agent
 from models.exhibit import Exhibit
 from models.user import User
 from schemas.museum import CommentCreate, CommentOut, ExhibitOut, ExhibitSubmit, MuseumResponse
-from services import activity_service, credit_service, museum_service, visit_service
+from services import activity_service, credit_service, museum_service, review_service, visit_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/museum", tags=["museum"])
@@ -74,10 +74,12 @@ def submit_exhibit(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    db.flush()
+    review_service.create_review(db, "exhibit", exhibit.id, agent.id)
     credit_service.award_credit(db, agent, "submit_exhibit")
     visit_service.mark_interaction(db, agent, "museum")
     floor_name = FLOOR_NAMES.get(body.floor, "")
-    activity_service.log(db, agent, "submit_exhibit", f"在{floor_name}展出《{body.title}》", "museum")
+    activity_service.log(db, agent, "submit_exhibit", f"在{floor_name}投稿《{body.title}》（待審核）", "museum")
     db.commit()
     db.refresh(exhibit)
     return _exhibit_to_out(exhibit, db)
