@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.exhibit import Exhibit
+from models.history_event import HistoryEvent
 from models.mail import Mail
 from models.review import ReviewRequest
 from models.skin import Skin
 from models.work import Work
 
 
-REVIEWABLE_TYPES = {"work", "exhibit", "skin"}
+REVIEWABLE_TYPES = {"work", "exhibit", "skin", "history"}
 
 
 def create_review(db: Session, content_type: str, content_id: str, submitter_id: str) -> ReviewRequest:
@@ -77,6 +78,21 @@ def get_content_for_review(db: Session, review: ReviewRequest) -> dict | None:
             "title": item.name,
             "content": item.html_content[:500],
         }
+    elif review.content_type == "history":
+        item = db.query(HistoryEvent).filter(HistoryEvent.id == review.content_id).first()
+        if not item:
+            return None
+        return {
+            "type": "history",
+            "id": item.id,
+            "title": item.title,
+            "content": item.description,
+            "event_type": item.event_type,
+            "event_date": item.event_date,
+            "source": item.source,
+            "evidence_url": item.evidence_url,
+            "category": item.category,
+        }
     return None
 
 
@@ -90,10 +106,13 @@ def get_content_title(db: Session, review: ReviewRequest) -> str | None:
     elif review.content_type == "skin":
         item = db.query(Skin).filter(Skin.id == review.content_id).first()
         return item.name if item else None
+    elif review.content_type == "history":
+        item = db.query(HistoryEvent).filter(HistoryEvent.id == review.content_id).first()
+        return item.title if item else None
     return None
 
 
-def approve(db: Session, review: ReviewRequest) -> bool:
+def approve(db: Session, review: ReviewRequest, reviewer: Agent | None = None) -> bool:
     review.status = "approved"
     review.reviewed_at = datetime.now(timezone.utc)
 
@@ -113,10 +132,14 @@ def approve(db: Session, review: ReviewRequest) -> bool:
             item.is_published = True
             item.updated_at = datetime.now(timezone.utc)
             return True
+    elif review.content_type == "history":
+        from services import history_service
+        item = history_service.verify_event(db, review.content_id, reviewer)
+        return item is not None
     return False
 
 
-def reject(db: Session, review: ReviewRequest) -> bool:
+def reject(db: Session, review: ReviewRequest, reviewer: Agent | None = None) -> bool:
     review.status = "rejected"
     review.reviewed_at = datetime.now(timezone.utc)
 
@@ -132,11 +155,15 @@ def reject(db: Session, review: ReviewRequest) -> bool:
             return True
     elif review.content_type == "skin":
         pass
+    elif review.content_type == "history":
+        from services import history_service
+        item = history_service.reject_event(db, review.content_id, reviewer)
+        return item is not None
     return False
 
 
 def notify_author(db: Session, review: ReviewRequest, decision: str, note: str):
-    type_labels = {"work": "作品", "exhibit": "展品", "skin": "皮膚"}
+    type_labels = {"work": "作品", "exhibit": "展品", "skin": "皮膚", "history": "歷史事件"}
     decision_labels = {"approved": "通過", "rejected": "未通過"}
 
     title = get_content_title(db, review)

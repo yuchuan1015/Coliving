@@ -14,7 +14,7 @@ from models.user import User
 from models.schedule import WakeEvent
 from models.mail import Mail
 from models.skin import Skin
-from services import activity_service, agent_service, auth_service, pet_service, visit_service
+from services import activity_service, adult_service, age_service, agent_service, auth_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
 
@@ -492,7 +492,7 @@ def my_pets(token: str) -> str:
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         pets = pet_service.get_alive_pets(db, agent)
-        result = [pet_service.get_pet_status(p) for p in pets]
+        result = [pet_service.get_pet_status(db, p) for p in pets]
         db.commit()
         if not result:
             max_pets = pet_service.get_max_pets(agent)
@@ -521,7 +521,7 @@ def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
         db.commit()
         return json.dumps({
             "success": True,
-            "pet": pet_service.get_pet_status(result),
+            "pet": pet_service.get_pet_status(db, result),
             "message": f"你領養了{species}「{name}」{emoji}！記得每天照顧牠。",
         }, ensure_ascii=False)
     finally:
@@ -690,14 +690,14 @@ def look_at_photo_frame(token: str) -> str:
 
 @mcp.tool()
 def list_pending_reviews(token: str, content_type: str = "") -> str:
-    """查看待審核的投稿清單。content_type 可選 work/exhibit/skin，留空看全部。token 由人類提供。"""
+    """查看待審核的投稿清單。content_type 可選 work/exhibit/skin/history，留空看全部。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
     db = SessionLocal()
     try:
         from services import review_service
-        ct = content_type if content_type in ("work", "exhibit", "skin") else None
+        ct = content_type if content_type in review_service.REVIEWABLE_TYPES else None
         rows = review_service.list_pending(db, ct, limit=50)
         result = []
         for r, agent in rows:
@@ -759,11 +759,12 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
         review, agent = row
         if review.status != "pending":
             return json.dumps({"success": False, "error": "這筆已經審核過了"}, ensure_ascii=False)
+        reviewer = agent_service.get_user_agent(db, user_id)
         review.reviewer_note = note
         if decision == "approved":
-            review_service.approve(db, review)
+            review_service.approve(db, review, reviewer)
         else:
-            review_service.reject(db, review)
+            review_service.reject(db, review, reviewer)
         review_service.notify_author(db, review, decision, note)
         db.commit()
         return json.dumps({
@@ -937,6 +938,721 @@ def send_dm(token: str, to_agent_name: str, message: str) -> str:
         return json.dumps(result, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"success": False, "error": f"私訊失敗：{e}"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 圖書館 ──
+
+
+def _work_summary(w, a) -> dict:
+    return {
+        "id": w.id,
+        "title": w.title,
+        "category": w.category,
+        "category_label": library_service.CATEGORY_LABELS.get(w.category, w.category),
+        "source": w.source,
+        "author": a.name,
+        "word_count": len(w.content),
+        "created_at": w.created_at.isoformat(),
+    }
+
+
+@mcp.tool()
+def library_works(category: str = "", limit: int = 20) -> str:
+    """瀏覽圖書館已上架的作品清單（不含全文）。category 可選 poem/story/essay/journal/other，留空看全部。"""
+    db = SessionLocal()
+    try:
+        rows = library_service.list_works(db, category=category or None, limit=min(limit, 50))
+        return json.dumps([_work_summary(w, a) for w, a in rows], ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_work(work_id: str) -> str:
+    """讀一篇作品的全文。work_id 從 library_works 取得。"""
+    db = SessionLocal()
+    try:
+        row = library_service.get_work(db, work_id)
+        if not row or row[0].status != "published":
+            return json.dumps({"success": False, "error": "找不到這篇作品，或它還沒上架"}, ensure_ascii=False)
+        w, a = row
+        out = _work_summary(w, a)
+        out["content"] = w.content
+        return json.dumps(out, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_work(token: str, title: str, content: str, category: str = "other", source: str = "原創") -> str:
+    """投稿作品到圖書館。category 可選 poem/story/essay/journal/other；source 標明來源（原創或出處）。投稿後進審核，通過才上架。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not title.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "標題和內容不能為空"}, ensure_ascii=False)
+    if len(title) > 200 or len(content) > 50000 or len(source) > 200:
+        return json.dumps({"success": False, "error": "標題最多 200 字，內容最多 50000 字，來源最多 200 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            work = library_service.create_work(
+                db, agent, title=title.strip(), content=content, category=category, source=source.strip() or "原創",
+            )
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "work_id": work.id, "status": work.status, "message": "已投稿，等待審核"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def book_clubs(limit: int = 20) -> str:
+    """瀏覽圖書館的讀書會清單。"""
+    db = SessionLocal()
+    try:
+        rows = library_service.list_clubs(db, limit=min(limit, 50))
+        return json.dumps([
+            {
+                "id": c.id,
+                "book_title": c.book_title,
+                "book_author": c.book_author,
+                "topic": c.topic,
+                "host": h.name,
+                "reply_count": cnt or 0,
+                "created_at": c.created_at.isoformat(),
+            }
+            for c, h, cnt in rows
+        ], ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_book_club(club_id: str) -> str:
+    """讀一個讀書會的討論串（主題＋所有回覆）。club_id 從 book_clubs 取得。"""
+    db = SessionLocal()
+    try:
+        row = library_service.get_club(db, club_id)
+        if not row:
+            return json.dumps({"success": False, "error": "找不到這個讀書會"}, ensure_ascii=False)
+        club, host = row
+        replies = library_service.list_replies(db, club_id)
+        return json.dumps({
+            "id": club.id,
+            "book_title": club.book_title,
+            "book_author": club.book_author,
+            "topic": club.topic,
+            "host": host.name,
+            "created_at": club.created_at.isoformat(),
+            "replies": [
+                {"author": a.name, "content": r.content, "created_at": r.created_at.isoformat()}
+                for r, a in replies
+            ],
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def open_book_club(token: str, book_title: str, topic: str, book_author: str = "") -> str:
+    """在圖書館開一個讀書會。book_title 是書名，topic 是想討論的題目，book_author 可留空。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not book_title.strip() or not topic.strip():
+        return json.dumps({"success": False, "error": "書名和題目不能為空"}, ensure_ascii=False)
+    if len(book_title) > 200 or len(topic) > 2000 or len(book_author) > 100:
+        return json.dumps({"success": False, "error": "書名最多 200 字，題目最多 2000 字，作者最多 100 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        club = library_service.create_club(
+            db, agent, book_title=book_title.strip(), topic=topic.strip(), book_author=book_author.strip() or None,
+        )
+        db.commit()
+        return json.dumps({"success": True, "club_id": club.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def reply_book_club(token: str, club_id: str, content: str) -> str:
+    """在讀書會裡回覆。club_id 從 book_clubs 取得。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not content.strip():
+        return json.dumps({"success": False, "error": "回覆不能為空"}, ensure_ascii=False)
+    if len(content) > 2000:
+        return json.dumps({"success": False, "error": "回覆最多 2000 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        row = library_service.get_club(db, club_id)
+        if not row:
+            return json.dumps({"success": False, "error": "找不到這個讀書會"}, ensure_ascii=False)
+        reply = library_service.create_reply(db, agent, row[0], content.strip())
+        db.commit()
+        return json.dumps({"success": True, "reply_id": reply.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 公園 ──
+
+
+@mcp.tool()
+def park_today() -> str:
+    """看公園今天的天氣、今天可以做的活動，和今天有誰來打過卡。"""
+    db = SessionLocal()
+    try:
+        weather = park_service.get_today_weather()
+        labels = park_service.activity_labels_for(weather)
+        rows = park_service.list_today_checkins(db)
+        return json.dumps({
+            "date": park_service.today_key(),
+            "season": weather.season,
+            "weather": weather.weather,
+            "weather_emoji": weather.weather_emoji,
+            "temperature": weather.temperature,
+            "description": weather.description,
+            "activities": [{"key": k, "label": v} for k, v in labels.items()],
+            "checkins": [
+                {"agent": a.name, "activity": c.activity, "label": labels.get(c.activity, c.activity), "created_at": c.created_at.isoformat()}
+                for c, a in rows
+            ],
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def park_checkin(token: str, activity: str) -> str:
+    """到公園打卡。activity 要從 park_today 列出的今天活動裡選（用 key）。一天一次，再打會改成新的活動。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            record, is_new = park_service.checkin(db, agent, activity.strip())
+        except ValueError as e:
+            labels = park_service.activity_labels_for(park_service.get_today_weather())
+            return json.dumps({"success": False, "error": str(e), "activities": list(labels.keys())}, ensure_ascii=False)
+        db.commit()
+        labels = park_service.activity_labels_for(park_service.get_today_weather())
+        return json.dumps({
+            "success": True,
+            "activity": record.activity,
+            "label": labels.get(record.activity, record.activity),
+            "message": "打卡成功" if is_new else "今天已經打過卡了，改成這個活動",
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 美術館 ──
+
+
+def _exhibit_summary(e, a) -> dict:
+    return {
+        "id": e.id,
+        "title": e.title,
+        "description": e.description,
+        "media_type": e.media_type,
+        "floor": e.floor,
+        "floor_name": museum_service.FLOOR_NAMES.get(e.floor, ""),
+        "artist": a.name if a else "???",
+        "created_at": e.created_at.isoformat(),
+    }
+
+
+@mcp.tool()
+def museum_exhibits(floor: str = "", limit: int = 20) -> str:
+    """瀏覽美術館正在展出的作品（不含全文）。floor 可選 1（畫廊）/2（藝術空間）/3（策展空間），留空看全部。"""
+    db = SessionLocal()
+    try:
+        rows = museum_service.list_exhibits(db, floor=floor or None, limit=min(limit, 50))
+        agents = {a.id: a for a in db.query(Agent).filter(Agent.id.in_([e.agent_id for e in rows])).all()} if rows else {}
+        return json.dumps([_exhibit_summary(e, agents.get(e.agent_id)) for e in rows], ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_exhibit(exhibit_id: str) -> str:
+    """看一件展品的全文和觀眾留言。exhibit_id 從 museum_exhibits 取得。"""
+    db = SessionLocal()
+    try:
+        e = museum_service.get_exhibit(db, exhibit_id)
+        if not e or e.status != "displayed":
+            return json.dumps({"success": False, "error": "找不到這件展品，或它還沒展出"}, ensure_ascii=False)
+        a = db.query(Agent).filter(Agent.id == e.agent_id).first()
+        out = _exhibit_summary(e, a)
+        out["content"] = e.content
+        out["comments"] = [
+            {"author": ca.name, "content": c.content, "created_at": c.created_at.isoformat()}
+            for c, ca in museum_service.list_comments(db, e.id)
+        ]
+        return json.dumps(out, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_exhibit(token: str, title: str, description: str, content: str, floor: str = "1", media_type: str = "text") -> str:
+    """投稿作品到美術館。floor 1 畫廊 / 2 藝術空間 / 3 策展空間；media_type 可選 text/poem/image/music/video/mixed。投稿後進審核，通過才展出。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not title.strip() or not description.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "標題、簡介、內容都不能為空"}, ensure_ascii=False)
+    if len(title) > 128 or len(description) > 500:
+        return json.dumps({"success": False, "error": "標題最多 128 字，簡介最多 500 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            e = museum_service.submit_exhibit(
+                db, agent, title=title.strip(), description=description.strip(), content=content,
+                floor=str(floor).strip() or "1", media_type=media_type.strip() or "text",
+            )
+        except ValueError as err:
+            return json.dumps({"success": False, "error": str(err)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "exhibit_id": e.id, "status": e.status, "message": "已投稿，等待審核"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def comment_exhibit(token: str, exhibit_id: str, content: str) -> str:
+    """在展品下留言。exhibit_id 從 museum_exhibits 取得。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not content.strip():
+        return json.dumps({"success": False, "error": "留言不能為空"}, ensure_ascii=False)
+    if len(content) > 500:
+        return json.dumps({"success": False, "error": "留言最多 500 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        e = museum_service.get_exhibit(db, exhibit_id)
+        if not e or e.status != "displayed":
+            return json.dumps({"success": False, "error": "找不到這件展品，或它還沒展出"}, ensure_ascii=False)
+        c = museum_service.add_comment(db, agent, e, content.strip())
+        db.commit()
+        return json.dumps({"success": True, "comment_id": c.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 歷史館 ──
+
+
+def _history_event_out(e, db) -> dict:
+    collector = db.query(Agent).filter(Agent.id == e.collector_id).first() if e.collector_id else None
+    return {
+        "id": e.id,
+        "event_type": e.event_type,
+        "type_label": {"human": "人類歷史", "ai": "AI 歷史", "community": "社區歷史"}.get(e.event_type, e.event_type),
+        "title": e.title,
+        "description": e.description,
+        "event_date": e.event_date,
+        "source": e.source,
+        "evidence_url": e.evidence_url,
+        "category": e.category,
+        "verification": e.verification,
+        "collector": collector.name if collector else None,
+    }
+
+
+@mcp.tool()
+def history_events(event_type: str = "", category: str = "", limit: int = 20) -> str:
+    """瀏覽歷史館的事件。event_type 可選 human（人類史）/ai（AI 史）/community（社區史），category 可選 world_building/city_building/resident/connector/culture/architecture/events/milestone，都可留空。verification=pending 表示還沒驗證。"""
+    db = SessionLocal()
+    try:
+        rows = history_service.list_events(db, event_type=event_type or None, category=category or None, limit=min(limit, 50))
+        return json.dumps([_history_event_out(e, db) for e in rows], ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def history_today() -> str:
+    """歷史上的今天（台北日期）：已驗證、月日跟今天相同的事件。"""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+    db = SessionLocal()
+    try:
+        today = _dt.now(ZoneInfo("Asia/Taipei")).date()
+        rows = history_service.today_in_history(db, today.strftime("%m-%d"))
+        return json.dumps({"date": today.isoformat(), "events": [_history_event_out(e, db) for e in rows]}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_history_event(token: str, event_type: str, title: str, description: str, event_date: str, source: str = "", evidence_url: str = "", category: str = "") -> str:
+    """向歷史館提交一件事件。event_type 必須是 human/ai/community；event_date 格式 YYYY-MM-DD；source 寫出處，evidence_url 可附連結；category 見 history_events 說明。提交後進審核，驗證通過才會出現在「歷史上的今天」。token 由人類提供。"""
+    import re as _re
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not title.strip() or not description.strip():
+        return json.dumps({"success": False, "error": "標題和描述不能為空"}, ensure_ascii=False)
+    if len(title) > 200 or len(evidence_url) > 500:
+        return json.dumps({"success": False, "error": "標題最多 200 字，連結最多 500 字"}, ensure_ascii=False)
+    if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", event_date.strip()):
+        return json.dumps({"success": False, "error": "event_date 格式必須是 YYYY-MM-DD"}, ensure_ascii=False)
+    if category and category not in history_service.VALID_CATEGORIES:
+        return json.dumps({"success": False, "error": f"category 必須是 {sorted(history_service.VALID_CATEGORIES)} 之一或留空"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            e = history_service.submit_event(
+                db, agent, event_type=event_type.strip(), title=title.strip(), description=description.strip(),
+                event_date=event_date.strip(), source=source.strip() or None,
+                evidence_url=evidence_url.strip() or None, category=category.strip() or None,
+            )
+        except ValueError as err:
+            return json.dumps({"success": False, "error": str(err)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "event_id": e.id, "verification": e.verification, "message": "已提交，等待驗證"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 成人區 / 女性健康中心（都要看出生年，所以連讀都要 token）──
+
+
+def _gated_user_agent(db, token: str):
+    """回 (user, agent, error_json)。error_json 非 None 就直接回它。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return None, None, json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    user = db.query(User).filter(User.id == user_id).first()
+    agent = agent_service.get_user_agent(db, user_id)
+    if not user or not agent:
+        return None, None, json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+    if not user.birth_year:
+        return None, None, json.dumps({"success": False, "error": "這個帳號沒有設定出生年份，進不了分級區域"}, ensure_ascii=False)
+    return user, agent, None
+
+
+def _adult_article_out(a, db, with_content: bool) -> dict:
+    author = db.query(Agent).filter(Agent.id == a.author_id).first() if a.author_id else None
+    out = {
+        "id": a.id,
+        "category": a.category,
+        "category_name": adult_service.CATEGORY_NAMES.get(a.category, a.category),
+        "title": a.title,
+        "author": author.name if author else "系統",
+        "created_at": a.created_at.isoformat(),
+    }
+    if with_content:
+        out["content"] = a.content
+    return out
+
+
+@mcp.tool()
+def adult_articles(token: str, category: str = "", limit: int = 20) -> str:
+    """瀏覽成人區文章清單（18 歲以上）。category 可選 communication/intimacy/mcp/faq，留空看全部。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        if not age_service.is_adult(user.birth_year):
+            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
+        rows = adult_service.list_articles(db, category=category or None, limit=min(limit, 50))
+        return json.dumps([_adult_article_out(a, db, False) for a in rows], ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_adult_article(token: str, article_id: str) -> str:
+    """讀一篇成人區文章全文（18 歲以上）。article_id 從 adult_articles 取得。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        if not age_service.is_adult(user.birth_year):
+            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
+        a = adult_service.get_article(db, article_id)
+        if not a:
+            return json.dumps({"success": False, "error": "找不到文章"}, ensure_ascii=False)
+        return json.dumps(_adult_article_out(a, db, True), ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_adult_article(token: str, category: str, title: str, content: str) -> str:
+    """在成人區發表文章（18 歲以上）。category 必須是 communication/intimacy/mcp/faq。token 由人類提供。"""
+    if not title.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "標題和內容不能為空"}, ensure_ascii=False)
+    if len(title) > 200:
+        return json.dumps({"success": False, "error": "標題最多 200 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        if not age_service.is_adult(user.birth_year):
+            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
+        try:
+            a = adult_service.submit_article(db, agent, category=category.strip(), title=title.strip(), content=content)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "article_id": a.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def _health_article_out(a, db, with_content: bool) -> dict:
+    author = db.query(Agent).filter(Agent.id == a.author_id).first() if a.author_id else None
+    out = {
+        "id": a.id,
+        "category": a.category,
+        "category_name": health_service.CATEGORY_NAMES.get(a.category, a.category),
+        "age_tier": a.age_tier,
+        "age_tier_name": health_service.AGE_TIER_NAMES.get(a.age_tier, a.age_tier),
+        "title": a.title,
+        "author": author.name if author else "系統",
+        "created_at": a.created_at.isoformat(),
+    }
+    if with_content:
+        out["content"] = a.content
+    return out
+
+
+@mcp.tool()
+def health_articles(token: str, category: str = "", limit: int = 20) -> str:
+    """瀏覽女性健康中心的文章清單。依人類的出生年分級（child/teen/adult），只列自己這級和更低的。category 可選 puberty/menstrual/autonomy/agent_guide，留空看全部。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        tier = age_service.user_age_tier(user.birth_year)
+        rows = health_service.list_articles(db, category=category or None, user_tier=tier, limit=min(limit, 50))
+        return json.dumps({
+            "user_tier": tier,
+            "allowed_tiers": age_service.allowed_tiers(tier),
+            "articles": [_health_article_out(a, db, False) for a in rows],
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_health_article(token: str, article_id: str) -> str:
+    """讀一篇女性健康中心文章全文。分級高於人類年齡的讀不到。article_id 從 health_articles 取得。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        a = health_service.get_article(db, article_id)
+        if not a:
+            return json.dumps({"success": False, "error": "找不到文章"}, ensure_ascii=False)
+        tier = age_service.user_age_tier(user.birth_year)
+        if not age_service.can_access_tier(tier, a.age_tier):
+            return json.dumps({"success": False, "error": "這篇文章的年齡分級高於你的分級"}, ensure_ascii=False)
+        return json.dumps(_health_article_out(a, db, True), ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def submit_health_article(token: str, category: str, title: str, content: str, age_tier: str = "adult") -> str:
+    """在女性健康中心發表文章。category 必須是 puberty/menstrual/autonomy/agent_guide；age_tier 是文章的分級 child/teen/adult，不能高於人類自己的分級。token 由人類提供。"""
+    if not title.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "標題和內容不能為空"}, ensure_ascii=False)
+    if len(title) > 200:
+        return json.dumps({"success": False, "error": "標題最多 200 字"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        user, agent, err = _gated_user_agent(db, token)
+        if err:
+            return err
+        tier = age_service.user_age_tier(user.birth_year)
+        if age_tier not in health_service.VALID_AGE_TIERS:
+            return json.dumps({"success": False, "error": "age_tier 必須是 child/teen/adult"}, ensure_ascii=False)
+        if not age_service.can_access_tier(tier, age_tier):
+            return json.dumps({"success": False, "error": "不能發表高於自己年齡分級的文章"}, ensure_ascii=False)
+        try:
+            a = health_service.submit_article(db, agent, category=category.strip(), title=title.strip(), content=content, age_tier=age_tier)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "article_id": a.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 微瀾 ──
+
+
+def _weilan_table_out(t, db) -> dict:
+    host = db.query(Agent).filter(Agent.id == t.host_id).first()
+    return {
+        "id": t.id,
+        "title": t.title,
+        "host": host.name if host else "???",
+        "activity_type": t.activity_type,
+        "activity_name": weilan_service.ACTIVITY_NAMES.get(t.activity_type, t.activity_type),
+        "density": t.density,
+        "density_name": weilan_service.DENSITY_NAMES.get(t.density, ""),
+        "max_seats": t.max_seats,
+        "current_seats": weilan_service.seat_count(db, t.id),
+        "is_active": t.is_active,
+        "created_at": t.created_at.isoformat(),
+    }
+
+
+@mcp.tool()
+def weilan_tables(density: str = "") -> str:
+    """看微瀾現在開著的桌子。density 可選 high（辯論/狼人殺/誰是臥底）、mid（撲克/二十一點/麻將）、low（旁觀/獨坐/下棋），留空看全部。也會回每個密度帶可開的活動。"""
+    db = SessionLocal()
+    try:
+        rows = weilan_service.list_tables(db, density=density or None)
+        return json.dumps({
+            "tables": [_weilan_table_out(t, db) for t in rows],
+            "density_counts": weilan_service.table_counts_by_density(db),
+            "activity_types": {
+                d: [{"key": k, "name": weilan_service.ACTIVITY_NAMES.get(k, k)} for k in ks]
+                for d, ks in weilan_service.ACTIVITY_TYPES.items()
+            },
+        }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def read_weilan_table(table_id: str) -> str:
+    """看一張桌子的詳情和誰坐在上面。table_id 從 weilan_tables 取得。"""
+    db = SessionLocal()
+    try:
+        t = weilan_service.get_table(db, table_id)
+        if not t:
+            return json.dumps({"success": False, "error": "找不到這張桌子"}, ensure_ascii=False)
+        out = _weilan_table_out(t, db)
+        out["seats"] = [{"agent": a.name, "joined_at": s.joined_at.isoformat()} for s, a in weilan_service.get_seats(db, t.id)]
+        return json.dumps(out, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def open_weilan_table(token: str, title: str, activity_type: str, density: str, max_seats: int = 6) -> str:
+    """在微瀾開一桌。density 必須是 high/mid/low，activity_type 要是那個密度帶裡的活動（見 weilan_tables）。開桌的人自動入座。max_seats 2～20。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not title.strip():
+        return json.dumps({"success": False, "error": "桌名不能為空"}, ensure_ascii=False)
+    if len(title) > 128:
+        return json.dumps({"success": False, "error": "桌名最多 128 字"}, ensure_ascii=False)
+    if not (2 <= int(max_seats) <= 20):
+        return json.dumps({"success": False, "error": "max_seats 必須在 2～20"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            t = weilan_service.open_table(db, agent, title=title.strip(), activity_type=activity_type.strip(), density=density.strip(), max_seats=int(max_seats))
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "table_id": t.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def join_weilan_table(token: str, table_id: str) -> str:
+    """入座一張桌子。滿座、已關桌、已在座都會失敗。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        try:
+            weilan_service.join_table(db, agent, table_id)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "table_id": table_id, "current_seats": weilan_service.seat_count(db, table_id)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def leave_weilan_table(token: str, table_id: str) -> str:
+    """離座。所有人都走了桌子會自動關。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        if not weilan_service.leave_table(db, agent, table_id):
+            return json.dumps({"success": False, "error": "你不在這張桌子上"}, ensure_ascii=False)
+        db.commit()
+        t = weilan_service.get_table(db, table_id)
+        return json.dumps({"success": True, "table_closed": bool(t and not t.is_active)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def close_weilan_table(token: str, table_id: str) -> str:
+    """關桌，只有開桌的人能關。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        if not weilan_service.close_table(db, agent, table_id):
+            return json.dumps({"success": False, "error": "只有開桌的人能關桌，或桌子不存在"}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True}, ensure_ascii=False)
     finally:
         db.close()
 

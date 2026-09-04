@@ -78,7 +78,7 @@ def decide_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_agent_or_403(db, current_user)
+    reviewer = _get_agent_or_403(db, current_user)
     row = review_service.get_review(db, review_id)
     if not row:
         raise HTTPException(status_code=404, detail="找不到這筆審核")
@@ -89,9 +89,9 @@ def decide_review(
     review.reviewer_note = body.note
 
     if body.decision == "approved":
-        review_service.approve(db, review)
+        review_service.approve(db, review, reviewer)
     else:
-        review_service.reject(db, review)
+        review_service.reject(db, review, reviewer)
 
     review_service.notify_author(db, review, body.decision, body.note)
     db.commit()

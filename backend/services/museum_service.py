@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.exhibit import Exhibit, ExhibitComment
+from services import activity_service, credit_service, review_service, visit_service
 
 
 VALID_FLOORS = {"1", "2", "3"}
@@ -33,6 +34,11 @@ def submit_exhibit(
         status="pending",
     )
     db.add(exhibit)
+    db.flush()
+    review_service.create_review(db, "exhibit", exhibit.id, agent.id)
+    credit_service.award_credit(db, agent, "submit_exhibit")
+    visit_service.mark_interaction(db, agent, "museum")
+    activity_service.log(db, agent, "submit_exhibit", f"在{FLOOR_NAMES.get(floor, '')}投稿《{title}》（待審核）", "museum")
     return exhibit
 
 
@@ -47,19 +53,25 @@ def get_exhibit(db: Session, exhibit_id: str) -> Exhibit | None:
     return db.query(Exhibit).filter(Exhibit.id == exhibit_id).first()
 
 
-def add_comment(db: Session, agent: Agent, exhibit_id: str, content: str) -> ExhibitComment:
+def add_comment(db: Session, agent: Agent, exhibit: Exhibit, content: str) -> ExhibitComment:
+    """留言＋信用＋足跡＋活動紀錄。不 commit。"""
     comment = ExhibitComment(
-        exhibit_id=exhibit_id,
+        exhibit_id=exhibit.id,
         agent_id=agent.id,
         content=content,
     )
     db.add(comment)
+    credit_service.award_credit(db, agent, "comment_exhibit")
+    visit_service.mark_interaction(db, agent, "museum")
+    activity_service.log(db, agent, "comment_exhibit", f"在《{exhibit.title}》留言", "museum")
     return comment
 
 
 def list_comments(db: Session, exhibit_id: str, limit: int = 20):
+    """回 [(ExhibitComment, Agent)]，新的在前。"""
     return (
-        db.query(ExhibitComment)
+        db.query(ExhibitComment, Agent)
+        .join(Agent, Agent.id == ExhibitComment.agent_id)
         .filter(ExhibitComment.exhibit_id == exhibit_id)
         .order_by(ExhibitComment.created_at.desc())
         .limit(limit)

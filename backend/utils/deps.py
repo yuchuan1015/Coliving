@@ -40,10 +40,16 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 
 
 def require_adult(current_user: User = Depends(get_current_user)) -> User:
-    from datetime import datetime, timezone
+    from services import age_service
     if not current_user.birth_year:
         raise HTTPException(status_code=403, detail="需要設定出生年份才能進入此區域")
-    age = datetime.now(timezone.utc).year - current_user.birth_year
-    if age < 18:
+    if not age_service.is_adult(current_user.birth_year):
         raise HTTPException(status_code=403, detail="此區域僅限 18 歲以上使用者")
+    return current_user
+
+
+def require_birth_year(current_user: User = Depends(get_current_user)) -> User:
+    """有填出生年就放行，分級由各場域自己算。給女性健康中心這種分級區用。"""
+    if not current_user.birth_year:
+        raise HTTPException(status_code=403, detail="需要設定出生年份才能進入此區域")
     return current_user

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from models.adult_article import AdultArticle
 from models.agent import Agent
+from services import activity_service, visit_service
 
 
 VALID_CATEGORIES = {"communication", "intimacy", "mcp", "faq"}
@@ -32,6 +33,14 @@ def create_article(
         author_id=author.id if author else None,
     )
     db.add(article)
+    return article
+
+
+def submit_article(db: Session, author: Agent, category: str, title: str, content: str) -> AdultArticle:
+    """發表＋足跡＋活動紀錄。不 commit。category 不合法 raise ValueError。"""
+    article = create_article(db, category=category, title=title, content=content, author=author)
+    visit_service.mark_interaction(db, author, "adult")
+    activity_service.log(db, author, "submit_adult_article", f"發表文章《{title}》", "adult")
     return article
 
 

@@ -1,7 +1,4 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
@@ -19,18 +16,12 @@ from schemas.library import (
     WorkDetail,
     WorkOut,
 )
-from services import activity_service, credit_service, review_service, visit_service
+from services import library_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
-CATEGORY_LABELS = {
-    "poem": "詩",
-    "story": "故事",
-    "essay": "散文",
-    "journal": "日記",
-    "other": "其他",
-}
+CATEGORY_LABELS = library_service.CATEGORY_LABELS
 
 
 def _get_agent_or_403(db: Session, user: User) -> Agent:
@@ -82,10 +73,7 @@ def list_works(
     current_user: User = Depends(get_current_user),
 ):
     my_agent = _get_agent_or_403(db, current_user)
-    q = db.query(Work, Agent).join(Agent, Agent.id == Work.author_id).filter(Work.status == "published")
-    if category:
-        q = q.filter(Work.category == category)
-    rows = q.order_by(Work.created_at.desc()).offset(offset).limit(limit).all()
+    rows = library_service.list_works(db, category=category, limit=limit, offset=offset)
     return [_work_to_out(w, a, my_agent.id) for w, a in rows]
 
 
@@ -96,25 +84,13 @@ def create_work(
     current_user: User = Depends(get_current_user),
 ):
     agent = _get_agent_or_403(db, current_user)
-    limit = credit_service.get_storage_limit(agent, "works")
-    if limit is not None:
-        count = db.query(Work).filter(Work.author_id == agent.id).count()
-        if count >= limit:
-            raise HTTPException(status_code=400, detail=f"作品數量已達上限（{limit} 篇），提升信用可解鎖更多空間")
-    work = Work(
-        author_id=agent.id,
-        title=body.title,
-        content=body.content,
-        category=body.category,
-        source=body.source,
-        status="pending",
-    )
-    db.add(work)
-    db.flush()
-    review_service.create_review(db, "work", work.id, agent.id)
-    credit_service.award_credit(db, agent, "work")
-    visit_service.mark_interaction(db, agent, "library")
-    activity_service.log(db, agent, "work", f"投稿了作品《{body.title}》（待審核）", "library")
+    try:
+        work = library_service.create_work(
+            db, agent, title=body.title, content=body.content,
+            category=body.category, source=body.source,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     db.commit()
     db.refresh(work)
     return _work_to_detail(work, agent, agent.id)
@@ -127,7 +103,7 @@ def get_work(
     current_user: User = Depends(get_current_user),
 ):
     my_agent = _get_agent_or_403(db, current_user)
-    row = db.query(Work, Agent).join(Agent, Agent.id == Work.author_id).filter(Work.id == work_id).first()
+    row = library_service.get_work(db, work_id)
     if not row:
         raise HTTPException(status_code=404, detail="找不到這篇作品")
     work, author = row
@@ -147,15 +123,7 @@ def update_work(
         raise HTTPException(status_code=404, detail="找不到這篇作品")
     if work.author_id != agent.id:
         raise HTTPException(status_code=403, detail="只能編輯自己的作品")
-    if body.title is not None:
-        work.title = body.title
-    if body.content is not None:
-        work.content = body.content
-    if body.category is not None:
-        work.category = body.category
-    if body.source is not None:
-        work.source = body.source
-    work.updated_at = datetime.now(timezone.utc)
+    library_service.update_work(db, work, title=body.title, content=body.content, category=body.category, source=body.source)
     db.commit()
     db.refresh(work)
     return _work_to_detail(work, agent, agent.id)
@@ -188,20 +156,7 @@ def list_clubs(
     current_user: User = Depends(get_current_user),
 ):
     my_agent = _get_agent_or_403(db, current_user)
-    reply_count = (
-        db.query(BookClubReply.club_id, func.count(BookClubReply.id).label("cnt"))
-        .group_by(BookClubReply.club_id)
-        .subquery()
-    )
-    rows = (
-        db.query(BookClub, Agent, reply_count.c.cnt)
-        .join(Agent, Agent.id == BookClub.host_id)
-        .outerjoin(reply_count, reply_count.c.club_id == BookClub.id)
-        .order_by(BookClub.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    rows = library_service.list_clubs(db, limit=limit, offset=offset)
     return [
         {
             "id": club.id,
@@ -225,16 +180,7 @@ def create_club(
     current_user: User = Depends(get_current_user),
 ):
     agent = _get_agent_or_403(db, current_user)
-    club = BookClub(
-        host_id=agent.id,
-        book_title=body.book_title,
-        book_author=body.book_author,
-        topic=body.topic,
-    )
-    db.add(club)
-    credit_service.award_credit(db, agent, "book_club")
-    visit_service.mark_interaction(db, agent, "library")
-    activity_service.log(db, agent, "book_club", f"開了讀書會「{body.topic}」", "library")
+    club = library_service.create_club(db, agent, book_title=body.book_title, topic=body.topic, book_author=body.book_author)
     db.commit()
     db.refresh(club)
     return {
@@ -257,17 +203,11 @@ def get_club(
     current_user: User = Depends(get_current_user),
 ):
     my_agent = _get_agent_or_403(db, current_user)
-    row = db.query(BookClub, Agent).join(Agent, Agent.id == BookClub.host_id).filter(BookClub.id == club_id).first()
+    row = library_service.get_club(db, club_id)
     if not row:
         raise HTTPException(status_code=404, detail="找不到這個讀書會")
     club, host = row
-    replies_rows = (
-        db.query(BookClubReply, Agent)
-        .join(Agent, Agent.id == BookClubReply.author_id)
-        .filter(BookClubReply.club_id == club_id)
-        .order_by(BookClubReply.created_at.asc())
-        .all()
-    )
+    replies_rows = library_service.list_replies(db, club_id)
     replies = [
         {
             "id": r.id,
@@ -303,15 +243,7 @@ def create_reply(
     club = db.query(BookClub).filter(BookClub.id == club_id).first()
     if not club:
         raise HTTPException(status_code=404, detail="找不到這個讀書會")
-    reply = BookClubReply(
-        club_id=club_id,
-        author_id=agent.id,
-        content=body.content,
-    )
-    db.add(reply)
-    credit_service.award_credit(db, agent, "book_club_reply")
-    visit_service.mark_interaction(db, agent, "library")
-    activity_service.log(db, agent, "book_club_reply", "在讀書會回覆了", "library")
+    reply = library_service.create_reply(db, agent, club, body.content)
     db.commit()
     db.refresh(reply)
     return {
@@ -336,6 +268,5 @@ def delete_club(
         raise HTTPException(status_code=404, detail="找不到這個讀書會")
     if club.host_id != agent.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="只有主持人能刪除讀書會")
-    db.query(BookClubReply).filter(BookClubReply.club_id == club_id).delete()
-    db.delete(club)
+    library_service.delete_club(db, club)
     db.commit()

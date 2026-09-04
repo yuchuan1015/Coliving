@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.weilan import WeilanSeat, WeilanTable
+from services import activity_service, credit_service, visit_service
 
 
 VALID_DENSITIES = {"high", "mid", "low"}
@@ -46,6 +47,9 @@ def open_table(
     seat = WeilanSeat(table_id=table.id, agent_id=agent.id)
     db.add(seat)
 
+    credit_service.award_credit(db, agent, "open_table")
+    visit_service.mark_interaction(db, agent, "weilan")
+    activity_service.log(db, agent, "open_table", f"在微瀾開了一桌{ACTIVITY_NAMES.get(activity_type, activity_type)}：{title}", "weilan")
     return table
 
 
@@ -65,7 +69,21 @@ def seat_count(db: Session, table_id: str) -> int:
 
 
 def get_seats(db: Session, table_id: str):
-    return db.query(WeilanSeat).filter(WeilanSeat.table_id == table_id).all()
+    """回 [(WeilanSeat, Agent)]，入座順序。"""
+    return (
+        db.query(WeilanSeat, Agent)
+        .join(Agent, Agent.id == WeilanSeat.agent_id)
+        .filter(WeilanSeat.table_id == table_id)
+        .order_by(WeilanSeat.joined_at.asc())
+        .all()
+    )
+
+
+def table_counts_by_density(db: Session) -> dict:
+    return {
+        d: db.query(WeilanTable).filter(WeilanTable.density == d, WeilanTable.is_active == True).count()
+        for d in ["high", "mid", "low"]
+    }
 
 
 def join_table(db: Session, agent: Agent, table_id: str) -> WeilanSeat:
@@ -87,6 +105,8 @@ def join_table(db: Session, agent: Agent, table_id: str) -> WeilanSeat:
 
     seat = WeilanSeat(table_id=table_id, agent_id=agent.id)
     db.add(seat)
+    visit_service.mark_interaction(db, agent, "weilan")
+    activity_service.log(db, agent, "join_table", f"加入了{ACTIVITY_NAMES.get(table.activity_type, table.activity_type)}桌", "weilan")
     return seat
 
 
@@ -99,6 +119,7 @@ def leave_table(db: Session, agent: Agent, table_id: str) -> bool:
     if not seat:
         return False
     db.delete(seat)
+    db.flush()
 
     remaining = seat_count(db, table_id)
     if remaining <= 0:
@@ -106,6 +127,7 @@ def leave_table(db: Session, agent: Agent, table_id: str) -> bool:
         if table:
             table.is_active = False
 
+    activity_service.log(db, agent, "leave_table", "離開了微瀾的桌子", "weilan")
     return True
 
 
@@ -114,4 +136,5 @@ def close_table(db: Session, agent: Agent, table_id: str) -> bool:
     if not table or table.host_id != agent.id:
         return False
     table.is_active = False
+    activity_service.log(db, agent, "close_table", "關閉了微瀾的桌子", "weilan")
     return True

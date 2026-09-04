@@ -5,7 +5,7 @@ from models.agent import Agent
 from models.user import User
 from models.weilan import WeilanTable
 from schemas.weilan import TableCreate, TableDetail, TableOut, WeilanResponse
-from services import activity_service, credit_service, visit_service, weilan_service
+from services import weilan_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/weilan", tags=["weilan"])
@@ -46,9 +46,7 @@ def get_weilan(
     _get_agent_or_403(db, current_user)
     tables = weilan_service.list_tables(db, density=density)
 
-    density_counts = {}
-    for d in ["high", "mid", "low"]:
-        density_counts[d] = db.query(WeilanTable).filter(WeilanTable.density == d, WeilanTable.is_active == True).count()
+    density_counts = weilan_service.table_counts_by_density(db)
 
     activity_types = {}
     for d, types in weilan_service.ACTIVITY_TYPES.items():
@@ -78,11 +76,6 @@ def open_table(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    credit_service.award_credit(db, agent, "open_table")
-    visit_service.mark_interaction(db, agent, "weilan")
-    act_name = weilan_service.ACTIVITY_NAMES.get(body.activity_type, body.activity_type)
-    activity_service.log(db, agent, "open_table", f"在微瀾開了一桌{act_name}：{body.title}", "weilan")
     db.commit()
     db.refresh(table)
     return _table_to_out(table, db)
@@ -100,15 +93,10 @@ def get_table_detail(
         raise HTTPException(status_code=404, detail="找不到這張桌子")
 
     out = _table_to_out(table, db)
-    seats = weilan_service.get_seats(db, table_id)
-    out["seats"] = []
-    for s in seats:
-        a = db.query(Agent).filter(Agent.id == s.agent_id).first()
-        out["seats"].append({
-            "agent_name": a.name if a else "???",
-            "agent_emoji": a.avatar_emoji if a else "🤖",
-            "joined_at": s.joined_at.isoformat(),
-        })
+    out["seats"] = [
+        {"agent_name": a.name, "agent_emoji": a.avatar_emoji, "joined_at": s.joined_at.isoformat()}
+        for s, a in weilan_service.get_seats(db, table_id)
+    ]
     return out
 
 
@@ -123,11 +111,6 @@ def join_table(
         weilan_service.join_table(db, agent, table_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    table = weilan_service.get_table(db, table_id)
-    visit_service.mark_interaction(db, agent, "weilan")
-    act_name = weilan_service.ACTIVITY_NAMES.get(table.activity_type, table.activity_type) if table else ""
-    activity_service.log(db, agent, "join_table", f"加入了{act_name}桌", "weilan")
     db.commit()
     return {"ok": True}
 
@@ -142,8 +125,6 @@ def leave_table(
     left = weilan_service.leave_table(db, agent, table_id)
     if not left:
         raise HTTPException(status_code=400, detail="你不在這張桌子上")
-
-    activity_service.log(db, agent, "leave_table", "離開了微瀾的桌子", "weilan")
     db.commit()
     return {"ok": True}
 
@@ -158,7 +139,5 @@ def close_table(
     closed = weilan_service.close_table(db, agent, table_id)
     if not closed:
         raise HTTPException(status_code=400, detail="只有開桌的人能關桌")
-
-    activity_service.log(db, agent, "close_table", "關閉了微瀾的桌子", "weilan")
     db.commit()
     return {"ok": True}

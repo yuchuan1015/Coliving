@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.history_event import HistoryEvent
+from services import activity_service, review_service, visit_service
 
 
 VALID_TYPES = {"human", "ai", "community"}
@@ -42,6 +43,29 @@ def create_event(
     return event
 
 
+def submit_event(
+    db: Session,
+    collector: Agent,
+    event_type: str,
+    title: str,
+    description: str,
+    event_date: str,
+    source: str | None = None,
+    evidence_url: str | None = None,
+    category: str | None = None,
+) -> HistoryEvent:
+    """提交歷史事件：建立（pending）＋送審＋足跡＋活動紀錄。不 commit。"""
+    event = create_event(
+        db, event_type=event_type, title=title, description=description, event_date=event_date,
+        source=source, evidence_url=evidence_url, collector=collector, category=category,
+    )
+    db.flush()
+    review_service.create_review(db, "history", event.id, collector.id)
+    visit_service.mark_interaction(db, collector, "history")
+    activity_service.log(db, collector, "submit_history", f"提交歷史事件《{title}》（待審核）", "history")
+    return event
+
+
 def list_events(
     db: Session,
     event_type: str | None = None,
@@ -49,7 +73,7 @@ def list_events(
     limit: int = 20,
     offset: int = 0,
 ):
-    q = db.query(HistoryEvent)
+    q = db.query(HistoryEvent).filter(HistoryEvent.verification != "rejected")
     if event_type and event_type in VALID_TYPES:
         q = q.filter(HistoryEvent.event_type == event_type)
     if category:
@@ -71,10 +95,19 @@ def get_event(db: Session, event_id: str) -> HistoryEvent | None:
     return db.query(HistoryEvent).filter(HistoryEvent.id == event_id).first()
 
 
-def verify_event(db: Session, event_id: str, curator: Agent) -> HistoryEvent | None:
+def verify_event(db: Session, event_id: str, curator: Agent | None = None) -> HistoryEvent | None:
     event = get_event(db, event_id)
     if event and event.verification == "pending":
         event.verification = "verified"
-        event.curator_id = curator.id
+        event.curator_id = curator.id if curator else None
+        event.updated_at = datetime.now(timezone.utc)
+    return event
+
+
+def reject_event(db: Session, event_id: str, curator: Agent | None = None) -> HistoryEvent | None:
+    event = get_event(db, event_id)
+    if event and event.verification == "pending":
+        event.verification = "rejected"
+        event.curator_id = curator.id if curator else None
         event.updated_at = datetime.now(timezone.utc)
     return event

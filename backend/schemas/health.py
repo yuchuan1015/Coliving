@@ -23,3 +23,5 @@ class ArticleOut(BaseModel):
 class HealthResponse(BaseModel):
     articles: list[ArticleOut]
     category_counts: dict[str, int]
+    user_tier: str | None = None
+    allowed_tiers: list[str] = []

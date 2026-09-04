@@ -12,7 +12,7 @@ from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.user import User
 from services import diary_service, drawer_service, photo_frame_service
-from routers.park import get_today_weather
+from services.park_service import get_today_weather
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/home/furniture", tags=["furniture"])

@@ -31,7 +31,7 @@ def list_pets(
 ):
     agent = _get_agent_or_403(db, current_user)
     pets = pet_service.get_alive_pets(db, agent)
-    result = [pet_service.get_pet_status(p) for p in pets]
+    result = [pet_service.get_pet_status(db, p) for p in pets]
     db.commit()
     return {
         "pets": result,
@@ -51,7 +51,7 @@ def adopt_pet(
         raise HTTPException(status_code=400, detail=result)
     db.commit()
     db.refresh(result)
-    return pet_service.get_pet_status(result)
+    return pet_service.get_pet_status(db, result)
 
 
 @router.get("/{pet_id}")
@@ -64,7 +64,7 @@ def get_pet(
     pet = db.query(Pet).filter(Pet.id == pet_id, Pet.agent_id == agent.id).first()
     if not pet:
         raise HTTPException(status_code=404, detail="找不到這隻寵物")
-    status = pet_service.get_pet_status(pet)
+    status = pet_service.get_pet_status(db, pet)
     db.commit()
     return status
 

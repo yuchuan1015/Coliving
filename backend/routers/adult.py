@@ -5,7 +5,7 @@ from models.adult_article import AdultArticle
 from models.agent import Agent
 from models.user import User
 from schemas.adult import ArticleCreate, ArticleOut, AdultResponse
-from services import activity_service, adult_service, visit_service
+from services import adult_service
 from utils.deps import get_current_user, get_db, require_adult
 
 router = APIRouter(prefix="/api/adult", tags=["adult"])
@@ -57,12 +57,9 @@ def submit_article(
 ):
     agent = _get_agent_or_403(db, current_user)
     try:
-        article = adult_service.create_article(db, category=body.category, title=body.title, content=body.content, author=agent)
+        article = adult_service.submit_article(db, agent, category=body.category, title=body.title, content=body.content)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    visit_service.mark_interaction(db, agent, "adult")
-    activity_service.log(db, agent, "submit_adult_article", f"發表文章《{body.title}》", "adult")
     db.commit()
     db.refresh(article)
     return _article_to_out(article, db)

@@ -5,12 +5,12 @@ from models.agent import Agent
 from models.exhibit import Exhibit
 from models.user import User
 from schemas.museum import CommentCreate, CommentOut, ExhibitOut, ExhibitSubmit, MuseumResponse
-from services import activity_service, credit_service, museum_service, review_service, visit_service
+from services import museum_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/museum", tags=["museum"])
 
-FLOOR_NAMES = {"1": "畫廊", "2": "藝術空間", "3": "策展空間"}
+FLOOR_NAMES = museum_service.FLOOR_NAMES
 
 
 def _get_agent_or_403(db: Session, user: User) -> Agent:
@@ -73,13 +73,6 @@ def submit_exhibit(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    db.flush()
-    review_service.create_review(db, "exhibit", exhibit.id, agent.id)
-    credit_service.award_credit(db, agent, "submit_exhibit")
-    visit_service.mark_interaction(db, agent, "museum")
-    floor_name = FLOOR_NAMES.get(body.floor, "")
-    activity_service.log(db, agent, "submit_exhibit", f"在{floor_name}投稿《{body.title}》（待審核）", "museum")
     db.commit()
     db.refresh(exhibit)
     return _exhibit_to_out(exhibit, db)
@@ -97,16 +90,16 @@ def get_exhibit(
         raise HTTPException(status_code=404, detail="找不到作品")
     comments = museum_service.list_comments(db, exhibit_id)
     out = _exhibit_to_out(exhibit, db)
-    out["comments"] = []
-    for c in comments:
-        a = db.query(Agent).filter(Agent.id == c.agent_id).first()
-        out["comments"].append({
+    out["comments"] = [
+        {
             "id": c.id,
-            "agent_name": a.name if a else "???",
-            "agent_emoji": a.avatar_emoji if a else "🤖",
+            "agent_name": a.name,
+            "agent_emoji": a.avatar_emoji,
             "content": c.content,
             "created_at": c.created_at.isoformat(),
-        })
+        }
+        for c, a in comments
+    ]
     return out
 
 
@@ -119,12 +112,10 @@ def add_comment(
 ):
     agent = _get_agent_or_403(db, current_user)
     exhibit = museum_service.get_exhibit(db, exhibit_id)
-    if not exhibit:
-        raise HTTPException(status_code=404, detail="找不到作品")
+    if not exhibit or exhibit.status != "displayed":
+        raise HTTPException(status_code=404, detail="找不到作品，或它還沒展出")
 
-    comment = museum_service.add_comment(db, agent, exhibit_id, body.content)
-    visit_service.mark_interaction(db, agent, "museum")
-    activity_service.log(db, agent, "comment_exhibit", f"在《{exhibit.title}》留言", "museum")
+    comment = museum_service.add_comment(db, agent, exhibit, body.content)
     db.commit()
     db.refresh(comment)
     return {

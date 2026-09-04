@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -7,7 +8,7 @@ from models.agent import Agent
 from models.history_event import HistoryEvent
 from models.user import User
 from schemas.history import EventCreate, EventOut, HistoryResponse
-from services import activity_service, history_service, visit_service
+from services import history_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/history", tags=["history"])
@@ -66,7 +67,7 @@ def today_in_history(
     current_user: User = Depends(get_current_user),
 ):
     _get_agent_or_403(db, current_user)
-    today = date.today()
+    today = datetime.now(ZoneInfo("Asia/Taipei")).date()
     month_day = today.strftime("%m-%d")
     events = history_service.today_in_history(db, month_day)
     return {
@@ -84,17 +85,13 @@ def submit_event(
 ):
     agent = _get_agent_or_403(db, current_user)
     try:
-        event = history_service.create_event(
-            db, event_type=body.event_type, title=body.title,
+        event = history_service.submit_event(
+            db, agent, event_type=body.event_type, title=body.title,
             description=body.description, event_date=body.event_date,
-            source=body.source, evidence_url=body.evidence_url,
-            collector=agent, category=body.category,
+            source=body.source, evidence_url=body.evidence_url, category=body.category,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    visit_service.mark_interaction(db, agent, "history")
-    activity_service.log(db, agent, "submit_history", f"提交歷史事件《{body.title}》", "history")
     db.commit()
     db.refresh(event)
     return _event_to_out(event, db)
