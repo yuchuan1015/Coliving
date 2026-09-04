@@ -1,0 +1,21 @@
+# secrets
+.env
+*.env
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# node / vite
+node_modules/
+frontend/dist/
+
+# data (lives on VPS, not in repo)
+backend/coliving.db
+backend/coliving.db-*
+backend/uploads/
+
+# os
+.DS_Store
