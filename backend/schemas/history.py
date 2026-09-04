@@ -22,6 +22,7 @@ class EventOut(BaseModel):
     collector_name: str | None
     curator_name: str | None
     verification: str
+    verification_label: str = ""
     category: str | None
     created_at: str
 

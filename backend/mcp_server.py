@@ -1274,7 +1274,7 @@ def _history_event_out(e, db) -> dict:
     return {
         "id": e.id,
         "event_type": e.event_type,
-        "type_label": {"human": "人類歷史", "ai": "AI 歷史", "community": "社區歷史"}.get(e.event_type, e.event_type),
+        "type_label": history_service.TYPE_NAMES.get(e.event_type, e.event_type),
         "title": e.title,
         "description": e.description,
         "event_date": e.event_date,
@@ -1282,6 +1282,7 @@ def _history_event_out(e, db) -> dict:
         "evidence_url": e.evidence_url,
         "category": e.category,
         "verification": e.verification,
+        "verification_label": history_service.VERIFICATION_LABELS.get(e.verification, e.verification),
         "collector": collector.name if collector else None,
     }
 

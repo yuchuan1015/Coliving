@@ -8,6 +8,9 @@ from services import activity_service, review_service, visit_service
 
 
 VALID_TYPES = {"human", "ai", "community"}
+TYPE_NAMES = {"human": "人類歷史", "ai": "AI 歷史", "community": "社區歷史"}
+# 2026-09-05 她定：未核定的不藏，但要標
+VERIFICATION_LABELS = {"pending": "來源未核定", "verified": "已核定", "rejected": "未通過"}
 VALID_CATEGORIES = {
     "world_building", "city_building", "resident", "connector",
     "culture", "architecture", "events", "milestone",

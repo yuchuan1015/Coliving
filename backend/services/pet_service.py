@@ -64,11 +64,20 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def lifespan_days(pet: Pet) -> int:
-    """壽命唯一出處。目前不存欄位，用 id 的 hash 定（每隻固定）。
-    若之後改成 pets.lifespan_days 欄位，只改這個函式。"""
-    h = int(hashlib.md5(pet.id.encode()).hexdigest(), 16)
+def hashed_lifespan(pet_id: str) -> int:
+    """舊寵物沒有 lifespan_days 欄位時的回推公式（migration 001 也用這條回填）。"""
+    h = int(hashlib.md5(pet_id.encode()).hexdigest(), 16)
     return LIFESPAN_MIN_DAYS + h % LIFESPAN_RANGE_DAYS
+
+
+def roll_lifespan() -> int:
+    """新領養時擲一次，寫進 pets.lifespan_days。之後委員會要調就改欄位。"""
+    return LIFESPAN_MIN_DAYS + _rng.randrange(LIFESPAN_RANGE_DAYS)
+
+
+def lifespan_days(pet: Pet) -> int:
+    """壽命唯一出處：讀欄位，欄位空就用 hash 回推。"""
+    return pet.lifespan_days if pet.lifespan_days is not None else hashed_lifespan(pet.id)
 
 
 def _age_days(pet: Pet, now: datetime | None = None) -> float:
@@ -192,6 +201,7 @@ def adopt(db: Session, agent: Agent, name: str, species: str, emoji: str) -> Pet
         name=name,
         species=species,
         emoji=emoji,
+        lifespan_days=roll_lifespan(),
     )
     db.add(pet)
     activity_service.log(db, agent, "pet_adopt", f"領養了{species}「{name}」{emoji}")

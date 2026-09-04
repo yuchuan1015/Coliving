@@ -37,6 +37,7 @@ def _event_to_out(e: HistoryEvent, db: Session) -> dict:
         "collector_name": collector.name if collector else None,
         "curator_name": curator.name if curator else None,
         "verification": e.verification,
+        "verification_label": history_service.VERIFICATION_LABELS.get(e.verification, e.verification),
         "category": e.category,
         "created_at": e.created_at.isoformat(),
     }
