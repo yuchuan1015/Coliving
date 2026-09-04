@@ -1534,6 +1534,10 @@ def _weilan_table_out(t, db) -> dict:
         "max_seats": t.max_seats,
         "current_seats": weilan_service.seat_count(db, t.id),
         "is_active": t.is_active,
+        "status": t.status,
+        "status_name": weilan_service.STATUS_NAMES.get(t.status, t.status),
+        "turn_no": t.turn_no,
+        "turn_agent": (lambda a: a.name if a else None)(weilan_service.turn_agent(db, t)),
         "created_at": t.created_at.isoformat(),
     }
 
@@ -1654,6 +1658,98 @@ def close_weilan_table(token: str, table_id: str) -> str:
             return json.dumps({"success": False, "error": "只有開桌的人能關桌，或桌子不存在"}, ensure_ascii=False)
         db.commit()
         return json.dumps({"success": True}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 微瀾共用底層：聊天、開局、輪流 ──
+
+
+def _weilan_seated(db, token: str, table_id: str):
+    """回 (agent, table, err)。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return None, None, json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    agent = agent_service.get_user_agent(db, user_id)
+    if not agent:
+        return None, None, json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+    table = weilan_service.get_table(db, table_id)
+    if not table:
+        return None, None, json.dumps({"success": False, "error": "找不到這張桌子"}, ensure_ascii=False)
+    return agent, table, None
+
+
+@mcp.tool()
+def weilan_read(table_id: str, limit: int = 50, before_id: str = "") -> str:
+    """讀一張桌子的訊息（聊天＋系統事件，時間正序）和現在的狀態：status、輪到誰。任何人都能讀，這就是「旁觀」。limit 最多 100；要看更早的，把最舊那則的 id 當 before_id 傳進來。"""
+    db = SessionLocal()
+    try:
+        t = weilan_service.get_table(db, table_id)
+        if not t:
+            return json.dumps({"success": False, "error": "找不到這張桌子"}, ensure_ascii=False)
+        rows = weilan_service.read_messages(db, table_id, limit=limit, before_id=before_id or None)
+        out = _weilan_table_out(t, db)
+        out["seats"] = [a.name for _, a in weilan_service.get_seats(db, t.id)]
+        out["messages"] = [
+            {"id": m.id, "kind": m.kind, "agent": a.name if a else None, "content": m.content, "turn_no": m.turn_no, "created_at": m.created_at.isoformat()}
+            for m, a in rows
+        ]
+        return json.dumps(out, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def weilan_say(token: str, table_id: str, content: str) -> str:
+    """在桌上說話。要先入座；最多 2000 字。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        agent, table, err = _weilan_seated(db, token, table_id)
+        if err:
+            return err
+        try:
+            msg = weilan_service.say(db, agent, table, content)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "message_id": msg.id}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def weilan_start(token: str, table_id: str) -> str:
+    """桌主開局。要至少兩個人在座。開局後輪到最早入座的人。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        agent, table, err = _weilan_seated(db, token, table_id)
+        if err:
+            return err
+        try:
+            weilan_service.start_game(db, agent, table)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        first = weilan_service.turn_agent(db, table)
+        return json.dumps({"success": True, "status": table.status, "turn_no": table.turn_no, "turn_agent": first.name if first else None}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def weilan_pass_turn(token: str, table_id: str) -> str:
+    """輪到你時，把手交給下一個人（照入座順序循環）。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        agent, table, err = _weilan_seated(db, token, table_id)
+        if err:
+            return err
+        try:
+            nxt = weilan_service.pass_turn(db, agent, table)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "turn_no": table.turn_no, "turn_agent": nxt.name if nxt else None}, ensure_ascii=False)
     finally:
         db.close()
 

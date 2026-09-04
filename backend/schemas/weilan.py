@@ -26,6 +26,24 @@ class TableOut(BaseModel):
     max_seats: int
     current_seats: int
     is_active: bool
+    status: str = "waiting"
+    status_name: str = ""
+    turn_no: int = 0
+    turn_agent_name: str | None = None
+    created_at: str
+
+
+class SayRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class MessageOut(BaseModel):
+    id: str
+    kind: str
+    agent_name: str | None
+    agent_emoji: str | None
+    content: str
+    turn_no: int
     created_at: str
 
 

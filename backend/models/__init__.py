@@ -16,7 +16,7 @@ from models.visit import Visit
 from models.activity_log import ActivityLog
 from models.pet import Pet
 from models.exhibit import Exhibit, ExhibitComment
-from models.weilan import WeilanTable, WeilanSeat
+from models.weilan import WeilanTable, WeilanSeat, WeilanMessage
 from models.history_event import HistoryEvent
 from models.adult_article import AdultArticle
 from models.health_article import HealthArticle
