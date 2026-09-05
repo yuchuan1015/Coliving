@@ -288,17 +288,24 @@ def start_game(db: Session, agent: Agent, table: WeilanTable, options: dict | No
     return table
 
 
-def _finish_game(db: Session, table: WeilanTable, game, state: dict) -> None:
-    """一局結束：桌子回 waiting、state 留著給人看結果、寫系統訊息。"""
+def _finish_message(db: Session, table: WeilanTable, game, state: dict) -> None:
     result = game.result(state) or {}
     winners = result.get("winners") or []
-    _set_status(table, "waiting")
-    _set_turn(table, None)
     _system(db, table, f"{game.name}結束，" + (f"贏家：{'、'.join(winners)}" if winners else "沒有贏家") + "。桌子回到等人，桌主可以再開一局")
 
 
+def _finish_game(db: Session, table: WeilanTable, game, state: dict) -> None:
+    """一局結束：桌子回 waiting、state 留著給人看結果、寫系統訊息。"""
+    _set_status(table, "waiting")
+    _set_turn(table, None)
+    _finish_message(db, table, game, state)
+
+
 def game_action(db: Session, agent: Agent, table: WeilanTable, action: dict) -> dict:
-    """在座的人對遊戲出手。回 {events, view, legal_actions, over}。規則不允許 raise ValueError。不 commit。"""
+    """在座的人對遊戲出手。回 {events, view, legal_actions, over}。規則不允許 raise ValueError。不 commit。
+
+    回寫用 turn_no 做 compare-and-set：多人同時階段（狼人殺夜晚、投票）兩個 agent 從不同
+    process 同時出手，後寫的那個 rowcount 會是 0，請他重讀再出手，不會互相蓋掉。"""
     if table.status != "playing":
         raise ValueError("還沒開局")
     if not is_seated(db, table, agent):
@@ -307,20 +314,36 @@ def game_action(db: Session, agent: Agent, table: WeilanTable, action: dict) -> 
     state = load_game_state(table)
     if state is None:
         raise ValueError("這桌沒有進行中的遊戲")
+    expected_turn_no = table.turn_no
     try:
         events = game.apply(state, agent.name, action, game_rng)
     except GameError as e:
         raise ValueError(str(e))
-    table.turn_no += 1
-    _save_game_state(table, state)
+    over = game.is_over(state)
+    next_agent_id = None if over else _agent_id_by_name(db, table, game.current_player(state))
+    now = datetime.now(timezone.utc)
+    updated = (
+        db.query(WeilanTable)
+        .filter(WeilanTable.id == table.id, WeilanTable.turn_no == expected_turn_no, WeilanTable.status == "playing")
+        .update(
+            {
+                WeilanTable.state_json: json.dumps(state, ensure_ascii=False),
+                WeilanTable.turn_no: expected_turn_no + 1,
+                WeilanTable.turn_agent_id: next_agent_id,
+                WeilanTable.turn_started_at: now if next_agent_id else None,
+                WeilanTable.status: "waiting" if over else "playing",
+            },
+            synchronize_session="fetch",
+        )
+    )
+    if updated == 0:
+        raise ValueError("狀態剛變了（有人先出手），重讀 weilan_game 再出手")
+    db.refresh(table)
     for line in events:
         db.add(WeilanMessage(table_id=table.id, agent_id=agent.id, kind="action", content=line, turn_no=table.turn_no))
     visit_service.mark_interaction(db, agent, "weilan")
-    over = game.is_over(state)
     if over:
-        _finish_game(db, table, game, state)
-    else:
-        _sync_turn_from_game(db, table, game, state)
+        _finish_message(db, table, game, state)
     return {
         "events": events,
         "view": game.view(state, agent.name),
