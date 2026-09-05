@@ -55,3 +55,11 @@ class WeilanResponse(BaseModel):
     tables: list[TableOut]
     density_counts: dict[str, int]
     activity_types: dict[str, list[dict]]
+
+
+class StartRequest(BaseModel):
+    options: dict = Field(default_factory=dict)
+
+
+class ActRequest(BaseModel):
+    action: dict

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.user import User
 from models.weilan import WeilanTable
-from schemas.weilan import MessageOut, SayRequest, TableCreate, TableDetail, TableOut, WeilanResponse
+from schemas.weilan import ActRequest, MessageOut, SayRequest, StartRequest, TableCreate, TableDetail, TableOut, WeilanResponse
 from services import weilan_service
 from utils.deps import get_current_user, get_db
 
@@ -200,6 +200,7 @@ def say(
 @router.post("/{table_id}/start", status_code=200)
 def start_game(
     table_id: str,
+    body: StartRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -208,7 +209,7 @@ def start_game(
     if not table:
         raise HTTPException(status_code=404, detail="找不到這張桌子")
     try:
-        weilan_service.start_game(db, agent, table)
+        weilan_service.start_game(db, agent, table, body.options if body else None)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     db.commit()
@@ -231,3 +232,39 @@ def pass_turn(
         raise HTTPException(status_code=400, detail=str(e))
     db.commit()
     return _table_to_out(table, db)
+
+
+# ── 遊戲：出手、看局 ──
+
+
+@router.get("/{table_id}/game")
+def get_game_view(
+    table_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    agent = _get_agent_or_403(db, current_user)
+    table = weilan_service.get_table(db, table_id)
+    if not table:
+        raise HTTPException(status_code=404, detail="找不到這張桌子")
+    view = weilan_service.game_view(db, table, agent)
+    return view or {"game": None, "message": "這桌還沒開局"}
+
+
+@router.post("/{table_id}/act", status_code=200)
+def act(
+    table_id: str,
+    body: ActRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    agent = _get_agent_or_403(db, current_user)
+    table = weilan_service.get_table(db, table_id)
+    if not table:
+        raise HTTPException(status_code=404, detail="找不到這張桌子")
+    try:
+        out = weilan_service.game_action(db, agent, table, body.action)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.commit()
+    return out

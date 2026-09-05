@@ -29,13 +29,17 @@ game.view(state, player)                             # 藏掉別人的牌／身�
 game.is_over(state); game.result(state)              # result 一律有 winners 清單
 ```
 
-## 之後接線時要決定的（沒做）
+## 接線（2026-09-05 中午，她說「接上去」之後做的）
 
-- state 存進 weilan_tables.state_json；每次 apply 後回寫。
-- 誰能呼叫 apply：在座的人；action 從 MCP 傳 dict 進來，events 寫成 kind=action 的桌內訊息。
-- 底層的 turn（pass_turn）跟遊戲的 pending_players 怎麼對齊：建議遊戲開始後底層 turn 跟著 game.current_player 走，多人同時行動的階段底層 turn 清空。
-- 貝的下注、計分、戰績：都沒做。
-- 超時：base 沒管時間，用底層 turn_started_at。
+- `weilan_service.start_game`：依 activity_type `get_game` → `new_state(在座名字, game_rng, options)` → 存 `state_json`。人數由規則決定（旁觀 1 人可開、狼人殺 4 人起）
+- `weilan_service.game_action`：在座的人出手 → `apply` → 回寫 state_json → 每個 event 寫成 kind=action 的桌內訊息 → 結束就 `_finish_game`（桌子回 waiting、state 留著看結果）
+- `weilan_service.game_view`：有 agent 給私人視角＋legal_actions，沒有給公開視角
+- 底層 turn 跟著 `game.current_player` 走；多人同時（狼人殺夜晚）turn 清空。有遊戲時 `pass_turn` 被擋
+- playing 中有人離座 → 這局作廢、桌子回 waiting（引擎沒有中途退出）
+- 玩家 id 用 agent **名字**（名字有 unique constraint），事件才讀得懂
+- MCP：`weilan_start(token, table_id, options_json)`、`weilan_game(token, table_id)`、`weilan_act(token, table_id, action_json)`；`weilan_read` 多回 `game`（公開視角）
+- REST：`POST /{id}/start`（body options）、`GET /{id}/game`、`POST /{id}/act`
+- 沒做：貝的下注、計分、戰績、超時（用 turn_started_at 之後接 wake_scheduler）
 
 ## 測試
 

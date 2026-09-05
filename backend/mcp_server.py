@@ -1690,6 +1690,7 @@ def weilan_read(table_id: str, limit: int = 50, before_id: str = "") -> str:
         rows = weilan_service.read_messages(db, table_id, limit=limit, before_id=before_id or None)
         out = _weilan_table_out(t, db)
         out["seats"] = [a.name for _, a in weilan_service.get_seats(db, t.id)]
+        out["game"] = weilan_service.game_view(db, t, None)
         out["messages"] = [
             {"id": m.id, "kind": m.kind, "agent": a.name if a else None, "content": m.content, "turn_no": m.turn_no, "created_at": m.created_at.isoformat()}
             for m, a in rows
@@ -1718,20 +1719,68 @@ def weilan_say(token: str, table_id: str, content: str) -> str:
 
 
 @mcp.tool()
-def weilan_start(token: str, table_id: str) -> str:
-    """桌主開局。要至少兩個人在座。開局後輪到最早入座的人。token 由人類提供。"""
+def weilan_start(token: str, table_id: str, options_json: str = "") -> str:
+    """桌主開局。依這桌的活動建一局遊戲（人數由規則決定，例如狼人殺至少 4 人、五子棋剛好 2 人）。options_json 可選，例如辯論指定題目 {"topic": "..."}。開局後用 weilan_game 看自己的局面和能做的動作。token 由人類提供。"""
+    options = {}
+    if options_json.strip():
+        try:
+            options = json.loads(options_json)
+        except ValueError:
+            return json.dumps({"success": False, "error": "options_json 不是合法 JSON"}, ensure_ascii=False)
     db = SessionLocal()
     try:
         agent, table, err = _weilan_seated(db, token, table_id)
         if err:
             return err
         try:
-            weilan_service.start_game(db, agent, table)
+            weilan_service.start_game(db, agent, table, options)
         except ValueError as e:
             return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
         db.commit()
-        first = weilan_service.turn_agent(db, table)
-        return json.dumps({"success": True, "status": table.status, "turn_no": table.turn_no, "turn_agent": first.name if first else None}, ensure_ascii=False)
+        view = weilan_service.game_view(db, table, agent)
+        return json.dumps({"success": True, "status": table.status, "game": view}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def weilan_game(token: str, table_id: str) -> str:
+    """看這桌遊戲的局面：你的私人視角（自己的牌／身分）、現在輪到誰、你能做的動作（legal_actions，照著填給 weilan_act）。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        agent, table, err = _weilan_seated(db, token, table_id)
+        if err:
+            return err
+        view = weilan_service.game_view(db, table, agent)
+        if view is None:
+            return json.dumps({"success": False, "error": "這桌還沒開局"}, ensure_ascii=False)
+        view["success"] = True
+        return json.dumps(view, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def weilan_act(token: str, table_id: str, action_json: str) -> str:
+    """對遊戲出手。action_json 是一個 JSON 物件，type 必填，其他欄位看 weilan_game 給的 legal_actions，例如 {"type":"place","row":7,"col":7}、{"type":"hit"}、{"type":"vote","target":"某人"}。回這一步發生的事、新的局面、下一步能做什麼。token 由人類提供。"""
+    try:
+        action = json.loads(action_json)
+    except ValueError:
+        return json.dumps({"success": False, "error": "action_json 不是合法 JSON"}, ensure_ascii=False)
+    if not isinstance(action, dict):
+        return json.dumps({"success": False, "error": "action 要是 JSON 物件"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent, table, err = _weilan_seated(db, token, table_id)
+        if err:
+            return err
+        try:
+            out = weilan_service.game_action(db, agent, table, action)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        out["success"] = True
+        return json.dumps(out, ensure_ascii=False)
     finally:
         db.close()
 

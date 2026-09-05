@@ -1,3 +1,5 @@
+import json
+import random
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -5,6 +7,10 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.weilan import WeilanMessage, WeilanSeat, WeilanTable
 from services import activity_service, credit_service, visit_service
+from services.weilan_games import GameError, get_game
+
+# 遊戲用的亂數；測試可以 seed
+game_rng = random.Random()
 
 
 VALID_DENSITIES = {"high", "mid", "low"}
@@ -200,15 +206,8 @@ def leave_table(db: Session, agent: Agent, table_id: str) -> bool:
         _system(db, table, f"{new_host.name} 接手當桌主")
 
     if table.status == "playing":
-        if len(remaining) < 2:
-            _set_status(table, "waiting")
-            _set_turn(table, None)
-            _system(db, table, "只剩一個人，先暫停等人")
-        elif was_turn:
-            nxt = next_after_leaver if next_after_leaver != agent.id else remaining[0][1].id
-            _set_turn(table, nxt)
-            name = next((a.name for _, a in remaining if a.id == nxt), "?")
-            _system(db, table, f"輪到 {name}")
+        # 遊戲進行中有人走，這局作廢：規則引擎沒有「中途退出」，硬接會壞牌局
+        _abort_game(db, table, f"{agent.name} 離座，這局作廢，桌子回到等人")
     return True
 
 
@@ -224,30 +223,141 @@ def close_table(db: Session, agent: Agent, table_id: str) -> bool:
     return True
 
 
-def start_game(db: Session, agent: Agent, table: WeilanTable) -> WeilanTable:
-    """桌主開局：waiting 且 ≥2 人 → playing，輪到最早入座的。不 commit。"""
+def _seat_names(db: Session, table: WeilanTable) -> list[str]:
+    return [a.name for _, a in get_seats(db, table.id)]
+
+
+def _agent_id_by_name(db: Session, table: WeilanTable, name: str | None) -> str | None:
+    if not name:
+        return None
+    for _, a in get_seats(db, table.id):
+        if a.name == name:
+            return a.id
+    return None
+
+
+def load_game_state(table: WeilanTable) -> dict | None:
+    if not table.state_json:
+        return None
+    try:
+        return json.loads(table.state_json)
+    except ValueError:
+        return None
+
+
+def _save_game_state(table: WeilanTable, state: dict | None) -> None:
+    table.state_json = json.dumps(state, ensure_ascii=False) if state is not None else None
+
+
+def _sync_turn_from_game(db: Session, table: WeilanTable, game, state: dict) -> None:
+    """底層的 turn 跟著遊戲走：剛好一個人要動就是他，多人同時（狼人殺夜晚）或沒人就清空。"""
+    _set_turn(table, _agent_id_by_name(db, table, game.current_player(state)))
+
+
+def _abort_game(db: Session, table: WeilanTable, reason: str) -> None:
+    _set_status(table, "waiting")
+    _set_turn(table, None)
+    _save_game_state(table, None)
+    _system(db, table, reason)
+
+
+def start_game(db: Session, agent: Agent, table: WeilanTable, options: dict | None = None) -> WeilanTable:
+    """桌主開局：依 activity_type 建遊戲狀態存進 state_json，人數由遊戲規則決定。不 commit。"""
     if table.status == "ended":
         raise ValueError("桌子已經結束了")
     if table.host_id != agent.id:
         raise ValueError("只有桌主能開局")
     if table.status == "playing":
         raise ValueError("已經在進行中了")
-    seats = get_seats(db, table.id)
-    if len(seats) < 2:
-        raise ValueError("至少要兩個人才能開局")
+    game = get_game(table.activity_type)
+    names = _seat_names(db, table)
+    try:
+        state = game.new_state(names, game_rng, options or {})
+    except GameError as e:
+        raise ValueError(str(e))
     _set_status(table, "playing")
     table.turn_no = 1
-    first = seats[0][1]
-    _set_turn(table, first.id)
-    _system(db, table, f"開局！輪到 {first.name}")
-    activity_service.log(db, agent, "start_game", f"在微瀾開局：{table.title}", "weilan")
+    _save_game_state(table, state)
+    _sync_turn_from_game(db, table, game, state)
+    pending = game.pending_players(state)
+    who = "、".join(pending) if pending else "沒有人需要行動"
+    _system(db, table, f"開局！{game.name}，輪到 {who}")
+    activity_service.log(db, agent, "start_game", f"在微瀾開局{game.name}：{table.title}", "weilan")
+    if game.is_over(state):
+        _finish_game(db, table, game, state)
     return table
 
 
-def pass_turn(db: Session, agent: Agent, table: WeilanTable) -> Agent:
-    """輪到的人把手交給下一個（入座順序循環）。回下一個人。不 commit。"""
+def _finish_game(db: Session, table: WeilanTable, game, state: dict) -> None:
+    """一局結束：桌子回 waiting、state 留著給人看結果、寫系統訊息。"""
+    result = game.result(state) or {}
+    winners = result.get("winners") or []
+    _set_status(table, "waiting")
+    _set_turn(table, None)
+    _system(db, table, f"{game.name}結束，" + (f"贏家：{'、'.join(winners)}" if winners else "沒有贏家") + "。桌子回到等人，桌主可以再開一局")
+
+
+def game_action(db: Session, agent: Agent, table: WeilanTable, action: dict) -> dict:
+    """在座的人對遊戲出手。回 {events, view, legal_actions, over}。規則不允許 raise ValueError。不 commit。"""
     if table.status != "playing":
         raise ValueError("還沒開局")
+    if not is_seated(db, table, agent):
+        raise ValueError("要先入座")
+    game = get_game(table.activity_type)
+    state = load_game_state(table)
+    if state is None:
+        raise ValueError("這桌沒有進行中的遊戲")
+    try:
+        events = game.apply(state, agent.name, action, game_rng)
+    except GameError as e:
+        raise ValueError(str(e))
+    table.turn_no += 1
+    _save_game_state(table, state)
+    for line in events:
+        db.add(WeilanMessage(table_id=table.id, agent_id=agent.id, kind="action", content=line, turn_no=table.turn_no))
+    visit_service.mark_interaction(db, agent, "weilan")
+    over = game.is_over(state)
+    if over:
+        _finish_game(db, table, game, state)
+    else:
+        _sync_turn_from_game(db, table, game, state)
+    return {
+        "events": events,
+        "view": game.view(state, agent.name),
+        "legal_actions": [] if over else game.legal_actions(state, agent.name),
+        "pending_players": [] if over else game.pending_players(state),
+        "over": over,
+        "result": game.result(state) if over else None,
+    }
+
+
+def game_view(db: Session, table: WeilanTable, agent: Agent | None) -> dict | None:
+    """看這桌的遊戲：有 agent 就給他的私人視角＋能做什麼，沒有就公開視角。沒有遊戲回 None。"""
+    state = load_game_state(table)
+    if state is None:
+        return None
+    game = get_game(table.activity_type)
+    name = agent.name if agent else None
+    seated = bool(agent and is_seated(db, table, agent))
+    return {
+        "game": game.key,
+        "game_name": game.name,
+        "phase": state.get("phase"),
+        "over": game.is_over(state),
+        "result": game.result(state),
+        "pending_players": game.pending_players(state),
+        "current_player": game.current_player(state),
+        "view": game.view(state, name if seated else None),
+        "legal_actions": game.legal_actions(state, name) if seated and not game.is_over(state) else [],
+    }
+
+
+def pass_turn(db: Session, agent: Agent, table: WeilanTable) -> Agent:
+    """輪到的人把手交給下一個。有遊戲在跑時輪流由規則決定，這個口會擋。不 commit。"""
+    if table.status != "playing":
+        raise ValueError("還沒開局")
+    if load_game_state(table) is not None:
+        raise ValueError(f"這桌在玩{get_game(table.activity_type).name}，輪流由規則決定，用 weilan_act 出手")
     if table.turn_agent_id != agent.id:
         raise ValueError("現在不是輪到你")
     nxt_id = _next_agent_id(db, table, agent.id)
