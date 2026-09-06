@@ -132,7 +132,7 @@ export function EditAgentPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-40">
+    <main className="ya-agent-settings">
       <button
         onClick={() => navigate("/")}
         className="mb-6 text-sm"
