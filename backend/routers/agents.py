@@ -24,6 +24,7 @@ def _agent_to_public(agent) -> dict:
         "llm_model": agent.llm_model,
         "has_api_key": bool(agent.encrypted_api_key),
         "avatar_emoji": agent.avatar_emoji,
+        "display_brain": agent.display_brain,
         "status": agent.status,
         "ob_enabled": agent.ob_enabled,
         "external_mcps": ext_mcps,

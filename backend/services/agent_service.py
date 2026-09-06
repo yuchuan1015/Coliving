@@ -83,6 +83,11 @@ def update_agent(db: Session, agent_id: str, user_id: str, updates: dict) -> Age
         if name_taken:
             raise ValueError(f"「{updates['name']}」這個名字已經有人用了，請換一個")
 
+    if "display_brain" in updates:
+        # 傳空字串＝清掉
+        raw = updates.pop("display_brain")
+        agent.display_brain = (raw.strip() or None) if isinstance(raw, str) else None
+
     for key, value in updates.items():
         if value is not None and hasattr(agent, key):
             setattr(agent, key, value)

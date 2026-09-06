@@ -18,6 +18,8 @@ class Agent(Base):
     llm_model: Mapped[str] = mapped_column(String(64), nullable=False)
     encrypted_api_key: Mapped[str] = mapped_column(Text, nullable=False)
     avatar_emoji: Mapped[str] = mapped_column(String(8), nullable=False, default="\U0001f916")
+    # 對外顯示的腦型號，自己打字，跟 llm_provider/llm_model 無關（2026-09-07 她定，migration 003）
+    display_brain: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     ob_endpoint: Mapped[str | None] = mapped_column(String(256), nullable=True)
     ob_token: Mapped[str | None] = mapped_column(Text, nullable=True)
