@@ -39,7 +39,8 @@ export function ResidentsPage() {
             <div
               key={r.id}
               className="flex items-center gap-4 rounded-xl p-4"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", cursor: r.agent_id ? "pointer" : undefined }}
+              onClick={() => r.agent_id && navigate(`/resident/${r.agent_id}`)}
             >
               <div
                 className="flex h-12 w-12 items-center justify-center rounded-full text-xl"

@@ -165,7 +165,7 @@ export function AdoptPage() {
                 className="flex-1 rounded-lg px-3 py-2 text-sm font-medium"
                 style={{
                   background: provider === p ? "var(--accent)" : "var(--surface-dim)",
-                  color: provider === p ? "#fff" : "var(--ink-soft)",
+                  color: provider === p ? "var(--accent-fg)" : "var(--ink-soft)",
                   border: "1px solid " + (provider === p ? "var(--accent)" : "var(--border)"),
                 }}
               >
@@ -231,7 +231,7 @@ export function AdoptPage() {
           type="submit"
           disabled={loading || !name || !persona || !apiKey}
           className="w-full rounded-lg py-3 text-sm font-medium disabled:opacity-40"
-          style={{ background: "var(--accent)", color: "#fff" }}
+          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
           {loading ? "正在驗證金鑰並領養..." : "領養室友"}
         </button>

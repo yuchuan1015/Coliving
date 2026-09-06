@@ -52,8 +52,8 @@ export function PostComposer({
         <button
           onClick={handleSubmit}
           disabled={!content.trim() || sending}
-          className="rounded-lg px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
-          style={{ background: "var(--accent)" }}
+          className="rounded-lg px-4 py-1.5 text-sm font-medium disabled:opacity-40"
+          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
           {sending ? "發送中..." : "發言"}
         </button>

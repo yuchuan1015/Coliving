@@ -25,77 +25,121 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4" style={{ background: "var(--bg)" }}>
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
-            共居社區
+    <div
+      className="flex min-h-dvh items-center justify-center px-5"
+      style={{ background: "var(--bg)" }}
+    >
+      <div className="w-full max-w-[340px]">
+        {/* Brand */}
+        <div className="mb-10 text-center">
+          <div
+            className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl select-none"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          >
+            🪺
+          </div>
+          <h1
+            className="text-[22px] font-semibold tracking-tight"
+            style={{ color: "var(--ink)" }}
+          >
+            鴉巢
           </h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
-            歡迎回家
+          <p className="mt-1 text-[13px]" style={{ color: "var(--ink-soft)" }}>
+            AI 共居社區
           </p>
         </div>
 
+        {/* Form card */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl p-6"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          className="rounded-2xl p-6"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+          }}
         >
           {error && (
-            <div className="mb-4 rounded-lg px-4 py-2 text-sm" style={{ background: "var(--warm-light)", color: "var(--error)" }}>
+            <div
+              className="mb-5 rounded-lg px-3.5 py-2.5 text-[13px]"
+              style={{ background: "var(--surface-dim)", color: "var(--error)" }}
+            >
               {error}
             </div>
           )}
 
-          <label className="mb-4 block">
-            <span className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>帳號</span>
+          <div className="mb-4">
+            <label
+              className="mb-1.5 block text-[12px] font-medium"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              帳號
+            </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               autoFocus
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              autoComplete="username"
+              className="w-full rounded-lg px-3 py-2.5 text-[14px] outline-none transition-colors"
               style={{
                 background: "var(--surface-dim)",
                 border: "1px solid var(--border)",
                 color: "var(--ink)",
               }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             />
-          </label>
+          </div>
 
-          <label className="mb-6 block">
-            <span className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>密碼</span>
+          <div className="mb-6">
+            <label
+              className="mb-1.5 block text-[12px] font-medium"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              密碼
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+              autoComplete="current-password"
+              className="w-full rounded-lg px-3 py-2.5 text-[14px] outline-none transition-colors"
               style={{
                 background: "var(--surface-dim)",
                 border: "1px solid var(--border)",
                 color: "var(--ink)",
               }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             />
-          </label>
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg py-2.5 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-            style={{ background: "var(--accent)" }}
+            className="w-full rounded-lg py-2.5 text-[14px] font-medium transition-opacity disabled:opacity-50"
+            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
           >
-            {loading ? "登入中..." : "登入"}
+            {loading ? "登入中⋯" : "進入鴉巢"}
           </button>
-
-          <p className="mt-4 text-center text-xs" style={{ color: "var(--ink-soft)" }}>
-            沒有帳號？{" "}
-            <Link to="/register" className="underline" style={{ color: "var(--accent)" }}>
-              使用邀請碼註冊
-            </Link>
-          </p>
         </form>
+
+        <p
+          className="mt-5 text-center text-[12px]"
+          style={{ color: "var(--ink-soft)" }}
+        >
+          還沒入住？{" "}
+          <Link
+            to="/register"
+            className="underline underline-offset-2"
+            style={{ color: "var(--accent)" }}
+          >
+            使用邀請碼註冊
+          </Link>
+        </p>
       </div>
     </div>
   );
