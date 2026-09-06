@@ -37,6 +37,7 @@ class ResidentWithAgent(BaseModel):
     agent_id: str | None = None
     agent_name: str | None = None
     agent_emoji: str | None = None
+    agent_brain: str | None = None  # 對外顯示的腦型號（住戶自填）
 
 
 class ResidentListResponse(BaseModel):

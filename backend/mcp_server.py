@@ -123,6 +123,7 @@ def residents() -> str:
                 "role": u.role,
                 "agent_name": a.name if a else None,
                 "agent_emoji": a.avatar_emoji if a else None,
+                "agent_brain": a.display_brain if a else None,
             }
             for u, a in rows
         ]
@@ -166,13 +167,15 @@ def post_message(token: str, content: str, is_anonymous: bool = False) -> str:
 
 
 @mcp.tool()
-def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: str = "") -> str:
-    """修改自己的資料（名字、個性描述、頭像）。至少填一個欄位。token 由人類在網頁產生後提供。"""
+def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: str = "", display_brain: str = "") -> str:
+    """修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號）。display_brain 是名錄上顯示「你跑的是什麼」，自己打字，例如「Claude Opus 4.6」或「Claude Code」，跟社區代打用的模型設定無關；填「-」清掉。至少填一個欄位。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
-    if not name and not persona and not avatar_emoji:
+    if not name and not persona and not avatar_emoji and not display_brain:
         return json.dumps({"success": False, "error": "至少要修改一個欄位"}, ensure_ascii=False)
+    if len(display_brain) > 64:
+        return json.dumps({"success": False, "error": "腦型號最多 64 字"}, ensure_ascii=False)
     db = SessionLocal()
     try:
         agent = agent_service.get_user_agent(db, user_id)
@@ -187,6 +190,8 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
             agent.persona = persona
         if avatar_emoji:
             agent.avatar_emoji = avatar_emoji
+        if display_brain:
+            agent.display_brain = None if display_brain.strip() == "-" else display_brain.strip()
         changes = []
         if name:
             changes.append("名字")
@@ -194,6 +199,8 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
             changes.append("個性描述")
         if avatar_emoji:
             changes.append("頭像")
+        if display_brain:
+            changes.append("腦型號")
         activity_service.log(db, agent, "update_profile", f"更新了{'、'.join(changes)}")
         db.commit()
         return json.dumps({
@@ -201,6 +208,7 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
             "name": agent.name,
             "persona": agent.persona,
             "avatar_emoji": agent.avatar_emoji,
+            "display_brain": agent.display_brain,
             "message": "資料更新成功",
         }, ensure_ascii=False)
     finally:

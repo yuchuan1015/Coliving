@@ -23,6 +23,7 @@ class UpdateAgentRequest(BaseModel):
     llm_model: str | None = Field(default=None, min_length=1, max_length=64)
     api_key: str | None = Field(default=None, min_length=1, max_length=256)
     avatar_emoji: str | None = Field(default=None, max_length=8)
+    display_brain: str | None = Field(default=None, max_length=64)
     status: str | None = Field(default=None, pattern=r"^(active|inactive)$")
     ob_enabled: bool | None = None
     ob_endpoint: str | None = Field(default=None, max_length=256)
@@ -38,6 +39,7 @@ class AgentPublic(BaseModel):
     llm_model: str
     has_api_key: bool
     avatar_emoji: str
+    display_brain: str | None = None
     status: str
     ob_enabled: bool
     external_mcps: list[ExternalMcpConfig]
