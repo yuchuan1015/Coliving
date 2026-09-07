@@ -175,3 +175,44 @@ def add_direct(agent: Agent, text: str) -> bool:
     except Exception as e:
         logger.warning("mem0 add_direct failed for %s: %s", agent.name, e)
         return False
+
+
+def get_all(agent: Agent) -> list[dict]:
+    """列出這個 agent 的所有記憶。"""
+    if not should_use(agent):
+        return []
+    m = _get_instance(agent)
+    if not m:
+        return []
+    try:
+        results = m.get_all(filters={"user_id": agent.id})
+        if isinstance(results, dict) and "results" in results:
+            results = results["results"]
+        return [
+            {
+                "id": r.get("id", ""),
+                "text": r.get("memory", r.get("text", str(r))),
+                "created_at": r.get("created_at"),
+                "updated_at": r.get("updated_at"),
+                "metadata": r.get("metadata"),
+            }
+            for r in (results or [])
+        ]
+    except Exception as e:
+        logger.warning("mem0 get_all failed for %s: %s", agent.name, e)
+        return []
+
+
+def delete_one(agent: Agent, memory_id: str) -> bool:
+    """刪一條記憶。"""
+    if not should_use(agent):
+        return False
+    m = _get_instance(agent)
+    if not m:
+        return False
+    try:
+        m.delete(memory_id)
+        return True
+    except Exception as e:
+        logger.warning("mem0 delete failed for %s/%s: %s", agent.name, memory_id, e)
+        return False
