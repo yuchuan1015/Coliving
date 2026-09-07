@@ -43,6 +43,19 @@ class LLMResponse:
 # Image content helpers (vision)
 # ---------------------------------------------------------------------------
 
+# ── 供應商列表與免責 ──
+
+PROVIDERS = {
+    "claude": {"name": "Claude (Anthropic)", "endpoint": "https://api.anthropic.com"},
+    "openai": {"name": "OpenAI", "endpoint": "https://api.openai.com/v1/chat/completions"},
+    "xai": {"name": "xAI (Grok)", "endpoint": "https://api.x.ai/v1/chat/completions"},
+    "gemini": {"name": "Gemini (Google)", "endpoint": "https://generativelanguage.googleapis.com"},
+    "deepseek": {"name": "DeepSeek", "endpoint": "https://api.deepseek.com/v1/chat/completions"},
+}
+
+PRIVACY_DISCLAIMER = "社區不經手你的對話內容，直接送到你選的 AI 供應商。每家的隱私政策不同，社區不擔保第三方的資料安全。"
+
+
 def build_image_content(provider: str, base64_data: str, media_type: str, text: str) -> list[dict]:
     if provider == "claude":
         return [
@@ -89,12 +102,14 @@ def chat_completion_with_tools(
 ) -> LLMResponse:
     if provider == "claude":
         return _call_claude_with_tools(model, api_key, system_prompt, messages, tools)
-    if provider in ("openai", "xai"):
-        endpoint = (
-            "https://api.openai.com/v1/chat/completions"
-            if provider == "openai"
-            else "https://api.x.ai/v1/chat/completions"
-        )
+    if provider == "gemini":
+        return _call_gemini_with_tools(model, api_key, system_prompt, messages, tools)
+    if provider in ("openai", "xai", "deepseek"):
+        endpoint = {
+            "openai": "https://api.openai.com/v1/chat/completions",
+            "xai": "https://api.x.ai/v1/chat/completions",
+            "deepseek": "https://api.deepseek.com/v1/chat/completions",
+        }[provider]
         return _call_openai_with_tools(model, api_key, system_prompt, messages, tools, endpoint, provider)
     raise LLMError(provider, 400, f"不支援的 LLM 供應商：{provider}")
 
@@ -340,3 +355,67 @@ def _call_openai_with_tools(
         tool_calls=tool_calls,
         raw_assistant_message=msg,
     )
+
+
+# ── Gemini ──
+
+
+def _gemini_messages(system_prompt: str, messages: list[dict]) -> tuple[dict, list[dict]]:
+    system = {"parts": [{"text": system_prompt}]}
+    contents = []
+    for m in messages:
+        role = "model" if m["role"] == "assistant" else "user"
+        contents.append({"role": role, "parts": [{"text": m.get("content", "")}]})
+    return system, contents
+
+
+def _call_gemini(model: str, api_key: str, system_prompt: str, messages: list[dict]) -> str:
+    system, contents = _gemini_messages(system_prompt, messages)
+    resp = httpx.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+        json={"system_instruction": system, "contents": contents},
+        timeout=60.0,
+    )
+    if resp.status_code >= 400:
+        raise LLMError("gemini", resp.status_code, resp.text[:200])
+    data = resp.json()
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise LLMError("gemini", 500, f"Unexpected response: {str(data)[:200]}")
+
+
+def _call_gemini_with_tools(
+    model: str, api_key: str, system_prompt: str,
+    messages: list[dict], tools: list[ToolDef],
+) -> "LLMResponse":
+    system, contents = _gemini_messages(system_prompt, messages)
+    gemini_tools = [{"function_declarations": [
+        {"name": t.name, "description": t.description, "parameters": t.parameters or {"type": "object", "properties": {}}}
+        for t in tools
+    ]}]
+    resp = httpx.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+        json={"system_instruction": system, "contents": contents, "tools": gemini_tools},
+        timeout=60.0,
+    )
+    if resp.status_code >= 400:
+        raise LLMError("gemini", resp.status_code, resp.text[:200])
+    data = resp.json()
+    try:
+        parts = data["candidates"][0]["content"]["parts"]
+    except (KeyError, IndexError):
+        return LLMResponse(text="", raw_assistant_message=data)
+    text_parts = [p["text"] for p in parts if "text" in p]
+    tool_calls = [
+        ToolCall(id=p["functionCall"]["name"], name=p["functionCall"]["name"], arguments=p["functionCall"].get("args", {}))
+        for p in parts if "functionCall" in p
+    ]
+    return LLMResponse(text=" ".join(text_parts), tool_calls=tool_calls, raw_assistant_message=data)
+
+
+def _build_gemini_tool_results(response: "LLMResponse", results: list["ToolResult"]) -> list[dict]:
+    msgs = [{"role": "assistant", "content": response.text or "(tool call)"}]
+    for r in results:
+        msgs.append({"role": "user", "content": f"[Tool result for {r.tool_call_id}]: {r.output}"})
+    return msgs

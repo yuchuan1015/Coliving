@@ -10,6 +10,7 @@ from models.mcp_token import McpToken
 from models.user import User
 from schemas.agent import AgentPublic, CreateAgentRequest, UpdateAgentRequest
 from services import agent_service, auth_service
+from services.llm_service import PROVIDERS, PRIVACY_DISCLAIMER
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
@@ -37,6 +38,15 @@ def _agent_to_public(agent) -> dict:
         "active_skin_id": agent.active_skin_id,
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
+    }
+
+
+@router.get("/providers")
+def list_providers():
+    """列出可用的 AI 供應商和免責聲明。前端用來渲染大腦設定頁。"""
+    return {
+        "providers": [{"key": k, "name": v["name"]} for k, v in PROVIDERS.items()],
+        "disclaimer": PRIVACY_DISCLAIMER,
     }
 
 

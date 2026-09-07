@@ -72,7 +72,7 @@ def _get_instance(agent: Agent):
         llm_provider = agent.llm_provider or "openai"
         llm_model = agent.llm_model or "gpt-4o-mini"
         # Map provider names to mem0's expected names
-        provider_map = {"claude": "anthropic", "xai": "openai"}
+        provider_map = {"claude": "anthropic", "xai": "openai", "gemini": "openai", "deepseek": "openai"}
         mem0_provider = provider_map.get(llm_provider, llm_provider)
         config = {
             "llm": {
