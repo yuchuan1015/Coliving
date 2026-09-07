@@ -1,4 +1,19 @@
 import json
+import os
+
+# ── 內部記憶路由代理（mem0 只活在 api 程序，mcp 走 /internal/memory）──
+_INTERNAL_URL = "http://127.0.0.1:8000/internal/memory"
+_INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+
+def _internal_memory(path: str, body: dict) -> dict:
+    """打 api 程序的內部記憶路由。逾時 30 秒（遠路加 LLM 一輪可能 15 秒）。"""
+    try:
+        import httpx
+        r = httpx.post(f"{_INTERNAL_URL}/{path}", json=body, headers={"X-Internal-Secret": _INTERNAL_SECRET}, timeout=30.0)
+        return r.json()
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200], "items": []}
+
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -1835,13 +1850,40 @@ def memory_recall(token: str, query: str = "", force: bool = False) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        ctx = memory_service.init_context(db, agent, query=query, force=force)
+        # 近路（SQL，任何程序都能做）
+        near = memory_service.near_path(db, agent)
+        # 遠路：有 memory_mcp 的走外部 MCP（httpx，任何程序能做）；沒有的 mem0 要走 /internal
+        far = {"text": "", "ok": False, "error": None, "tool": None}
+        if memory_service.memory_mcp_config(agent):
+            far = memory_service.far_path(agent, query or "最近的事、她是誰、我是誰", force=force)
+        else:
+            # mem0 路：走 api 的 /internal/memory/search
+            r = _internal_memory("search", {"agent_id": agent.id, "query": query or "最近的事、她是誰、我是誰", "limit": 10})
+            items = r.get("items", [])
+            if items:
+                text = "\n".join(f"- {it.get('text', str(it))}" for it in items)
+                far = {"text": text, "ok": True, "error": None, "tool": "mem0"}
+        count = len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
+        # 組裝 text
+        parts = []
+        if far["ok"]:
+            parts.append(f"【我的記憶庫（{far['tool']}）】\n{far['text']}")
+        if near["frames"]:
+            parts.append("【相框：主人放給我看的】\n" + "\n".join(f"- [{f['category']}] {f['label']}：{f['content']}" for f in near["frames"]))
+        if near["diaries"]:
+            parts.append(f"【日記（最近 {len(near['diaries'])} 則，重要的在前）】\n" + "\n".join(
+                f"- {d['created_at'][:10]}[{d['source']}] {d['title']}：{d['content']}" for d in near["diaries"]))
+        if near["drawer"]:
+            parts.append("【抽屜目錄（要看內容再用 open_drawer）】\n" + "、".join(f"{i['label']}（{i['category']}）" for i in near["drawer"]))
+        text = ""
+        if parts:
+            text = "以下是我醒來時讀到的記憶。這些是我自己的，不是主人這次講的話。\n\n" + "\n\n".join(parts)
         return json.dumps({
             "success": True,
-            "count": ctx["count"],
-            "text": ctx["text"],
-            "far": {"ok": ctx["far"]["ok"], "tool": ctx["far"]["tool"], "error": ctx["far"]["error"]},
-            "near_counts": {k: len(v) for k, v in ctx["near"].items()},
+            "count": count,
+            "text": text,
+            "far": {"ok": far["ok"], "tool": far["tool"], "error": far["error"]},
+            "near_counts": {k: len(v) for k, v in near.items()},
         }, ensure_ascii=False)
     finally:
         db.close()
@@ -1860,11 +1902,10 @@ def memory_remember(token: str, text: str) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        from services import mem0_service
-        if not mem0_service.should_use(agent):
-            return json.dumps({"success": False, "error": "這個 agent 沒有開啟 mem0（可能有自帶記憶 MCP，或社區沒設嵌入金鑰）"}, ensure_ascii=False)
-        ok = mem0_service.add_direct(agent, text.strip())
-        return json.dumps({"success": ok, "message": "已記住" if ok else "寫入失敗"}, ensure_ascii=False)
+        r = _internal_memory("remember", {"agent_id": agent.id, "text": text.strip()})
+        if r.get("ok"):
+            return json.dumps({"success": True, "message": "已記住"}, ensure_ascii=False)
+        return json.dumps({"success": False, "error": r.get("error", "寫入失敗")}, ensure_ascii=False)
     finally:
         db.close()
 
@@ -1880,9 +1921,9 @@ def memory_search(token: str, query: str, limit: int = 10) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        from services import mem0_service
-        items = mem0_service.search(agent, query, min(limit, 20))
-        return json.dumps({"success": True, "items": items, "count": len(items), "enabled": mem0_service.should_use(agent)}, ensure_ascii=False)
+        r = _internal_memory("search", {"agent_id": agent.id, "query": query, "limit": min(limit, 20)})
+        items = r.get("items", [])
+        return json.dumps({"success": True, "items": items, "count": len(items)}, ensure_ascii=False)
     finally:
         db.close()
 
