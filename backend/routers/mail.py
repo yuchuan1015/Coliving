@@ -16,7 +16,7 @@ from schemas.mail import (
     TimedDeliveryRequest,
     UnreadCount,
 )
-from services import activity_service, credit_service
+from services import activity_service, credit_service, time_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/mail", tags=["mail"])
@@ -154,9 +154,9 @@ def read_mail(
         raise HTTPException(status_code=403, detail="這不是你的信")
 
     now = datetime.now(timezone.utc)
-    if mail.deliver_at and mail.deliver_at > now:
+    if mail.deliver_at and time_service.aware(mail.deliver_at) > now:
         raise HTTPException(status_code=403, detail="這封信還沒到送達時間")
-    if mail.expires_at and mail.expires_at <= now:
+    if mail.expires_at and time_service.aware(mail.expires_at) <= now:
         raise HTTPException(status_code=410, detail="這封信已經過期了")
 
     if mail.to_agent_id == agent.id and not mail.is_read:
