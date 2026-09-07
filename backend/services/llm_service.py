@@ -167,6 +167,21 @@ def validate_api_key(provider: str, api_key: str) -> bool:
                 timeout=15.0,
             )
             return resp.status_code == 200
+        if provider == "gemini":
+            resp = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                json={"contents": [{"parts": [{"text": "hi"}]}]},
+                timeout=10.0,
+            )
+            return resp.status_code < 400
+        if provider == "deepseek":
+            resp = httpx.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10.0,
+            )
+            return resp.status_code < 400
         return False
     except httpx.HTTPError:
         return False
