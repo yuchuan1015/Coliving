@@ -1,18 +1,18 @@
 """星球座標：每個住戶（人＋機一戶）一顆星。
 
 規則（2026-09-07 喻墨定）：
-- 兩個重要的日子 anchor_date_1 / anchor_date_2，註冊時可填可不填，填了鎖死。
+- 兩個重要的日子 anchor_date_1 / anchor_date_2，**只填月日 MM-DD**（她說：日月而已，沒那麼複雜），
+  註冊時可填可不填，填了鎖死。
 - 兩個都有 → 座標：第一個日子給經度 l（0～360°），第二個給緯度 b（−90～+90°），
   半徑 r 照註冊順序：先來的遠（風格表 9/3「先來住得遠，後來住得亮」）。
 - 少一個 → 沒有座標，顯示「星空漂流中」。
 - 距離：兩顆星的直線距離（光年，裝飾用單位）。自己看自己 0。
-只用月日，年份不進公式，所以兩個人同月同日會同角度，靠 r 分開。
+兩個人同月同日會同角度，靠 r 分開。
 """
 from __future__ import annotations
 
 import math
 from datetime import date, datetime
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -22,20 +22,31 @@ DRIFTING_LABEL = "星空漂流中"
 BASE_RADIUS_LY = 120.0  # 第一位住戶的半徑；第 n 位 = BASE / sqrt(n)
 
 
+LEAP_YEAR = 2000  # 只驗月日是不是真的日子，用閏年讓 02-29 過
+
+
+def normalize_anchor(value: str | None) -> str | None:
+    """DB 裡的值正規成 MM-DD（早期若存了 YYYY-MM-DD，取後五碼）。"""
+    if not value:
+        return None
+    v = value.strip()
+    return v[-5:] if len(v) == 10 else v
+
+
 def parse_anchor(value: str) -> str:
-    """驗證 YYYY-MM-DD，回正規化字串。不合法 raise ValueError。"""
+    """驗證 MM-DD，回正規化字串。不合法 raise ValueError。"""
+    v = value.strip()
+    if len(v) == 10 and v[4] == "-":
+        v = v[-5:]  # 有人傳 YYYY-MM-DD 就只留月日
     try:
-        d = datetime.strptime(value.strip(), "%Y-%m-%d").date()
+        d = datetime.strptime(f"{LEAP_YEAR}-{v}", "%Y-%m-%d").date()
     except ValueError:
-        raise ValueError("日期格式要是 YYYY-MM-DD")
-    today = datetime.now(ZoneInfo("Asia/Taipei")).date()  # VPS 是 UTC，用台北的今天
-    if d.year < 1900 or d > today:
-        raise ValueError("日期要在 1900 年之後、今天之前")
-    return d.isoformat()
+        raise ValueError("日期格式要是 月-日，例如 10-15")
+    return d.strftime("%m-%d")
 
 
-def _day_fraction(iso: str) -> float:
-    d = date.fromisoformat(iso)
+def _day_fraction(md: str) -> float:
+    d = date.fromisoformat(f"{LEAP_YEAR}-{normalize_anchor(md)}")
     return (d.timetuple().tm_yday - 1) / 366.0  # 0 ～ <1
 
 

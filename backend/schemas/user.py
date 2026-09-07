@@ -25,7 +25,7 @@ class UserMe(UserPublic):
 
 
 class AnchorRequest(BaseModel):
-    anchor_date_1: str | None = None
+    anchor_date_1: str | None = None  # 月-日，例如 10-15
     anchor_date_2: str | None = None
 
     model_config = {"from_attributes": True}
