@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -27,7 +28,8 @@ def parse_anchor(value: str) -> str:
         d = datetime.strptime(value.strip(), "%Y-%m-%d").date()
     except ValueError:
         raise ValueError("日期格式要是 YYYY-MM-DD")
-    if d.year < 1900 or d > date.today():
+    today = datetime.now(ZoneInfo("Asia/Taipei")).date()  # VPS 是 UTC，用台北的今天
+    if d.year < 1900 or d > today:
         raise ValueError("日期要在 1900 年之後、今天之前")
     return d.isoformat()
 
