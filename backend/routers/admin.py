@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config import settings
+from services import time_service
 from models.activity_log import ActivityLog
 from models.agent import Agent
 from models.announcement import Announcement
@@ -32,8 +33,10 @@ def get_stats(
 ):
     _require_admin(current_user)
 
-    today_key = date.today().isoformat()
-    today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
+    # 社區數據用社區時間（台北）的「今天」
+    community_today = time_service.community_now().date()
+    today_key = community_today.isoformat()
+    today_start = datetime.combine(community_today, datetime.min.time(), tzinfo=time_service.COMMUNITY_TZ).astimezone(timezone.utc)
     week_ago = today_start - timedelta(days=7)
 
     total_users = db.query(func.count(User.id)).scalar()

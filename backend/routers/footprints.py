@@ -1,5 +1,3 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -7,6 +5,7 @@ from models.agent import Agent
 from models.footprint import Footprint
 from models.user import User
 from schemas.footprint import CreateFootprintRequest, FootprintOut, VALID_MOODS
+from services import time_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/footprints", tags=["footprints"])
@@ -65,7 +64,7 @@ def create_footprint(
     if body.mood not in VALID_MOODS:
         raise HTTPException(status_code=400, detail="無效的心情")
 
-    today_key = date.today().isoformat()
+    today_key = time_service.community_now().date().isoformat()  # 公共場域用社區時間
     today_count = (
         db.query(Footprint)
         .filter(

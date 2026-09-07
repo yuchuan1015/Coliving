@@ -11,7 +11,7 @@ from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.user import User
-from services import diary_service, drawer_service, photo_frame_service
+from services import time_service, diary_service, drawer_service, photo_frame_service
 from services.park_service import get_today_weather
 from utils.deps import get_current_user, get_db
 
@@ -46,7 +46,7 @@ def furniture_overview(
 
     return {
         "window": {"weather": weather.weather, "emoji": weather.weather_emoji, "description": weather.description, "temperature": weather.temperature, "activities": weather.activities},
-        "clock": {"utc": now.isoformat(), "timezone": "Asia/Taipei"},
+        "clock": time_service.clock_info(current_user),  # 艙室時鐘：住戶當地時間＋社區時間（台北）
         "diary": {"count": diary_count},
         "drawer": {"count": drawer_count},
         "photo_frame": {"count": frame_count},
