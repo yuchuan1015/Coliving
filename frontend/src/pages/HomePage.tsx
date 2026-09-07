@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { getDashboard } from "../api/auth";
 import { getAnnouncements } from "../api/community";
 import { useAuth } from "../hooks/useAuth";
 import type { AnnouncementOut, DashboardData } from "../types";
+import type { LayoutOutletContext } from "../components/Layout";
 
 type FurnitureId = "sleep" | "library" | "mail" | "console";
 
@@ -28,6 +29,7 @@ function clock() {
 
 export function HomePage() {
   const navigate = useNavigate();
+  const { openAdmin } = useOutletContext<LayoutOutletContext>();
   const { user, logout } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementOut | null>(null);
@@ -44,12 +46,13 @@ export function HomePage() {
   }, []);
 
   const agent = dashboard?.agents?.[0];
+  const isAdmin = (user as { role?: string } | null)?.role === "admin";
   const selectedFurniture = useMemo(() => furniture.find((item) => item.id === selected), [selected]);
 
   return (
     <main className="ya-home-shell">
       <section className="ya-card ya-top-card">
-        <div className="ya-brand"><span className="ya-brand-mark">✦</span><span>鴉巢</span><button className="ya-logout" onClick={logout}>登出</button></div>
+        <div className="ya-brand"><span className="ya-brand-mark">✦</span><span>鴉巢</span>{isAdmin && <button className="ya-admin-trigger" onClick={openAdmin} aria-label="開啟系統儀表板與排程管理" title="系統儀表板與排程管理">⚙</button>}<button className="ya-logout" onClick={logout}>登出</button></div>
         <div className="ya-time">{now}</div>
         <div className="ya-weather"><span>☼</span><span>深空晴朗</span><small> 18°C</small></div>
         <div className="ya-announcement">

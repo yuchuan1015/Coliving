@@ -4,6 +4,10 @@ import { getUnreadCount } from "../api/mail";
 import { useAuth } from "../hooks/useAuth";
 import { Drawer, DrawerItem } from "./Drawer";
 
+export type LayoutOutletContext = {
+  openAdmin: () => void;
+};
+
 export function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -41,7 +45,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh" style={{ background: "var(--bg)" }}>
-      <Outlet />
+      <Outlet context={{ openAdmin: () => setAdminOpen(true) } satisfies LayoutOutletContext} />
 
       {/* Right drawer — 場域 */}
       <Drawer
