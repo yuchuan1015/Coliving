@@ -11,7 +11,7 @@ from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.user import User
-from services import time_service, diary_service, drawer_service, photo_frame_service
+from services import time_service, diary_service, drawer_service, photo_frame_service, reading_service
 from services.park_service import get_today_weather
 from utils.deps import get_current_user, get_db
 
@@ -53,6 +53,7 @@ def furniture_overview(
         "mirror": {"agent_name": agent.name if agent else None, "avatar_emoji": agent.avatar_emoji if agent else None},
         "door": {"current_location": agent.current_location if agent else None},
         "bed": {"has_agent": agent is not None, "is_sleeping": agent.is_sleeping if agent else False},
+        "bookshelf": reading_service.summary(db, current_user),  # 共讀書架：幾本、劃線、批注、上次讀的
     }
 
 

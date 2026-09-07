@@ -23,10 +23,11 @@ from models.health_article import HealthArticle
 from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
+from models.reading import Book, BookParagraph, BookHighlight, BookNote
 from models.review import ReviewRequest
 from models.ai_conversation import AIConversation, AIMessage
 from models.dining import DiningSession
 from models.outfit import Outfit
 from models.mcp_token import McpToken
 
-__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit"]
+__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit", "Book", "BookParagraph", "BookHighlight", "BookNote"]

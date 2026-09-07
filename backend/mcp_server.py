@@ -30,7 +30,7 @@ from models.user import User
 from models.schedule import WakeEvent
 from models.mail import Mail
 from models.skin import Skin
-from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, memory_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
+from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, memory_service, reading_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
 
@@ -1926,6 +1926,96 @@ def memory_search(token: str, query: str, limit: int = 10) -> str:
         r = _internal_memory("search", {"agent_id": agent.id, "query": query, "limit": min(limit, 20)})
         items = r.get("items", [])
         return json.dumps({"success": True, "items": items, "count": len(items)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 共讀書架（艙室家具；室友這邊的四個動作，形狀照 anno_*）──
+
+
+def _reading_user_book(db, token: str, book_id: str | None = None):
+    """回 (user, agent, book, err)。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return None, None, None, json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    user = db.query(User).filter(User.id == user_id).first()
+    agent = agent_service.get_user_agent(db, user_id)
+    if not user or not agent:
+        return None, None, None, json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+    book = None
+    if book_id is not None:
+        book = reading_service.get_book(db, user, book_id)
+        if not book:
+            return None, None, None, json.dumps({"success": False, "error": "書架上沒有這本"}, ensure_ascii=False)
+    return user, agent, book, None
+
+
+@mcp.tool()
+def reading_shelf(token: str) -> str:
+    """共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪。這是你們這一戶私人的書架，跟公共的圖書館不同。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, _, err = _reading_user_book(db, token)
+        if err:
+            return err
+        return json.dumps({"success": True, "books": reading_service.shelf(db, user)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def reading_read(token: str, book_id: str, page: int = 0) -> str:
+    """共讀：翻頁讀書。回該頁所有段落（含段落編號 idx）和這頁已有的劃線、批注（人和你的都有，author_kind 標誰寫的）。page 給 0 就翻到上次讀到的那頁。會把進度記到這頁。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, book, err = _reading_user_book(db, token, book_id)
+        if err:
+            return err
+        try:
+            out = reading_service.read_page(db, user, book, page or book.last_page)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        out["success"] = True
+        return json.dumps(out, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def reading_highlight(token: str, book_id: str, paragraph_idx: int, text: str) -> str:
+    """共讀：劃線。text 必須是那段（paragraph_idx）裡的原文片段，不是你的話。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, book, err = _reading_user_book(db, token, book_id)
+        if err:
+            return err
+        try:
+            h = reading_service.add_highlight(db, book, paragraph_idx, text, "agent")
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        activity_service.log(db, agent, "book_highlight", f"在《{book.title}》第 {paragraph_idx} 段劃了線")
+        db.commit()
+        return json.dumps({"success": True, "highlight": reading_service.highlight_to_dict(h)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def reading_note(token: str, book_id: str, paragraph_idx: int, content: str, highlight_id: str = "") -> str:
+    """共讀：寫批注。掛在某段（paragraph_idx），可選 highlight_id 掛在某條劃線上。主人翻到那頁會看到。最多 4000 字。token 由人類提供。"""
+    db = SessionLocal()
+    try:
+        user, agent, book, err = _reading_user_book(db, token, book_id)
+        if err:
+            return err
+        try:
+            n = reading_service.add_note(db, book, paragraph_idx, content, "agent", highlight_id or None)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        activity_service.log(db, agent, "book_note", f"在《{book.title}》第 {paragraph_idx} 段寫了批注")
+        db.commit()
+        return json.dumps({"success": True, "note": reading_service.note_to_dict(n)}, ensure_ascii=False)
     finally:
         db.close()
 
