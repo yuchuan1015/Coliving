@@ -18,11 +18,12 @@ from models.agent import Agent
 
 logger = logging.getLogger(__name__)
 
-_QDRANT_PATH = os.environ.get("MEM0_QDRANT_PATH", "/opt/coliving/backend/memdata/qdrant")
-_HISTORY_DB = os.environ.get("MEM0_HISTORY_DB", "/opt/coliving/backend/memdata/mem0_history.db")
-_EMBED_KEY = os.environ.get("EMBED_OPENAI_API_KEY", "")
-_EMBED_MODEL = os.environ.get("MEM0_EMBED_MODEL", "text-embedding-3-small")
-_EMBED_DIMS = int(os.environ.get("MEM0_EMBED_DIMS", "1536"))
+from config import settings as _settings
+_QDRANT_PATH = _settings.mem0_qdrant_path
+_HISTORY_DB = _settings.mem0_history_db
+_EMBED_KEY = _settings.embed_openai_api_key
+_EMBED_MODEL = _settings.mem0_embed_model
+_EMBED_DIMS = _settings.mem0_embed_dims
 
 _qdrant_client = None
 _qdrant_lock = threading.Lock()

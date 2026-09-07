@@ -3,7 +3,8 @@ import os
 
 # ── 內部記憶路由代理（mem0 只活在 api 程序，mcp 走 /internal/memory）──
 _INTERNAL_URL = "http://127.0.0.1:8000/internal/memory"
-_INTERNAL_SECRET = os.environ.get("INTERNAL_SECRET", "")
+from config import settings as _cfg
+_INTERNAL_SECRET = _cfg.internal_secret
 
 def _internal_memory(path: str, body: dict) -> dict:
     """打 api 程序的內部記憶路由。逾時 30 秒（遠路加 LLM 一輪可能 15 秒）。"""

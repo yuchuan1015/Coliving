@@ -12,8 +12,14 @@ class Settings(BaseSettings):
     ob_default_endpoint: str = ""
     ob_default_token: str = ""
     mcp_token_expire_days: int = 90
+    internal_secret: str = ""
+    embed_openai_api_key: str = ""
+    mem0_qdrant_path: str = "/opt/coliving/backend/memdata/qdrant"
+    mem0_history_db: str = "/opt/coliving/backend/memdata/mem0_history.db"
+    mem0_embed_model: str = "text-embedding-3-small"
+    mem0_embed_dims: int = 1536
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

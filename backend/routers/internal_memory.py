@@ -1,14 +1,13 @@
 """內部記憶路由：只綁 127.0.0.1，mcp / mcp-private 用它呼叫 mem0（qdrant 只能一個程序開）。
 nginx 不暴露 /internal。驗 header X-Internal-Secret 對 .env 的 INTERNAL_SECRET。"""
 import json
-import os
-
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/internal/memory", tags=["internal"])
 
-_SECRET = os.environ.get("INTERNAL_SECRET", "")
+from config import settings
+_SECRET = settings.internal_secret
 
 
 def _check(secret: str = Header(None, alias="X-Internal-Secret")):
