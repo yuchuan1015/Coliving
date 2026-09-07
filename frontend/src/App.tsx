@@ -19,6 +19,10 @@ import { DiaryPage } from "./pages/DiaryPage";
 import { DrawerPage } from "./pages/DrawerPage";
 import { PhotoFramePage } from "./pages/PhotoFramePage";
 import { MailboxPage } from "./pages/MailboxPage";
+import { BookshelfPage } from "./pages/BookshelfPage";
+import { MemoryPage } from "./pages/MemoryPage";
+import { ReadingShelfPage } from "./pages/ReadingShelfPage";
+import { ReadingPage } from "./pages/ReadingPage";
 
 export default function App() {
   return (
@@ -33,6 +37,10 @@ export default function App() {
               <Route path="/home/diary" element={<DiaryPage />} />
               <Route path="/home/drawer" element={<DrawerPage />} />
               <Route path="/home/photos" element={<PhotoFramePage />} />
+              <Route path="/home/library" element={<BookshelfPage />} />
+              <Route path="/memory" element={<MemoryPage />} />
+              <Route path="/reading" element={<ReadingShelfPage />} />
+              <Route path="/reading/:bookId" element={<ReadingPage />} />
               <Route path="/mailbox" element={<MailboxPage />} />
               <Route path="/home/:moduleId" element={<FurniturePage />} />
               <Route path="/outside" element={<DashboardPage />} />

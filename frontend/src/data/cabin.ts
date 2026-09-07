@@ -28,7 +28,7 @@ export const cabinZones: CabinZone[] = [
     { id: "diary", label: "日記本", detail: "寫下值得留下的片刻", x: .25, y: .59, path: "/home/diary" },
     { id: "drawer", label: "抽屜", detail: "收藏室友的私人物件", x: .36, y: .74, path: "/home/drawer" },
     { id: "photos", label: "相框", detail: "讓室友更了解你", x: .34, y: .52, path: "/home/photos" },
-    { id: "bookshelf", label: "記憶書架", detail: "收藏與共居知識", x: .62, y: .31, path: "/home/library" },
+    { id: "bookshelf", label: "記憶書架", detail: "我的記憶 · 一起讀書", x: .62, y: .31, path: "/home/library" },
     { id: "mailbox", label: "星際信箱", detail: "居民寄來的訊息", x: .90, y: .42, path: "/mailbox" },
   ] },
   { id: "shared", label: "共居區", image: "/ya-chao-assets/cabin-shared-v1.webp", furniture: [
