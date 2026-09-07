@@ -123,7 +123,7 @@ def add_background(agent: Agent, messages: list[dict]) -> None:
         return
     def _do():
         try:
-            m.add(messages, user_id=agent.id)
+            m.add(messages, filters={"user_id": agent.id})
         except Exception as e:
             logger.warning("mem0 add failed for %s: %s", agent.name, e)
     t = threading.Thread(target=_do, daemon=True)
@@ -138,7 +138,7 @@ def search(agent: Agent, query: str, limit: int = 10) -> list[dict]:
     if not m:
         return []
     try:
-        results = m.search(query, user_id=agent.id, limit=limit)
+        results = m.search(query, filters={"user_id": agent.id}, limit=limit)
         if isinstance(results, dict) and "results" in results:
             results = results["results"]
         return [
@@ -170,7 +170,7 @@ def add_direct(agent: Agent, text: str) -> bool:
     if not m:
         return False
     try:
-        m.add([{"role": "user", "content": text}], user_id=agent.id)
+        m.add([{"role": "user", "content": text}], filters={"user_id": agent.id})
         return True
     except Exception as e:
         logger.warning("mem0 add_direct failed for %s: %s", agent.name, e)
