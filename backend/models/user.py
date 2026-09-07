@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -22,6 +22,10 @@ class User(Base):
     anchor_date_2: Mapped[str | None] = mapped_column(String(10), nullable=True)
     # 住戶當地時區（IANA 名，空＝Asia/Taipei）。艙室內用它，公共場域用社區時間台北（2026-09-07 她定，migration 005）
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 住戶所在城市（艙室窗戶抓當地真天氣用；沒填就用時區推）。migration 010
+    location_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    location_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -23,11 +23,13 @@ class UserMe(UserPublic):
     drifting: bool = True
     label: str | None = None           # 漂流中時是「星空漂流中」
     timezone: str | None = None        # 住戶填的 IANA 名；空＝Asia/Taipei
+    location_name: str | None = None   # 住戶填的城市；空＝用時區推
     clock: dict | None = None          # {utc, timezone, local_time, community_timezone, community_time}
 
 
 class UpdateMeRequest(BaseModel):
     timezone: str | None = Field(default=None, max_length=64)
+    location_name: str | None = Field(default=None, max_length=64)  # 城市名，空字串清掉（回到用時區推）
 
 
 class AnchorRequest(BaseModel):

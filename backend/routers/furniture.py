@@ -11,7 +11,7 @@ from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.user import User
-from services import time_service, diary_service, drawer_service, photo_frame_service, reading_service
+from services import time_service, diary_service, drawer_service, photo_frame_service, reading_service, weather_service
 from services.park_service import get_today_weather
 from utils.deps import get_current_user, get_db
 
@@ -45,7 +45,9 @@ def furniture_overview(
     frame_count = db.query(PhotoFrame).filter(PhotoFrame.user_id == current_user.id).count()
 
     return {
-        "window": {"weather": weather.weather, "emoji": weather.weather_emoji, "description": weather.description, "temperature": weather.temperature, "activities": weather.activities},
+        # 窗戶：住戶當地真天氣；拿不到退回社區（公園）的固定天氣。她定：艙室按當地、公共場域共用
+        "window": (weather_service.local_weather(current_user) or {"weather": weather.weather, "emoji": weather.weather_emoji, "description": weather.description, "temperature": weather.temperature, "source": "community", "location": "社區"}),
+        "community_weather": {"weather": weather.weather, "emoji": weather.weather_emoji, "description": weather.description, "temperature": weather.temperature, "activities": weather.activities},
         "clock": time_service.clock_info(current_user),  # 艙室時鐘：住戶當地時間＋社區時間（台北）
         "diary": {"count": diary_count},
         "drawer": {"count": drawer_count},

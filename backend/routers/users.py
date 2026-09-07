@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.user import User
 from schemas.user import AnchorRequest, ResidentListResponse, ResidentWithAgent, UpdateMeRequest, UserMe
-from services import coordinate_service, time_service
+from services import coordinate_service, time_service, weather_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -36,6 +36,15 @@ def update_me(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         time_service.recompute_schedules_for_user(db, user)
+    if "location_name" in updates:
+        name = (updates["location_name"] or "").strip()
+        if not name:
+            user.location_name = user.location_lat = user.location_lon = None
+        else:
+            g = weather_service.geocode(name)
+            if not g:
+                raise HTTPException(status_code=400, detail=f"找不到「{name}」這個地方，換個寫法試試（例如城市的英文名）")
+            user.location_name, user.location_lat, user.location_lon = g[2], g[0], g[1]
     db.commit()
     db.refresh(user)
     return _me(db, user)
