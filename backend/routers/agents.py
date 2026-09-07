@@ -29,6 +29,8 @@ def _agent_to_public(agent) -> dict:
         "has_api_key": bool(agent.encrypted_api_key),
         "avatar_emoji": agent.avatar_emoji,
         "display_brain": agent.display_brain,
+        "memory_mcp": agent.memory_mcp,
+        "memory_recall_tool": agent.memory_recall_tool,
         "status": agent.status,
         "ob_enabled": agent.ob_enabled,
         "external_mcps": ext_mcps,

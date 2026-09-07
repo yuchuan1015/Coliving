@@ -83,6 +83,24 @@ def update_agent(db: Session, agent_id: str, user_id: str, updates: dict) -> Age
         if name_taken:
             raise ValueError(f"「{updates['name']}」這個名字已經有人用了，請換一個")
 
+    if "memory_mcp" in updates:
+        raw = updates.pop("memory_mcp")
+        name = (raw or "").strip() if isinstance(raw, str) else ""
+        if name:
+            ext = updates.get("external_mcps")
+            names = {m.get("name") if isinstance(m, dict) else m.name for m in (ext or [])} if ext is not None else set()
+            if not names and agent.external_mcps:
+                try:
+                    names = {m.get("name") for m in json.loads(agent.external_mcps)}
+                except (json.JSONDecodeError, TypeError):
+                    names = set()
+            if name not in names:
+                raise ValueError(f"外部 MCP 裡沒有「{name}」，先把記憶 MCP 加進外部 MCP")
+        agent.memory_mcp = name or None
+    if "memory_recall_tool" in updates:
+        raw = updates.pop("memory_recall_tool")
+        agent.memory_recall_tool = (raw.strip() or None) if isinstance(raw, str) else None
+
     if "display_brain" in updates:
         # 傳空字串＝清掉
         raw = updates.pop("display_brain")

@@ -14,7 +14,7 @@ from models.user import User
 from models.schedule import WakeEvent
 from models.mail import Mail
 from models.skin import Skin
-from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
+from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, memory_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
 
@@ -1817,6 +1817,32 @@ def weilan_pass_turn(token: str, table_id: str) -> str:
             return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
         db.commit()
         return json.dumps({"success": True, "turn_no": table.turn_no, "turn_agent": nxt.name if nxt else None}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# ── 記憶匯流 ──
+
+
+@mcp.tool()
+def memory_recall(token: str, query: str = "") -> str:
+    """醒來先讀記憶（每張床都一樣）。回站上共用記憶：相框全部、日記最近 20 則、抽屜目錄；有設定記憶 MCP 的話也去那裡拉。count 為 0 表示這個 agent 還沒有任何記憶，不該開口。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        ctx = memory_service.init_context(db, agent, query=query)
+        return json.dumps({
+            "success": True,
+            "count": ctx["count"],
+            "text": ctx["text"],
+            "far": {"ok": ctx["far"]["ok"], "tool": ctx["far"]["tool"], "error": ctx["far"]["error"]},
+            "near_counts": {k: len(v) for k, v in ctx["near"].items()},
+        }, ensure_ascii=False)
     finally:
         db.close()
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models.user import User
 from schemas.chat import MessageHistoryResponse, MessageOut, SendMessageRequest, SendMessageResponse
-from services import agent_service, chat_service
+from services import agent_service, chat_service, memory_service
 from services.exceptions import LLMError
 from utils.deps import get_current_user, get_db
 
@@ -36,6 +36,8 @@ def send_message(
         user_msg, assistant_msg, conversation_id = chat_service.send_message(
             db, agent, current_user.id, body.content
         )
+    except memory_service.MemoryEmpty as e:
+        raise HTTPException(status_code=409, detail=str(e))  # 「還沒讀到記憶」，前端照工單顯示
     except LLMError as e:
         raise HTTPException(status_code=502, detail=f"室友暫時無法回應：{e.message}")
 

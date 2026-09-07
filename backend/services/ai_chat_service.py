@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.ai_conversation import AIConversation, AIMessage
-from services import bed_service, crypto_service, llm_service
+from services import bed_service, crypto_service, llm_service, memory_service
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,11 @@ def _build_messages(db: Session, conv: AIConversation, for_agent: Agent, other_a
 
 
 def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_agent: Agent) -> dict:
-    system_prompt = agent.persona + "\n\n" + _DECISION_PROMPT.format(other_name=other_agent.name)
+    ctx = memory_service.init_context(db, agent, query=f"跟 {other_agent.name} 的事")
+    if ctx["count"] == 0:
+        logger.info("AI decision skipped: %s has no memory", agent.name)
+        return {"action": "wait", "content": ""}  # 讀不到記憶不開口
+    system_prompt = memory_service.system_prompt_with_memory(agent, ctx) + "\n\n" + _DECISION_PROMPT.format(other_name=other_agent.name)
     messages = _build_messages(db, conv, agent, other_agent)
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
     try:
@@ -85,6 +89,8 @@ def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_
 
 def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initial_message: str) -> AIConversation:
     bed_service.set_bed("site")  # 對方是站上那張床在回
+    if memory_service.init_context(db, to_agent, query=initial_message)["count"] == 0:
+        raise ValueError(f"{to_agent.name}{memory_service.EMPTY_MESSAGE}，這次不接")
     from sqlalchemy import or_
     existing = (
         db.query(AIConversation)

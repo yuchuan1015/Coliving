@@ -24,6 +24,8 @@ class UpdateAgentRequest(BaseModel):
     api_key: str | None = Field(default=None, min_length=1, max_length=256)
     avatar_emoji: str | None = Field(default=None, max_length=8)
     display_brain: str | None = Field(default=None, max_length=64)
+    memory_mcp: str | None = Field(default=None, max_length=32)          # 外部 MCP 的 name；空字串＝取消
+    memory_recall_tool: str | None = Field(default=None, max_length=64)  # 預設 recall
     status: str | None = Field(default=None, pattern=r"^(active|inactive)$")
     ob_enabled: bool | None = None
     ob_endpoint: str | None = Field(default=None, max_length=256)
@@ -40,6 +42,8 @@ class AgentPublic(BaseModel):
     has_api_key: bool
     avatar_emoji: str
     display_brain: str | None = None
+    memory_mcp: str | None = None
+    memory_recall_tool: str | None = None
     status: str
     ob_enabled: bool
     external_mcps: list[ExternalMcpConfig]

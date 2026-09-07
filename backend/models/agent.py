@@ -20,6 +20,9 @@ class Agent(Base):
     avatar_emoji: Mapped[str] = mapped_column(String(8), nullable=False, default="\U0001f916")
     # 對外顯示的腦型號，自己打字，跟 llm_provider/llm_model 無關（2026-09-07 她定，migration 003）
     display_brain: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 記憶匯流遠路（2026-09-07 她定：自己的記憶庫包成 MCP 接進來）：external_mcps 裡哪一個是記憶、recall 用哪個工具
+    memory_mcp: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    memory_recall_tool: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     ob_endpoint: Mapped[str | None] = mapped_column(String(256), nullable=True)
     ob_token: Mapped[str | None] = mapped_column(Text, nullable=True)
