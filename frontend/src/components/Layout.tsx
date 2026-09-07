@@ -45,36 +45,25 @@ export function Layout() {
     <div className="min-h-dvh" style={{ background: "var(--bg)" }}>
       {!isChat && (
         <header
-          className="sticky top-0 z-10 flex items-center justify-between px-5 py-3"
-          style={{
-            background: "var(--bg)",
-            borderBottom: "1px solid var(--border)",
-          }}
+          className="app-chrome"
         >
-          <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => setAdminOpen(true)}
-                className="text-[14px]"
-                style={{ color: "var(--ink-soft)" }}
-              >
-                ⚙
-              </button>
-            )}
+          {isAdmin ? (
             <button
-              onClick={() => navigate("/")}
-              className="text-[14px] font-semibold tracking-tight"
-              style={{ color: "var(--ink)" }}
+              onClick={() => setAdminOpen(true)}
+              className="app-chrome-button app-chrome-gear"
+              aria-label="開啟系統儀表板與排程管理"
+              title="系統儀表板與排程管理"
             >
-              鴉巢
+              ⚙
             </button>
-          </div>
+          ) : <span aria-hidden="true" />}
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[18px]"
-            style={{ color: "var(--ink)" }}
+            className="app-chrome-button app-chrome-menu"
+            aria-label="開啟側拉選單"
+            title="開啟側拉選單"
           >
-            ≡
+            ☰
           </button>
         </header>
       )}
