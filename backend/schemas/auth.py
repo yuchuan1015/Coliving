@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     birth_year: int = Field(ge=1900, le=2026)
     anchor_date_1: str | None = Field(default=None, pattern=r"^\d{2}-\d{2}$")  # 月-日
     anchor_date_2: str | None = Field(default=None, pattern=r"^\d{2}-\d{2}$")
+    timezone: str | None = Field(default=None, max_length=64)  # IANA 名，前端用 Intl 自動帶；空＝Asia/Taipei
 
 
 class LoginRequest(BaseModel):

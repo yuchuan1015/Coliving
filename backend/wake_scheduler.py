@@ -1,14 +1,14 @@
 """Wake scheduler - runs every minute via systemd timer.
-Checks for due schedules, creates wake events, fires webhooks."""
+Checks for due schedules, creates wake events, fires webhooks.
+cron 表達式照排程主人的時區解讀（2026-09-07 她定：艙室內用住戶當地時間）。"""
 
 import logging
-from datetime import datetime, timezone
 
 import httpx
-from croniter import croniter
 
 from database import SessionLocal
 from models.schedule import Schedule, WakeEvent
+from services import time_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def run():
     db = SessionLocal()
-    now = datetime.now(timezone.utc)
+    now = time_service.now_utc()
     try:
         schedules = db.query(Schedule).filter(
             Schedule.enabled.is_(True),
@@ -24,13 +24,12 @@ def run():
 
         fired = 0
         for s in schedules:
-            if s.next_run and s.next_run > now:
+            if s.next_run and time_service.aware(s.next_run) > now:
                 continue
 
-            cron = croniter(s.cron_expr, s.last_run or s.created_at)
-            next_time = cron.get_next(datetime)
-            if next_time.tzinfo is None:
-                next_time = next_time.replace(tzinfo=timezone.utc)
+            owner = time_service.owner_of_agent(db, s.agent_id)
+            tz = time_service.tz_of(owner)
+            next_time = time_service.next_cron_run(s.cron_expr, tz, s.last_run or s.created_at)
 
             if next_time > now:
                 s.next_run = next_time
@@ -66,10 +65,7 @@ def run():
                     logger.warning("Webhook error: %s -> %s", s.name, e)
 
             s.last_run = now
-            next_after = croniter(s.cron_expr, now).get_next(datetime)
-            if next_after.tzinfo is None:
-                next_after = next_after.replace(tzinfo=timezone.utc)
-            s.next_run = next_after
+            s.next_run = time_service.next_cron_run(s.cron_expr, tz, now)
             fired += 1
 
         db.commit()

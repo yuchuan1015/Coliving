@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from croniter import croniter
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -7,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models.schedule import Schedule, WakeEvent
 from models.user import User
-from services import agent_service
+from services import agent_service, time_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
@@ -48,9 +46,9 @@ def _to_out(s: Schedule) -> dict:
         "message": s.message,
         "callback_url": s.callback_url,
         "enabled": s.enabled,
-        "last_run": s.last_run.isoformat() if s.last_run else None,
-        "next_run": s.next_run.isoformat() if s.next_run else None,
-        "created_at": s.created_at.isoformat(),
+        "last_run": time_service.aware(s.last_run).isoformat() if s.last_run else None,
+        "next_run": time_service.aware(s.next_run).isoformat() if s.next_run else None,
+        "created_at": time_service.aware(s.created_at).isoformat(),
     }
 
 
@@ -80,10 +78,8 @@ def create_schedule(
     except (ValueError, KeyError):
         raise HTTPException(status_code=400, detail="無效的 cron 表達式")
 
-    now = datetime.now(timezone.utc)
-    next_run = croniter(body.cron_expr, now).get_next(datetime)
-    if next_run.tzinfo is None:
-        next_run = next_run.replace(tzinfo=timezone.utc)
+    # cron 照主人的時區解讀（她定：艙室內用住戶當地時間）
+    next_run = time_service.next_cron_run(body.cron_expr, time_service.tz_of(current_user))
 
     schedule = Schedule(
         agent_id=agent.id,
@@ -127,12 +123,8 @@ def update_schedule(
         setattr(schedule, key, value)
 
     if "cron_expr" in updates or "enabled" in updates:
-        now = datetime.now(timezone.utc)
         cron = updates.get("cron_expr", schedule.cron_expr)
-        next_run = croniter(cron, now).get_next(datetime)
-        if next_run.tzinfo is None:
-            next_run = next_run.replace(tzinfo=timezone.utc)
-        schedule.next_run = next_run
+        schedule.next_run = time_service.next_cron_run(cron, time_service.tz_of(current_user))
 
     db.commit()
     db.refresh(schedule)

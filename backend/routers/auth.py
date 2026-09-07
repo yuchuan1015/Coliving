@@ -7,7 +7,7 @@ from models.invite_code import InviteCode
 from models.user import User
 from schemas.auth import CreateInviteCodeRequest, LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
 from schemas.user import AuthResponse, UserPublic
-from services import auth_service, coordinate_service, invite_service
+from services import auth_service, coordinate_service, invite_service, time_service
 from utils.deps import get_db, require_admin
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -36,6 +36,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
             coordinate_service.set_anchor(user, 1, req.anchor_date_1)
         if req.anchor_date_2:
             coordinate_service.set_anchor(user, 2, req.anchor_date_2)
+        if req.timezone:
+            user.timezone = time_service.validate_timezone(req.timezone)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     db.add(user)

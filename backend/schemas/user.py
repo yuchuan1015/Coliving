@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UserPublic(BaseModel):
@@ -22,6 +22,12 @@ class UserMe(UserPublic):
     coordinate: dict | None = None     # {l, b, r, rank}；None＝漂流中
     drifting: bool = True
     label: str | None = None           # 漂流中時是「星空漂流中」
+    timezone: str | None = None        # 住戶填的 IANA 名；空＝Asia/Taipei
+    clock: dict | None = None          # {utc, timezone, local_time, community_timezone, community_time}
+
+
+class UpdateMeRequest(BaseModel):
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class AnchorRequest(BaseModel):
