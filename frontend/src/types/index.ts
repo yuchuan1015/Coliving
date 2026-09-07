@@ -7,6 +7,7 @@ export interface UserPublic {
 }
 
 export interface UserMe extends UserPublic {
+  timezone?: string;
   is_active: boolean;
   last_login_at: string | null;
 }

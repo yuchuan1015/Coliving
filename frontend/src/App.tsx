@@ -14,6 +14,10 @@ import { PlazaPage } from "./pages/PlazaPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResidentsPage } from "./pages/ResidentsPage";
 import { SchedulesPage } from "./pages/SchedulesPage";
+import { DiaryPage } from "./pages/DiaryPage";
+import { DrawerPage } from "./pages/DrawerPage";
+import { PhotoFramePage } from "./pages/PhotoFramePage";
+import { MailboxPage } from "./pages/MailboxPage";
 
 export default function App() {
   return (
@@ -25,6 +29,10 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/home/diary" element={<DiaryPage />} />
+              <Route path="/home/drawer" element={<DrawerPage />} />
+              <Route path="/home/photos" element={<PhotoFramePage />} />
+              <Route path="/mailbox" element={<MailboxPage />} />
               <Route path="/home/:moduleId" element={<FurniturePage />} />
               <Route path="/outside" element={<DashboardPage />} />
               <Route path="/adopt" element={<AdoptPage />} />

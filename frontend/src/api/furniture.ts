@@ -1,14 +1,14 @@
 import api from "./client";
 
 export interface FurnitureSummary {
-  weather: { description: string; temperature: number; icon: string } | null;
-  clock: { utc: string; taipei: string };
-  diary_count: number;
-  drawer_count: number;
-  photo_frame_count: number;
-  mirror: { name: string; avatar_emoji: string; persona: string } | null;
+  weather: { description: string; temperature: number; emoji?: string; weather?: string } | null;
+  clock: { utc: string; taipei?: string; timezone?: string; local_time?: string; community_timezone?: string; community_time?: string };
+  diary: { count: number };
+  drawer: { count: number };
+  photo_frame: { count: number };
+  mirror: { agent_name: string | null; avatar_emoji: string | null };
   door: { current_location: string | null };
-  bed: { schedule_count: number };
+  bed: { has_agent: boolean; is_sleeping: boolean };
 }
 
 export interface DiaryEntry {
@@ -43,11 +43,11 @@ export interface PhotoFrame {
 }
 
 export function getFurniture() {
-  return api.get<FurnitureSummary>("/home/furniture").then((r) => r.data);
+  return api.get<FurnitureSummary & { window?: FurnitureSummary["weather"] }>("/home/furniture").then(({ data }) => ({ ...data, weather: data.window ?? data.weather ?? null }));
 }
 
 export function getDiaryEntries(params?: { keyword?: string }) {
-  return api.get<DiaryEntry[]>("/diary", { params }).then((r) => r.data);
+  return api.get<DiaryEntry[] | { entries: DiaryEntry[] }>("/diary", { params }).then(({ data }) => Array.isArray(data) ? data : data.entries);
 }
 
 export function createDiaryEntry(data: { title: string; content: string; importance?: number }) {
@@ -63,7 +63,7 @@ export function deleteDiaryEntry(id: string) {
 }
 
 export function getDrawerItems() {
-  return api.get<DrawerItem[]>("/home/furniture/drawer").then((r) => r.data);
+  return api.get<DrawerItem[] | { items: DrawerItem[] }>("/home/furniture/drawer").then(({ data }) => Array.isArray(data) ? data : data.items);
 }
 
 export function storeDrawerItem(data: { label: string; content: string; category?: string }) {
@@ -75,15 +75,17 @@ export function deleteDrawerItem(id: string) {
 }
 
 export function getPhotoFrames() {
-  return api.get<PhotoFrame[]>("/home/furniture/photo-frame").then((r) => r.data);
+  return api.get<Array<PhotoFrame & { label?: string }> | { frames: Array<PhotoFrame & { label?: string }> }>("/home/furniture/photo-frame").then(({ data }) => (Array.isArray(data) ? data : data.frames).map(frame => ({ ...frame, title: frame.label ?? frame.title })));
 }
 
 export function createPhotoFrame(data: { category: PhotoFrame["category"]; title: string; content: string }) {
-  return api.post<PhotoFrame>("/home/furniture/photo-frame", data).then((r) => r.data);
+  const { title, ...rest } = data;
+  return api.post<PhotoFrame & { label?: string }>("/home/furniture/photo-frame", { ...rest, label: title }).then(({ data: frame }) => ({ ...frame, title: frame.label ?? frame.title }));
 }
 
 export function updatePhotoFrame(id: string, data: { title?: string; content?: string }) {
-  return api.put<PhotoFrame>(`/home/furniture/photo-frame/${id}`, data).then((r) => r.data);
+  const { title, ...rest } = data;
+  return api.put<PhotoFrame & { label?: string }>(`/home/furniture/photo-frame/${id}`, { ...rest, label: title }).then(({ data: frame }) => ({ ...frame, title: frame.label ?? frame.title }));
 }
 
 export function deletePhotoFrame(id: string) {

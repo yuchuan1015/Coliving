@@ -12,7 +12,7 @@ export function FurniturePage() {
   const { moduleId = "sleep" } = useParams();
   const module = modules[moduleId as keyof typeof modules] ?? modules.sleep;
   return <main className="ya-module-page">
-    <button className="ya-module-back" onClick={() => navigate("/")}>← 回到我的家</button>
+    <button className="ya-module-back" onClick={() => navigate("/")}>← 返回艙室</button>
     <section className="ya-module-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(2,2,8,.08), rgba(2,2,8,.85)), url(${module.image})` }}>
       <div className="ya-module-heading"><span className="ya-kicker">{module.eyebrow}</span><h1>{module.title}</h1><p>{module.intro}</p></div>
     </section>
