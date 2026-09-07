@@ -109,7 +109,8 @@ async def upload_avatar(
     if len(data) > AVATAR_MAX_SIZE:
         raise HTTPException(status_code=400, detail="檔案太大，最多 2MB")
     os.makedirs(AVATAR_DIR, exist_ok=True)
-    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
+    # 副檔名照 content_type 決定，不信檔名（傳 avatar.html 也只會存成圖片副檔名）
+    ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}[file.content_type]
     fname = f"{uuid.uuid4().hex}.{ext}"
     path = os.path.join(AVATAR_DIR, fname)
     with open(path, "wb") as f:

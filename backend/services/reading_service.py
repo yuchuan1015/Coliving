@@ -142,8 +142,8 @@ def add_highlight(db: Session, book: Book, paragraph_idx: int, text: str, author
     if author_kind not in AUTHOR_KINDS:
         raise ValueError("author_kind 要是 human 或 agent")
     text = text.strip()
-    if not text:
-        raise ValueError("劃線內容不能為空")
+    if len(text) < 2 or not re.search(r"[\w\u3040-\u30ff\u3400-\u9fff]", text):
+        raise ValueError("劃線至少兩個字，而且要有字，不能只有標點")
     p = _paragraph(db, book, paragraph_idx)
     if text not in p.text:
         raise ValueError("劃線必須是這段裡的原文片段")
