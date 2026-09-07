@@ -148,6 +148,7 @@ def residents() -> str:
                 "role": u.role,
                 "agent_name": a.name if a else None,
                 "agent_emoji": a.avatar_emoji if a else None,
+                "agent_avatar_url": a.avatar_url if a else None,
                 "agent_brain": a.display_brain if a else None,
                 **{k: v for k, v in coordinate_service.describe(db, u).items() if k != "distance_ly"},
             }

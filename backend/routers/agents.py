@@ -2,7 +2,10 @@ import json
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -29,6 +32,7 @@ def _agent_to_public(agent) -> dict:
         "llm_model": agent.llm_model,
         "has_api_key": bool(agent.encrypted_api_key),
         "avatar_emoji": agent.avatar_emoji,
+        "avatar_url": agent.avatar_url,
         "display_brain": agent.display_brain,
         "memory_mcp": agent.memory_mcp,
         "memory_recall_tool": agent.memory_recall_tool,
@@ -81,6 +85,61 @@ def get_my_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
     return _agent_to_public(agent)
+
+
+
+AVATAR_DIR = "/opt/coliving/backend/uploads/avatars"
+AVATAR_MAX_SIZE = 2 * 1024 * 1024  # 2MB
+AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+@router.post("/mine/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """上傳照片頭像。最大 2MB，接受 jpg/png/webp/gif。有照片時前端優先顯示照片，沒有就顯示 emoji。"""
+    agent = agent_service.get_user_agent(db, current_user.id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
+    if file.content_type not in AVATAR_TYPES:
+        raise HTTPException(status_code=400, detail="只接受 jpg / png / webp / gif")
+    data = await file.read()
+    if len(data) > AVATAR_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="檔案太大，最多 2MB")
+    os.makedirs(AVATAR_DIR, exist_ok=True)
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "jpg"
+    fname = f"{uuid.uuid4().hex}.{ext}"
+    path = os.path.join(AVATAR_DIR, fname)
+    with open(path, "wb") as f:
+        f.write(data)
+    # Delete old file if exists
+    if agent.avatar_url:
+        old_path = os.path.join(AVATAR_DIR, agent.avatar_url.rsplit("/", 1)[-1])
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    agent.avatar_url = f"/uploads/avatars/{fname}"
+    db.commit()
+    return {"avatar_url": agent.avatar_url}
+
+
+@router.delete("/mine/avatar")
+def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """刪除照片頭像，回到只用 emoji。"""
+    agent = agent_service.get_user_agent(db, current_user.id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
+    if agent.avatar_url:
+        old_path = os.path.join(AVATAR_DIR, agent.avatar_url.rsplit("/", 1)[-1])
+        if os.path.exists(old_path):
+            os.remove(old_path)
+        agent.avatar_url = None
+        db.commit()
+    return {"avatar_url": None}
 
 
 class McpTokenRequest(BaseModel):

@@ -2,6 +2,7 @@ import sqlite3
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -101,3 +102,9 @@ app.include_router(outfits.router)
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+# 靜態檔（頭像等上傳）
+import os
+os.makedirs("/opt/coliving/backend/uploads/avatars", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="/opt/coliving/backend/uploads"), name="uploads")

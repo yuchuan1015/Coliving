@@ -53,6 +53,7 @@ class ResidentWithAgent(BaseModel):
     agent_id: str | None = None
     agent_name: str | None = None
     agent_emoji: str | None = None
+    agent_avatar_url: str | None = None
     agent_brain: str | None = None  # 對外顯示的腦型號（住戶自填）
     coordinate: dict | None = None  # 這戶的星球座標；None＝漂流中
     drifting: bool = True

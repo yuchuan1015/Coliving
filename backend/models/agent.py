@@ -18,6 +18,7 @@ class Agent(Base):
     llm_model: Mapped[str] = mapped_column(String(64), nullable=False)
     encrypted_api_key: Mapped[str] = mapped_column(Text, nullable=False)
     avatar_emoji: Mapped[str] = mapped_column(String(8), nullable=False, default="\U0001f916")
+    avatar_url: Mapped[str | None] = mapped_column(String(256), nullable=True)  # 照片頭像 URL，有值前端優先顯示這個
     # 對外顯示的腦型號，自己打字，跟 llm_provider/llm_model 無關（2026-09-07 她定，migration 003）
     display_brain: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # 記憶匯流遠路（2026-09-07 她定：自己的記憶庫包成 MCP 接進來）：external_mcps 裡哪一個是記憶、recall 用哪個工具

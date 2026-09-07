@@ -90,6 +90,7 @@ def list_residents(
             agent_id=a.id if a else None,
             agent_name=a.name if a else None,
             agent_emoji=a.avatar_emoji if a else None,
+            agent_avatar_url=a.avatar_url if a else None,
             agent_brain=a.display_brain if a else None,
             **coordinate_service.describe(db, u, viewer=current_user),
         )
