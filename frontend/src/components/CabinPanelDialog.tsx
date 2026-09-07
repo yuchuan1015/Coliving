@@ -58,6 +58,7 @@ export function CabinPanelDialog({ panel, summary, now, onClose }: { panel: Cabi
     <header><h2 id="cabin-panel-title">{titles[panel]}</h2><button onClick={onClose} aria-label="關閉彈窗">×</button></header>
     {panel === "settings" && <div className="cabin-panel-actions">
       <button onClick={() => go("/agent/edit")}>Agent 設定</button>
+      <button onClick={() => go("/agent/advanced")}>進階連線與房間設定</button>
       <button onClick={() => go("/schedules")}>排程管理</button>
       {user?.role === "admin" && <button onClick={() => go("/admin")}>系統儀表板</button>}
       <button onClick={() => { onClose(); logout(); }}>登出</button>

@@ -6,6 +6,8 @@ import { getFurniture, type FurnitureSummary } from "../api/furniture";
 import { useAuth } from "../hooks/useAuth";
 import { cabinZones, coverPoint, type CabinFurniture, type CabinPanel } from "../data/cabin";
 import { CabinPanelDialog } from "../components/CabinPanelDialog";
+import { AvatarContent } from "../components/AvatarContent";
+import { getMyAgent } from "../api/agents";
 import type { AnnouncementOut, DashboardData } from "../types";
 import "../cabin-home.css";
 
@@ -38,7 +40,11 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    getDashboard().then(data => { if (!cancelled) setDashboard(data); }).catch(() => { if (!cancelled) setError(true); });
+    getDashboard().then(async data => {
+      // The dashboard may lag the new avatar field; mine is the editor's source of truth.
+      const current = data.agents.length ? await getMyAgent().catch(() => null) : null;
+      if (!cancelled) setDashboard(current ? { ...data, agents: [current, ...data.agents.filter(item => item.id !== current.id)] } : data);
+    }).catch(() => { if (!cancelled) setError(true); });
     getFurniture().then(data => { if (!cancelled) setSummary(data); }).catch(() => {});
     getAnnouncements().then(items => {
       if (!cancelled) setAnnouncement([...items].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null);
@@ -125,7 +131,7 @@ export function HomePage() {
 
     <section className="cabin-card cabin-agent" aria-label="Agent 個人名牌">
       <button className="cabin-agent-link" onClick={() => navigate(agent ? "/agent/edit" : "/adopt")} aria-label={agent ? `編輯${agent.name}的資料` : "領養室友"}>
-        <span className="cabin-avatar" aria-hidden="true">{agent?.avatar_emoji ?? "◌"}</span>
+        <span className="cabin-avatar" aria-hidden="true"><AvatarContent url={agent?.avatar_url} emoji={agent?.avatar_emoji ?? "◌"} name={agent?.name ?? "室友"} /></span>
         <span className="cabin-agent-copy"><strong>{agent?.name ?? (error ? "室友資料未同步" : "尚未連結 Agent")}</strong><small><span aria-hidden="true">•</span> {agent?.status ?? "等待連結"}</small></span>
       </button>
       <div className="cabin-fab-wrap">

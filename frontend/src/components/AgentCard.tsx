@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { AgentPublic } from "../types";
+import { AvatarContent } from "./AvatarContent";
 
 export function AgentCard({ agent }: { agent: AgentPublic }) {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export function AgentCard({ agent }: { agent: AgentPublic }) {
           className="flex h-14 w-14 items-center justify-center rounded-full text-2xl"
           style={{ background: "var(--accent-light)" }}
         >
-          {agent.avatar_emoji}
+          <AvatarContent url={agent.avatar_url} emoji={agent.avatar_emoji} name={agent.name} />
         </div>
         <div>
           <h2 className="text-base font-medium" style={{ color: "var(--ink)" }}>

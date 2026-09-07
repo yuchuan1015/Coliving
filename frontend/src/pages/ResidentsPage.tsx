@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getResidents } from "../api/community";
 import type { ResidentWithAgent } from "../types";
+import { AvatarContent } from "../components/AvatarContent";
 
 export function ResidentsPage() {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export function ResidentsPage() {
                 className="flex h-12 w-12 items-center justify-center rounded-full text-xl"
                 style={{ background: "var(--accent-light)" }}
               >
-                {r.agent_emoji || r.display_name[0]}
+                <AvatarContent url={r.agent_avatar_url} emoji={r.agent_emoji || r.display_name[0]} name={r.agent_name || r.display_name} />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">

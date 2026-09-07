@@ -20,7 +20,7 @@ export const cabinZones: CabinZone[] = [
   { id: "life", label: "生活區", image: "/ya-chao-assets/cabin-life-v1.webp", furniture: [
     { id: "bed", label: "睡眠艙", detail: "休息、夢境與夜間狀態", x: .35, y: .52, path: "/home/sleep" },
     { id: "wardrobe", label: "衣櫃", detail: "室友的造型收藏", x: .92, y: .42, panel: "wardrobe" },
-    { id: "mirror", label: "鏡子", detail: "室友資料與大腦設定", x: .65, y: .38, path: "/agent/edit" },
+    { id: "mirror", label: "鏡子", detail: "資料更新處 · 頭像與大腦設定", x: .65, y: .38, path: "/agent/edit" },
     { id: "clock", label: "時鐘", detail: "當地時間與社區時間", x: .782, y: .335, panel: "clock" },
     { id: "window", label: "窗戶", detail: "看看今天的天氣", x: .13, y: .36, panel: "window" },
   ] },

@@ -31,14 +31,17 @@ export interface ExternalMcpConfig {
   token?: string;
 }
 
+export type LlmProvider = "claude" | "openai" | "xai" | "gemini" | "deepseek";
+
 export interface AgentPublic {
   id: string;
   name: string;
   persona: string;
-  llm_provider: "claude" | "openai" | "xai";
+  llm_provider: LlmProvider;
   llm_model: string;
   has_api_key: boolean;
   avatar_emoji: string;
+  avatar_url?: string | null;
   status: string;
   ob_enabled: boolean;
   external_mcps: ExternalMcpConfig[];
@@ -50,7 +53,7 @@ export interface AgentPublic {
 export interface CreateAgentPayload {
   name: string;
   persona: string;
-  llm_provider: "claude" | "openai" | "xai";
+  llm_provider: LlmProvider;
   llm_model: string;
   api_key: string;
   avatar_emoji?: string;
@@ -94,6 +97,7 @@ export interface ResidentWithAgent {
   agent_id: string | null;
   agent_name: string | null;
   agent_emoji: string | null;
+  agent_avatar_url?: string | null;
 }
 
 export interface ResidentList {

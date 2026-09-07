@@ -1,5 +1,25 @@
 import client from "./client";
-import type { AgentPublic, CreateAgentPayload } from "../types";
+import type { AgentPublic, CreateAgentPayload, LlmProvider } from "../types";
+
+export interface ProviderSettings {
+  providers: { key: LlmProvider; name: string }[];
+  disclaimer: string;
+}
+
+export async function getProviderSettings(): Promise<ProviderSettings> {
+  return (await client.get<ProviderSettings>("/agents/providers")).data;
+}
+
+export async function uploadAgentAvatar(file: File): Promise<{ avatar_url: string }> {
+  const body = new FormData();
+  body.append("file", file);
+  // Let the browser set the multipart boundary; never send JSON headers here.
+  return (await client.post<{ avatar_url: string }>("/agents/mine/avatar", body)).data;
+}
+
+export async function deleteAgentAvatar(): Promise<void> {
+  await client.delete("/agents/mine/avatar");
+}
 
 export async function createAgent(payload: CreateAgentPayload): Promise<AgentPublic> {
   const res = await client.post<AgentPublic>("/agents", payload);

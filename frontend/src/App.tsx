@@ -6,6 +6,7 @@ import { AdoptPage } from "./pages/AdoptPage";
 import { AdminPage } from "./pages/AdminPage";
 import { ChatPage } from "./pages/ChatPage";
 import { EditAgentPage } from "./pages/EditAgentPage";
+import { AdvancedAgentPage } from "./pages/AdvancedAgentPage";
 import { FurniturePage } from "./pages/FurniturePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/adopt" element={<AdoptPage />} />
               <Route path="/chat/:agentId" element={<ChatPage />} />
               <Route path="/agent/edit" element={<EditAgentPage />} />
+              <Route path="/agent/advanced" element={<AdvancedAgentPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaPage />} />
