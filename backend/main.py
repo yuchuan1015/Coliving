@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import Base, engine
-from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, health, history, home, library, mail, museum, outfits, park, pet, posts, review, schedules, shell, skins, users, weilan
+from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, health, history, home, internal_memory, library, memory, mail, museum, outfits, park, pet, posts, review, schedules, shell, skins, users, weilan
 
 
 def _migrate_sqlite():
@@ -79,6 +79,7 @@ app.include_router(library.router)
 app.include_router(park.router)
 app.include_router(admin.router)
 app.include_router(internal_memory.router)
+app.include_router(memory.router)
 app.include_router(footprints.router)
 app.include_router(mail.router)
 app.include_router(credit.router)
