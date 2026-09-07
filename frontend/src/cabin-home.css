@@ -3,6 +3,7 @@
   --c-snow: #4e6584;
   --c-frost: #e4dfd2;
   --c-moon: #d2a663;
+  --c-void: #090711;
   --c-avatar: 72px;
   box-sizing: border-box;
   height: 100vh;
@@ -16,14 +17,39 @@
   grid-template-rows: 136px minmax(0, 1fr) 104px;
   gap: 12px;
   color: var(--c-frost);
-  background: var(--c-sky);
+  background:
+    radial-gradient(ellipse at 106% 72%, rgb(100 54 135 / .24), transparent 46%),
+    radial-gradient(ellipse at 8% 12%, rgb(68 41 99 / .16), transparent 40%),
+    var(--c-void);
   isolation: isolate;
   position: relative;
 }
-body:has(.cabin-home) { background: #0f1a2e; }
+body:has(.cabin-home) { background: #090711; }
+/* Static, non-interactive star field. All room images and their overlays stay untouched. */
+.cabin-home::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 19px 31px, rgb(228 223 210 / .48) 0 .65px, transparent 1px),
+    radial-gradient(circle at 73px 113px, rgb(194 172 215 / .3) 0 .5px, transparent 1px),
+    radial-gradient(circle at 139px 67px, rgb(228 223 210 / .24) 0 .5px, transparent .9px),
+    radial-gradient(circle at 41px 157px, rgb(194 172 215 / .24) 0 .6px, transparent 1px);
+  background-size: 181px 263px, 239px 317px, 163px 229px, 293px 191px;
+}
 .cabin-home button { font: inherit; cursor: pointer; }
 .cabin-home button:focus-visible, .cabin-panel button:focus-visible { outline: 2px solid var(--c-moon); outline-offset: 4px; }
 .cabin-card { border: 1px solid rgb(228 223 210 / .38); border-radius: 24px; min-width: 0; background: linear-gradient(120deg, rgb(78 101 132 / .62), rgb(78 101 132 / .48)); }
+/* Approved purple material applies only to the two outer cards, not the cabin. */
+.cabin-info, .cabin-agent {
+  border-color: rgb(163 128 185 / .55);
+  background:
+    radial-gradient(ellipse at 90% 95%, rgb(100 58 129 / .14), transparent 65%),
+    linear-gradient(125deg, rgb(38 27 52 / .82), rgb(25 18 37 / .72));
+  box-shadow: inset 0 1px 0 rgb(207 181 226 / .12), 0 0 16px rgb(99 55 133 / .08);
+}
 .cabin-info { padding: 16px; display: flex; flex-direction: column; justify-content: center; }
 .cabin-info-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cabin-time { font-size: clamp(20px, 5.8vw, 28px); white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
