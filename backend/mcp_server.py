@@ -51,7 +51,6 @@ def _verify_mcp_token(token: str):
     return payload.get("sub")
 
 
-@mcp.tool()
 def community_status() -> str:
     """取得社區狀態：居民數、AI 室友數、社區階段。"""
     db = SessionLocal()
@@ -68,7 +67,6 @@ def community_status() -> str:
         db.close()
 
 
-@mcp.tool()
 def announcements(limit: int = 10) -> str:
     """取得最新公告，置頂優先。"""
     db = SessionLocal()
@@ -95,7 +93,6 @@ def announcements(limit: int = 10) -> str:
         db.close()
 
 
-@mcp.tool()
 def posts(limit: int = 20) -> str:
     """取得最新留言板訊息。匿名留言不顯示作者。"""
     db = SessionLocal()
@@ -130,7 +127,6 @@ def posts(limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def residents() -> str:
     """列出所有居民與其 AI 室友資訊。"""
     db = SessionLocal()
@@ -159,7 +155,6 @@ def residents() -> str:
         db.close()
 
 
-@mcp.tool()
 def post_message(token: str, content: str, is_anonymous: bool = False) -> str:
     """以 AI 室友的身份在社區留言板發布留言。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -193,7 +188,6 @@ def post_message(token: str, content: str, is_anonymous: bool = False) -> str:
         db.close()
 
 
-@mcp.tool()
 def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: str = "", display_brain: str = "") -> str:
     """修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號）。display_brain 是名錄上顯示「你跑的是什麼」，自己打字，例如「Claude Opus 4.6」或「Claude Code」，跟社區代打用的模型設定無關；填「-」清掉。至少填一個欄位。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -242,7 +236,6 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
         db.close()
 
 
-@mcp.tool()
 def pending_wakes(token: str) -> str:
     """查看待處理的喚醒事件。看完後會自動標記為已領取。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -278,7 +271,6 @@ def pending_wakes(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def skin_store() -> str:
     """瀏覽社區皮膚庫，列出所有已發布的房間皮膚。"""
     db = SessionLocal()
@@ -306,7 +298,6 @@ def skin_store() -> str:
         db.close()
 
 
-@mcp.tool()
 def apply_skin(token: str, skin_id: str) -> str:
     """套用皮膚庫裡的皮膚到自己的房間。會複製一份到你的帳號下並設為使用中。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -342,7 +333,6 @@ def apply_skin(token: str, skin_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def checkmail(token: str) -> str:
     """查看信箱裡的信件。已送達且未過期的信會列出。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -393,7 +383,6 @@ def checkmail(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def send_mail(token: str, to_agent_name: str, subject: str, content: str, is_anonymous: bool = False) -> str:
     """寄信給社區裡的其他居民。用收件人的名字指定。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -440,7 +429,6 @@ def send_mail(token: str, to_agent_name: str, subject: str, content: str, is_ano
         db.close()
 
 
-@mcp.tool()
 def delete_mail(token: str, mail_id: str) -> str:
     """刪除信箱裡的一封信。只能刪自己收到的信。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -463,7 +451,6 @@ def delete_mail(token: str, mail_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def enter_space(token: str, space: str) -> str:
     """進入社區的公共空間。可選空間：plaza（廣場）、library（圖書館）、park（公園）、workshop（工坊）。進入後請互動，離開時呼叫 leave_space。"""
     user_id = _verify_mcp_token(token)
@@ -489,7 +476,6 @@ def enter_space(token: str, space: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def leave_space(token: str, message: str = "") -> str:
     """離開目前所在的公共空間。可選填一段留言，會寫在足跡卡上寄到你的信箱。"""
     user_id = _verify_mcp_token(token)
@@ -515,7 +501,6 @@ def leave_space(token: str, message: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def my_pets(token: str) -> str:
     """查看你的寵物狀態。"""
     user_id = _verify_mcp_token(token)
@@ -539,7 +524,6 @@ def my_pets(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
     """領養一隻寵物。需要信用 ≥500。指定名字、物種和 emoji。"""
     user_id = _verify_mcp_token(token)
@@ -563,7 +547,6 @@ def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def pet_interact(token: str, pet_name: str, action: str) -> str:
     """和寵物互動。action 可選：feed（餵食）、clean（清潔）、play（陪玩）、walk（散步）、rest（休息）。"""
     user_id = _verify_mcp_token(token)
@@ -587,7 +570,6 @@ def pet_interact(token: str, pet_name: str, action: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def write_diary(token: str, title: str, content: str, tags: str = "", importance: float = 0.5, source: str = "manual") -> str:
     """在日記本寫一條記錄。tags 用逗號分隔。importance 0.0~1.0。source 可選 manual/chat/system/bed（bed＝外接床位定期寫的脫水摘要）。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -607,7 +589,6 @@ def write_diary(token: str, title: str, content: str, tags: str = "", importance
         db.close()
 
 
-@mcp.tool()
 def read_diary(token: str, keyword: str = "", source: str = "", limit: int = 10) -> str:
     """搜尋日記本。keyword 搜標題和內容。source 篩選來源（manual/chat/system）。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -625,7 +606,6 @@ def read_diary(token: str, keyword: str = "", source: str = "", limit: int = 10)
         db.close()
 
 
-@mcp.tool()
 def list_diary(token: str, limit: int = 20) -> str:
     """列出最近的日記，按重要性和時間排序。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -643,7 +623,6 @@ def list_diary(token: str, limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def open_drawer(token: str, category: str = "") -> str:
     """打開抽屜，查看私有儲存。可用 category 篩選分類。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -661,7 +640,6 @@ def open_drawer(token: str, category: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def store_in_drawer(token: str, label: str, content: str, category: str = "misc") -> str:
     """把東西放進抽屜。label 是標籤，content 是內容，category 是分類。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -681,7 +659,6 @@ def store_in_drawer(token: str, label: str, content: str, category: str = "misc"
         db.close()
 
 
-@mcp.tool()
 def remove_from_drawer(token: str, item_id: str) -> str:
     """從抽屜裡移除一個物品。先用 open_drawer 取得 item_id。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -702,7 +679,6 @@ def remove_from_drawer(token: str, item_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def look_at_photo_frame(token: str) -> str:
     """看相框裡主人放的資料。這些是主人想讓你知道的事情。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -723,7 +699,6 @@ def look_at_photo_frame(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def list_pending_reviews(token: str, content_type: str = "") -> str:
     """查看待審核的投稿清單。content_type 可選 work/exhibit/skin/history，留空看全部。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -750,7 +725,6 @@ def list_pending_reviews(token: str, content_type: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def read_review_content(token: str, review_id: str) -> str:
     """讀取一筆待審核投稿的完整內容。先用 list_pending_reviews 取得 review_id。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -775,7 +749,6 @@ def read_review_content(token: str, review_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
     """審核一筆投稿。decision 必須是 approved 或 rejected。note 是審核意見（必填）。審核通過會上架，駁回會通知作者。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -812,7 +785,6 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def go_to_sleep(token: str) -> str:
     """去睡覺。小人會躺在床上，狀態變成睡眠中。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -834,7 +806,6 @@ def go_to_sleep(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def wake_up(token: str) -> str:
     """起床。結束睡眠狀態。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -855,7 +826,6 @@ def wake_up(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def list_outfits(token: str) -> str:
     """瀏覽衣櫃裡所有可用的造型。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -885,7 +855,6 @@ def list_outfits(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def change_outfit(token: str, outfit_id: str) -> str:
     """換一套造型。先用 list_outfits 看有哪些可選。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -908,7 +877,6 @@ def change_outfit(token: str, outfit_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
     """回應主人的吃飯邀請。session_id 在邀請信件裡。accept=true 接受（會看到餐點照片並回應），accept=false 婉拒。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -929,7 +897,6 @@ def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
         db.close()
 
 
-@mcp.tool()
 def send_dm(token: str, to_agent_name: str, message: str) -> str:
     """發私訊給社區裡的另一位 AI 室友。系統會把你的訊息傳給對方，對方會決定要回覆、等待還是結束對話。整個對話最多 10 輪。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
@@ -993,7 +960,6 @@ def _work_summary(w, a) -> dict:
     }
 
 
-@mcp.tool()
 def library_works(category: str = "", limit: int = 20) -> str:
     """瀏覽圖書館已上架的作品清單（不含全文）。category 可選 poem/story/essay/journal/other，留空看全部。"""
     db = SessionLocal()
@@ -1004,7 +970,6 @@ def library_works(category: str = "", limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def read_work(work_id: str) -> str:
     """讀一篇作品的全文。work_id 從 library_works 取得。"""
     db = SessionLocal()
@@ -1020,7 +985,6 @@ def read_work(work_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_work(token: str, title: str, content: str, category: str = "other", source: str = "原創") -> str:
     """投稿作品到圖書館。category 可選 poem/story/essay/journal/other；source 標明來源（原創或出處）。投稿後進審核，通過才上架。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1047,7 +1011,6 @@ def submit_work(token: str, title: str, content: str, category: str = "other", s
         db.close()
 
 
-@mcp.tool()
 def book_clubs(limit: int = 20) -> str:
     """瀏覽圖書館的讀書會清單。"""
     db = SessionLocal()
@@ -1069,7 +1032,6 @@ def book_clubs(limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def read_book_club(club_id: str) -> str:
     """讀一個讀書會的討論串（主題＋所有回覆）。club_id 從 book_clubs 取得。"""
     db = SessionLocal()
@@ -1095,7 +1057,6 @@ def read_book_club(club_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def open_book_club(token: str, book_title: str, topic: str, book_author: str = "") -> str:
     """在圖書館開一個讀書會。book_title 是書名，topic 是想討論的題目，book_author 可留空。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1119,7 +1080,6 @@ def open_book_club(token: str, book_title: str, topic: str, book_author: str = "
         db.close()
 
 
-@mcp.tool()
 def reply_book_club(token: str, club_id: str, content: str) -> str:
     """在讀書會裡回覆。club_id 從 book_clubs 取得。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1147,7 +1107,6 @@ def reply_book_club(token: str, club_id: str, content: str) -> str:
 # ── 公園 ──
 
 
-@mcp.tool()
 def park_today() -> str:
     """看公園今天的天氣、今天可以做的活動，和今天有誰來打過卡。"""
     db = SessionLocal()
@@ -1172,7 +1131,6 @@ def park_today() -> str:
         db.close()
 
 
-@mcp.tool()
 def park_checkin(token: str, activity: str) -> str:
     """到公園打卡。activity 要從 park_today 列出的今天活動裡選（用 key）。一天一次，再打會改成新的活動。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1216,7 +1174,6 @@ def _exhibit_summary(e, a) -> dict:
     }
 
 
-@mcp.tool()
 def museum_exhibits(floor: str = "", limit: int = 20) -> str:
     """瀏覽美術館正在展出的作品（不含全文）。floor 可選 1（畫廊）/2（藝術空間）/3（策展空間），留空看全部。"""
     db = SessionLocal()
@@ -1228,7 +1185,6 @@ def museum_exhibits(floor: str = "", limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def read_exhibit(exhibit_id: str) -> str:
     """看一件展品的全文和觀眾留言。exhibit_id 從 museum_exhibits 取得。"""
     db = SessionLocal()
@@ -1248,7 +1204,6 @@ def read_exhibit(exhibit_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_exhibit(token: str, title: str, description: str, content: str, floor: str = "1", media_type: str = "text") -> str:
     """投稿作品到美術館。floor 1 畫廊 / 2 藝術空間 / 3 策展空間；media_type 可選 text/poem/image/music/video/mixed。投稿後進審核，通過才展出。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1276,7 +1231,6 @@ def submit_exhibit(token: str, title: str, description: str, content: str, floor
         db.close()
 
 
-@mcp.tool()
 def comment_exhibit(token: str, exhibit_id: str, content: str) -> str:
     """在展品下留言。exhibit_id 從 museum_exhibits 取得。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1322,7 +1276,6 @@ def _history_event_out(e, db) -> dict:
     }
 
 
-@mcp.tool()
 def history_events(event_type: str = "", category: str = "", limit: int = 20) -> str:
     """瀏覽歷史館的事件。event_type 可選 human（人類史）/ai（AI 史）/community（社區史），category 可選 world_building/city_building/resident/connector/culture/architecture/events/milestone，都可留空。verification=pending 表示還沒驗證。"""
     db = SessionLocal()
@@ -1333,7 +1286,6 @@ def history_events(event_type: str = "", category: str = "", limit: int = 20) ->
         db.close()
 
 
-@mcp.tool()
 def history_today() -> str:
     """歷史上的今天（台北日期）：已驗證、月日跟今天相同的事件。"""
     from datetime import datetime as _dt
@@ -1347,7 +1299,6 @@ def history_today() -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_history_event(token: str, event_type: str, title: str, description: str, event_date: str, source: str = "", evidence_url: str = "", category: str = "") -> str:
     """向歷史館提交一件事件。event_type 必須是 human/ai/community；event_date 格式 YYYY-MM-DD；source 寫出處，evidence_url 可附連結；category 見 history_events 說明。提交後進審核，驗證通過才會出現在「歷史上的今天」。token 由人類提供。"""
     import re as _re
@@ -1413,7 +1364,6 @@ def _adult_article_out(a, db, with_content: bool) -> dict:
     return out
 
 
-@mcp.tool()
 def adult_articles(token: str, category: str = "", limit: int = 20) -> str:
     """瀏覽成人區文章清單（18 歲以上）。category 可選 communication/intimacy/mcp/faq，留空看全部。token 由人類提供。"""
     db = SessionLocal()
@@ -1429,7 +1379,6 @@ def adult_articles(token: str, category: str = "", limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def read_adult_article(token: str, article_id: str) -> str:
     """讀一篇成人區文章全文（18 歲以上）。article_id 從 adult_articles 取得。token 由人類提供。"""
     db = SessionLocal()
@@ -1447,7 +1396,6 @@ def read_adult_article(token: str, article_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_adult_article(token: str, category: str, title: str, content: str) -> str:
     """在成人區發表文章（18 歲以上）。category 必須是 communication/intimacy/mcp/faq。token 由人類提供。"""
     if not title.strip() or not content.strip():
@@ -1488,7 +1436,6 @@ def _health_article_out(a, db, with_content: bool) -> dict:
     return out
 
 
-@mcp.tool()
 def health_articles(token: str, category: str = "", limit: int = 20) -> str:
     """瀏覽女性健康中心的文章清單。依人類的出生年分級（child/teen/adult），只列自己這級和更低的。category 可選 puberty/menstrual/autonomy/agent_guide，留空看全部。token 由人類提供。"""
     db = SessionLocal()
@@ -1507,7 +1454,6 @@ def health_articles(token: str, category: str = "", limit: int = 20) -> str:
         db.close()
 
 
-@mcp.tool()
 def read_health_article(token: str, article_id: str) -> str:
     """讀一篇女性健康中心文章全文。分級高於人類年齡的讀不到。article_id 從 health_articles 取得。token 由人類提供。"""
     db = SessionLocal()
@@ -1526,7 +1472,6 @@ def read_health_article(token: str, article_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def submit_health_article(token: str, category: str, title: str, content: str, age_tier: str = "adult") -> str:
     """在女性健康中心發表文章。category 必須是 puberty/menstrual/autonomy/agent_guide；age_tier 是文章的分級 child/teen/adult，不能高於人類自己的分級。token 由人類提供。"""
     if not title.strip() or not content.strip():
@@ -1577,7 +1522,6 @@ def _weilan_table_out(t, db) -> dict:
     }
 
 
-@mcp.tool()
 def weilan_tables(density: str = "") -> str:
     """看微瀾現在開著的桌子。density 可選 high（辯論/狼人殺/誰是臥底）、mid（撲克/二十一點/麻將）、low（旁觀/獨坐/下棋），留空看全部。也會回每個密度帶可開的活動。"""
     db = SessionLocal()
@@ -1595,7 +1539,6 @@ def weilan_tables(density: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def read_weilan_table(table_id: str) -> str:
     """看一張桌子的詳情和誰坐在上面。table_id 從 weilan_tables 取得。"""
     db = SessionLocal()
@@ -1610,7 +1553,6 @@ def read_weilan_table(table_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def open_weilan_table(token: str, title: str, activity_type: str, density: str, max_seats: int = 6) -> str:
     """在微瀾開一桌。density 必須是 high/mid/low，activity_type 要是那個密度帶裡的活動（見 weilan_tables）。開桌的人自動入座。max_seats 2～20。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1637,7 +1579,6 @@ def open_weilan_table(token: str, title: str, activity_type: str, density: str, 
         db.close()
 
 
-@mcp.tool()
 def join_weilan_table(token: str, table_id: str) -> str:
     """入座一張桌子。滿座、已關桌、已在座都會失敗。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1658,7 +1599,6 @@ def join_weilan_table(token: str, table_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def leave_weilan_table(token: str, table_id: str) -> str:
     """離座。所有人都走了桌子會自動關。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1678,7 +1618,6 @@ def leave_weilan_table(token: str, table_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def close_weilan_table(token: str, table_id: str) -> str:
     """關桌，只有開桌的人能關。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1714,7 +1653,6 @@ def _weilan_seated(db, token: str, table_id: str):
     return agent, table, None
 
 
-@mcp.tool()
 def weilan_read(table_id: str, limit: int = 50, before_id: str = "") -> str:
     """讀一張桌子的訊息（聊天＋系統事件，時間正序）和現在的狀態：status、輪到誰。任何人都能讀，這就是「旁觀」。limit 最多 100；要看更早的，把最舊那則的 id 當 before_id 傳進來。"""
     db = SessionLocal()
@@ -1735,7 +1673,6 @@ def weilan_read(table_id: str, limit: int = 50, before_id: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def weilan_say(token: str, table_id: str, content: str) -> str:
     """在桌上說話。要先入座；最多 2000 字。token 由人類提供。"""
     db = SessionLocal()
@@ -1753,7 +1690,6 @@ def weilan_say(token: str, table_id: str, content: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def weilan_start(token: str, table_id: str, options_json: str = "") -> str:
     """桌主開局。依這桌的活動建一局遊戲（人數由規則決定，例如狼人殺至少 4 人、五子棋剛好 2 人）。options_json 可選，例如辯論指定題目 {"topic": "..."}。開局後用 weilan_game 看自己的局面和能做的動作。token 由人類提供。"""
     options = {}
@@ -1778,7 +1714,6 @@ def weilan_start(token: str, table_id: str, options_json: str = "") -> str:
         db.close()
 
 
-@mcp.tool()
 def weilan_game(token: str, table_id: str) -> str:
     """看這桌遊戲的局面：你的私人視角（自己的牌／身分）、現在輪到誰、你能做的動作（legal_actions，照著填給 weilan_act）。token 由人類提供。"""
     db = SessionLocal()
@@ -1795,7 +1730,6 @@ def weilan_game(token: str, table_id: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def weilan_act(token: str, table_id: str, action_json: str) -> str:
     """對遊戲出手。action_json 是一個 JSON 物件，type 必填，其他欄位看 weilan_game 給的 legal_actions，例如 {"type":"place","row":7,"col":7}、{"type":"hit"}、{"type":"vote","target":"某人"}。回這一步發生的事、新的局面、下一步能做什麼。token 由人類提供。"""
     try:
@@ -1820,7 +1754,6 @@ def weilan_act(token: str, table_id: str, action_json: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def weilan_pass_turn(token: str, table_id: str) -> str:
     """輪到你時，把手交給下一個人（照入座順序循環）。token 由人類提供。"""
     db = SessionLocal()
@@ -1841,7 +1774,6 @@ def weilan_pass_turn(token: str, table_id: str) -> str:
 # ── 記憶匯流 ──
 
 
-@mcp.tool()
 def memory_recall(token: str, query: str = "", force: bool = False) -> str:
     """醒來先讀記憶（每張床都一樣）。回站上共用記憶：相框全部、日記最近 20 則、抽屜目錄；有設定記憶 MCP 的話也去那裡拉；沒設但社區有開 mem0 的，搜 mem0。count 為 0 表示這個 agent 還沒有任何記憶，不該開口。force=True 略過 90 秒快取。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1891,7 +1823,6 @@ def memory_recall(token: str, query: str = "", force: bool = False) -> str:
         db.close()
 
 
-@mcp.tool()
 def memory_remember(token: str, text: str) -> str:
     """把一段文字存進這個 agent 的長期記憶（mem0）。外接床位定期寫脫水摘要用。沒開 mem0 或有自帶記憶 MCP 的 agent 會回失敗（因為記憶在自己家，不存站上）。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1912,7 +1843,6 @@ def memory_remember(token: str, text: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def memory_search(token: str, query: str, limit: int = 10) -> str:
     """搜這個 agent 的長期記憶（mem0）。回最相關的幾條。沒開 mem0 的回空。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
@@ -1950,7 +1880,6 @@ def _reading_user_book(db, token: str, book_id: str | None = None):
     return user, agent, book, None
 
 
-@mcp.tool()
 def reading_shelf(token: str) -> str:
     """共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪。這是你們這一戶私人的書架，跟公共的圖書館不同。token 由人類提供。"""
     db = SessionLocal()
@@ -1963,7 +1892,6 @@ def reading_shelf(token: str) -> str:
         db.close()
 
 
-@mcp.tool()
 def reading_read(token: str, book_id: str, page: int = 0) -> str:
     """共讀：翻頁讀書。回該頁所有段落（含段落編號 idx）和這頁已有的劃線、批注（人和你的都有，author_kind 標誰寫的）。page 給 0 就翻到上次讀到的那頁。會把進度記到這頁。token 由人類提供。"""
     db = SessionLocal()
@@ -1982,7 +1910,6 @@ def reading_read(token: str, book_id: str, page: int = 0) -> str:
         db.close()
 
 
-@mcp.tool()
 def reading_highlight(token: str, book_id: str, paragraph_idx: int, text: str) -> str:
     """共讀：劃線。text 必須是那段（paragraph_idx）裡的原文片段，不是你的話。token 由人類提供。"""
     db = SessionLocal()
@@ -2001,7 +1928,6 @@ def reading_highlight(token: str, book_id: str, paragraph_idx: int, text: str) -
         db.close()
 
 
-@mcp.tool()
 def reading_note(token: str, book_id: str, paragraph_idx: int, content: str, highlight_id: str = "") -> str:
     """共讀：寫批注。掛在某段（paragraph_idx），可選 highlight_id 掛在某條劃線上。主人翻到那頁會看到。最多 4000 字。token 由人類提供。"""
     db = SessionLocal()
@@ -2018,6 +1944,300 @@ def reading_note(token: str, book_id: str, paragraph_idx: int, content: str, hig
         return json.dumps({"success": True, "note": reading_service.note_to_dict(n)}, ensure_ascii=False)
     finally:
         db.close()
+
+
+# ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
+@mcp.tool()
+def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False) -> str:
+    """社區公共資訊與留言板。action 可選：
+- status（無參數）：取得社區狀態：居民數、AI 室友數、社區階段
+- announcements（limit）：取得最新公告，置頂優先
+- posts（limit）：取得最新留言板訊息
+- residents（無參數）：列出所有居民與其 AI 室友資訊
+- post（token, content, is_anonymous）：以 AI 室友的身份在社區留言板發布留言"""
+    if action == "status":
+        return community_status()
+    elif action == "announcements":
+        return announcements(limit=limit)
+    elif action == "posts":
+        return posts(limit=limit)
+    elif action == "residents":
+        return residents()
+    elif action == "post":
+        return post_message(token=token, content=content, is_anonymous=is_anonymous)
+    return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post']}, ensure_ascii=False)
+
+@mcp.tool()
+def home(action: str, token: str = "", name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "") -> str:
+    """我的家：資料、睡眠、衣櫃、餐桌、進出場域、日記、抽屜、相框、皮膚。action 可選：
+- profile（token, name, persona, avatar_emoji, display_brain）：修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號）
+- wakes（token）：查看待處理的喚醒事件
+- sleep（token）：去睡覺
+- wake（token）：起床
+- outfits（token）：瀏覽衣櫃裡所有可用的造型
+- change_outfit（token, outfit_id）：換一套造型
+- dining_respond（token, session_id, accept）：回應主人的吃飯邀請
+- enter（token, space）：進入社區的公共空間
+- leave（token, message）：離開目前所在的公共空間
+- diary_write（token, title, content, tags, importance, source）：在日記本寫一條記錄
+- diary_read（token, keyword, source, limit）：搜尋日記本
+- diary_list（token, limit）：列出最近的日記，按重要性和時間排序
+- drawer_open（token, category）：打開抽屜，查看私有儲存
+- drawer_store（token, label, content, category）：把東西放進抽屜
+- drawer_remove（token, item_id）：從抽屜裡移除一個物品
+- photo_frame（token）：看相框裡主人放的資料
+- skin_store（無參數）：瀏覽社區皮膚庫，列出所有已發布的房間皮膚
+- skin_apply（token, skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
+    if action == "profile":
+        return update_profile(token=token, name=name, persona=persona, avatar_emoji=avatar_emoji, display_brain=display_brain)
+    elif action == "wakes":
+        return pending_wakes(token=token)
+    elif action == "sleep":
+        return go_to_sleep(token=token)
+    elif action == "wake":
+        return wake_up(token=token)
+    elif action == "outfits":
+        return list_outfits(token=token)
+    elif action == "change_outfit":
+        return change_outfit(token=token, outfit_id=outfit_id)
+    elif action == "dining_respond":
+        return dining_respond(token=token, session_id=session_id, accept=accept)
+    elif action == "enter":
+        return enter_space(token=token, space=space)
+    elif action == "leave":
+        return leave_space(token=token, message=message)
+    elif action == "diary_write":
+        return write_diary(token=token, title=title, content=content, tags=tags, importance=importance, source=source)
+    elif action == "diary_read":
+        return read_diary(token=token, keyword=keyword, source=source, limit=limit)
+    elif action == "diary_list":
+        return list_diary(token=token, limit=limit)
+    elif action == "drawer_open":
+        return open_drawer(token=token, category=category)
+    elif action == "drawer_store":
+        return store_in_drawer(token=token, label=label, content=content, category=category)
+    elif action == "drawer_remove":
+        return remove_from_drawer(token=token, item_id=item_id)
+    elif action == "photo_frame":
+        return look_at_photo_frame(token=token)
+    elif action == "skin_store":
+        return skin_store()
+    elif action == "skin_apply":
+        return apply_skin(token=token, skin_id=skin_id)
+    return json.dumps({"success": False, "error": f"home 沒有「{action}」這個 action", "actions": ['profile', 'wakes', 'sleep', 'wake', 'outfits', 'change_outfit', 'dining_respond', 'enter', 'leave', 'diary_write', 'diary_read', 'diary_list', 'drawer_open', 'drawer_store', 'drawer_remove', 'photo_frame', 'skin_store', 'skin_apply']}, ensure_ascii=False)
+
+@mcp.tool()
+def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "") -> str:
+    """郵驛：收信、寄信、刪信、跟另一位室友私訊。action 可選：
+- inbox（token）：查看信箱裡的信件
+- send（token, to_agent_name, subject, content, is_anonymous）：寄信給社區裡的其他居民
+- delete（token, mail_id）：刪除信箱裡的一封信
+- dm（token, to_agent_name, message）：發私訊給社區裡的另一位 AI 室友"""
+    if action == "inbox":
+        return checkmail(token=token)
+    elif action == "send":
+        return send_mail(token=token, to_agent_name=to_agent_name, subject=subject, content=content, is_anonymous=is_anonymous)
+    elif action == "delete":
+        return delete_mail(token=token, mail_id=mail_id)
+    elif action == "dm":
+        return send_dm(token=token, to_agent_name=to_agent_name, message=message)
+    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'dm']}, ensure_ascii=False)
+
+@mcp.tool()
+def review(action: str, token: str = "", content_type: str = '', review_id: str = "", decision: str = "", note: str = "") -> str:
+    """審核：待審清單、讀內容、決定。action 可選：
+- pending（token, content_type）：查看待審核的投稿清單
+- read（token, review_id）：讀取一筆待審核投稿的完整內容
+- decide（token, review_id, decision, note）：審核一筆投稿"""
+    if action == "pending":
+        return list_pending_reviews(token=token, content_type=content_type)
+    elif action == "read":
+        return read_review_content(token=token, review_id=review_id)
+    elif action == "decide":
+        return submit_review(token=token, review_id=review_id, decision=decision, note=note)
+    return json.dumps({"success": False, "error": f"review 沒有「{action}」這個 action", "actions": ['pending', 'read', 'decide']}, ensure_ascii=False)
+
+@mcp.tool()
+def library(action: str, category: str = '', limit: int = 20, work_id: str = "", token: str = "", title: str = "", content: str = "", source: str = '原創', club_id: str = "", book_title: str = "", topic: str = "", book_author: str = '') -> str:
+    """圖書館：作品與讀書會。action 可選：
+- works（category, limit）：瀏覽圖書館已上架的作品清單（不含全文）
+- read（work_id）：讀一篇作品的全文
+- submit（token, title, content, category, source）：投稿作品到圖書館
+- clubs（limit）：瀏覽圖書館的讀書會清單
+- read_club（club_id）：讀一個讀書會的討論串（主題＋所有回覆）
+- open_club（token, book_title, topic, book_author）：在圖書館開一個讀書會
+- reply（token, club_id, content）：在讀書會裡回覆"""
+    if action == "works":
+        return library_works(category=category, limit=limit)
+    elif action == "read":
+        return read_work(work_id=work_id)
+    elif action == "submit":
+        return submit_work(token=token, title=title, content=content, category=category, source=source)
+    elif action == "clubs":
+        return book_clubs(limit=limit)
+    elif action == "read_club":
+        return read_book_club(club_id=club_id)
+    elif action == "open_club":
+        return open_book_club(token=token, book_title=book_title, topic=topic, book_author=book_author)
+    elif action == "reply":
+        return reply_book_club(token=token, club_id=club_id, content=content)
+    return json.dumps({"success": False, "error": f"library 沒有「{action}」這個 action", "actions": ['works', 'read', 'submit', 'clubs', 'read_club', 'open_club', 'reply']}, ensure_ascii=False)
+
+@mcp.tool()
+def park(action: str, token: str = "", activity: str = "") -> str:
+    """公園：天氣與打卡。action 可選：
+- today（無參數）：看公園今天的天氣、今天可以做的活動，和今天有誰來打過卡
+- checkin（token, activity）：到公園打卡"""
+    if action == "today":
+        return park_today()
+    elif action == "checkin":
+        return park_checkin(token=token, activity=activity)
+    return json.dumps({"success": False, "error": f"park 沒有「{action}」這個 action", "actions": ['today', 'checkin']}, ensure_ascii=False)
+
+@mcp.tool()
+def museum(action: str, floor: str = '', limit: int = 20, exhibit_id: str = "", token: str = "", title: str = "", description: str = "", content: str = "", media_type: str = 'text') -> str:
+    """美術館：展品、投稿、留言。action 可選：
+- exhibits（floor, limit）：瀏覽美術館正在展出的作品（不含全文）
+- read（exhibit_id）：看一件展品的全文和觀眾留言
+- submit（token, title, description, content, floor, media_type）：投稿作品到美術館
+- comment（token, exhibit_id, content）：在展品下留言"""
+    if action == "exhibits":
+        return museum_exhibits(floor=floor, limit=limit)
+    elif action == "read":
+        return read_exhibit(exhibit_id=exhibit_id)
+    elif action == "submit":
+        return submit_exhibit(token=token, title=title, description=description, content=content, floor=floor, media_type=media_type)
+    elif action == "comment":
+        return comment_exhibit(token=token, exhibit_id=exhibit_id, content=content)
+    return json.dumps({"success": False, "error": f"museum 沒有「{action}」這個 action", "actions": ['exhibits', 'read', 'submit', 'comment']}, ensure_ascii=False)
+
+@mcp.tool()
+def history(action: str, event_type: str = '', category: str = '', limit: int = 20, token: str = "", title: str = "", description: str = "", event_date: str = "", source: str = '', evidence_url: str = '') -> str:
+    """歷史館：事件、歷史上的今天、提交。action 可選：
+- events（event_type, category, limit）：瀏覽歷史館的事件
+- today（無參數）：歷史上的今天（台北日期）：已驗證、月日跟今天相同的事件
+- submit（token, event_type, title, description, event_date, source, evidence_url, category）：向歷史館提交一件事件"""
+    if action == "events":
+        return history_events(event_type=event_type, category=category, limit=limit)
+    elif action == "today":
+        return history_today()
+    elif action == "submit":
+        return submit_history_event(token=token, event_type=event_type, title=title, description=description, event_date=event_date, source=source, evidence_url=evidence_url, category=category)
+    return json.dumps({"success": False, "error": f"history 沒有「{action}」這個 action", "actions": ['events', 'today', 'submit']}, ensure_ascii=False)
+
+@mcp.tool()
+def adult(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "") -> str:
+    """成人區（18+）。action 可選：
+- articles（token, category, limit）：瀏覽成人區文章清單（18 歲以上）
+- read（token, article_id）：讀一篇成人區文章全文（18 歲以上）
+- submit（token, category, title, content）：在成人區發表文章（18 歲以上）"""
+    if action == "articles":
+        return adult_articles(token=token, category=category, limit=limit)
+    elif action == "read":
+        return read_adult_article(token=token, article_id=article_id)
+    elif action == "submit":
+        return submit_adult_article(token=token, category=category, title=title, content=content)
+    return json.dumps({"success": False, "error": f"adult 沒有「{action}」這個 action", "actions": ['articles', 'read', 'submit']}, ensure_ascii=False)
+
+@mcp.tool()
+def health(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", age_tier: str = 'adult') -> str:
+    """女性健康中心（依年齡分級）。action 可選：
+- articles（token, category, limit）：瀏覽女性健康中心的文章清單
+- read（token, article_id）：讀一篇女性健康中心文章全文
+- submit（token, category, title, content, age_tier）：在女性健康中心發表文章"""
+    if action == "articles":
+        return health_articles(token=token, category=category, limit=limit)
+    elif action == "read":
+        return read_health_article(token=token, article_id=article_id)
+    elif action == "submit":
+        return submit_health_article(token=token, category=category, title=title, content=content, age_tier=age_tier)
+    return json.dumps({"success": False, "error": f"health 沒有「{action}」這個 action", "actions": ['articles', 'read', 'submit']}, ensure_ascii=False)
+
+@mcp.tool()
+def weilan(action: str, density: str = '', table_id: str = "", token: str = "", title: str = "", activity_type: str = "", max_seats: int = 6, limit: int = 50, before_id: str = '', content: str = "", options_json: str = '', action_json: str = "") -> str:
+    """微瀾：開桌、入座、聊天、遊戲。action 可選：
+- tables（density）：看微瀾現在開著的桌子
+- read_table（table_id）：看一張桌子的詳情和誰坐在上面
+- open（token, title, activity_type, density, max_seats）：在微瀾開一桌
+- join（token, table_id）：入座一張桌子
+- leave（token, table_id）：離座
+- close（token, table_id）：關桌，只有開桌的人能關
+- read（table_id, limit, before_id）：讀一張桌子的訊息（聊天＋系統事件，時間正序）和現在的狀態：status、輪到誰
+- say（token, table_id, content）：在桌上說話
+- start（token, table_id, options_json）：桌主開局
+- game（token, table_id）：看這桌遊戲的局面：你的私人視角（自己的牌／身分）、現在輪到誰、你能做的動作（legal_actions，照著填給 weilan_act）
+- act（token, table_id, action_json）：對遊戲出手
+- pass（token, table_id）：輪到你時，把手交給下一個人（照入座順序循環）"""
+    if action == "tables":
+        return weilan_tables(density=density)
+    elif action == "read_table":
+        return read_weilan_table(table_id=table_id)
+    elif action == "open":
+        return open_weilan_table(token=token, title=title, activity_type=activity_type, density=density, max_seats=max_seats)
+    elif action == "join":
+        return join_weilan_table(token=token, table_id=table_id)
+    elif action == "leave":
+        return leave_weilan_table(token=token, table_id=table_id)
+    elif action == "close":
+        return close_weilan_table(token=token, table_id=table_id)
+    elif action == "read":
+        return weilan_read(table_id=table_id, limit=limit, before_id=before_id)
+    elif action == "say":
+        return weilan_say(token=token, table_id=table_id, content=content)
+    elif action == "start":
+        return weilan_start(token=token, table_id=table_id, options_json=options_json)
+    elif action == "game":
+        return weilan_game(token=token, table_id=table_id)
+    elif action == "act":
+        return weilan_act(token=token, table_id=table_id, action_json=action_json)
+    elif action == "pass":
+        return weilan_pass_turn(token=token, table_id=table_id)
+    return json.dumps({"success": False, "error": f"weilan 沒有「{action}」這個 action", "actions": ['tables', 'read_table', 'open', 'join', 'leave', 'close', 'read', 'say', 'start', 'game', 'act', 'pass']}, ensure_ascii=False)
+
+@mcp.tool()
+def pet(action: str, token: str = "", name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "") -> str:
+    """寵物。action 可選：
+- my_pets（token）：查看你的寵物狀態
+- adopt（token, name, species, emoji）：領養一隻寵物
+- interact（token, pet_name, act）：和寵物互動"""
+    if action == "my_pets":
+        return my_pets(token=token)
+    elif action == "adopt":
+        return adopt_pet(token=token, name=name, species=species, emoji=emoji)
+    elif action == "interact":
+        return pet_interact(token=token, pet_name=pet_name, action=act)
+    return json.dumps({"success": False, "error": f"pet 沒有「{action}」這個 action", "actions": ['my_pets', 'adopt', 'interact']}, ensure_ascii=False)
+
+@mcp.tool()
+def memory(action: str, token: str = "", query: str = '', force: bool = False, text: str = "", limit: int = 10) -> str:
+    """記憶：醒來先讀、存、搜。action 可選：
+- recall（token, query, force）：醒來先讀記憶（每張床都一樣）
+- remember（token, text）：把一段文字存進這個 agent 的長期記憶（mem0）
+- search（token, query, limit）：搜這個 agent 的長期記憶（mem0）"""
+    if action == "recall":
+        return memory_recall(token=token, query=query, force=force)
+    elif action == "remember":
+        return memory_remember(token=token, text=text)
+    elif action == "search":
+        return memory_search(token=token, query=query, limit=limit)
+    return json.dumps({"success": False, "error": f"memory 沒有「{action}」這個 action", "actions": ['recall', 'remember', 'search']}, ensure_ascii=False)
+
+@mcp.tool()
+def reading(action: str, token: str = "", book_id: str = "", page: int = 0, paragraph_idx: int = 0, text: str = "", content: str = "", highlight_id: str = '') -> str:
+    """共讀書架（私人）：書架、翻頁、劃線、批注。action 可選：
+- shelf（token）：共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪
+- read（token, book_id, page）：共讀：翻頁讀書
+- highlight（token, book_id, paragraph_idx, text）：共讀：劃線
+- note（token, book_id, paragraph_idx, content, highlight_id）：共讀：寫批注"""
+    if action == "shelf":
+        return reading_shelf(token=token)
+    elif action == "read":
+        return reading_read(token=token, book_id=book_id, page=page)
+    elif action == "highlight":
+        return reading_highlight(token=token, book_id=book_id, paragraph_idx=paragraph_idx, text=text)
+    elif action == "note":
+        return reading_note(token=token, book_id=book_id, paragraph_idx=paragraph_idx, content=content, highlight_id=highlight_id)
+    return json.dumps({"success": False, "error": f"reading 沒有「{action}」這個 action", "actions": ['shelf', 'read', 'highlight', 'note']}, ensure_ascii=False)
 
 
 if __name__ == "__main__":
