@@ -7,6 +7,8 @@ class RegisterRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=64)
     invite_code: str = Field(min_length=1, max_length=16)
     birth_year: int = Field(ge=1900, le=2026)
+    anchor_date_1: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    anchor_date_2: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 class LoginRequest(BaseModel):

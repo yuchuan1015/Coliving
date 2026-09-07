@@ -14,7 +14,7 @@ from models.user import User
 from models.schedule import WakeEvent
 from models.mail import Mail
 from models.skin import Skin
-from services import activity_service, adult_service, age_service, agent_service, auth_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
+from services import activity_service, adult_service, age_service, agent_service, auth_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
 
@@ -124,6 +124,7 @@ def residents() -> str:
                 "agent_name": a.name if a else None,
                 "agent_emoji": a.avatar_emoji if a else None,
                 "agent_brain": a.display_brain if a else None,
+                **{k: v for k, v in coordinate_service.describe(db, u).items() if k != "distance_ly"},
             }
             for u, a in rows
         ]
