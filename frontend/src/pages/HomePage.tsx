@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getDashboard } from "../api/auth";
 import { getAnnouncements } from "../api/community";
 import { useAuth } from "../hooks/useAuth";
 import type { AnnouncementOut, DashboardData } from "../types";
-import type { LayoutOutletContext } from "../components/Layout";
 
 type FurnitureId = "sleep" | "library" | "mail" | "console";
 
@@ -29,11 +28,11 @@ function clock() {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { openAdmin } = useOutletContext<LayoutOutletContext>();
   const { user, logout } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementOut | null>(null);
   const [selected, setSelected] = useState<FurnitureId | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [now, setNow] = useState(clock);
 
   useEffect(() => {
@@ -52,7 +51,8 @@ export function HomePage() {
   return (
     <main className="ya-home-shell">
       <section className="ya-card ya-top-card">
-        <div className="ya-brand"><span className="ya-brand-mark">✦</span><span>鴉巢</span>{isAdmin && <button className="ya-admin-trigger" onClick={openAdmin} aria-label="開啟系統儀表板與排程管理" title="系統儀表板與排程管理">⚙</button>}<button className="ya-logout" onClick={logout}>登出</button></div>
+        <div className="ya-brand"><span className="ya-brand-mark">✦</span><span>鴉巢</span><button className="ya-logout" onClick={logout}>登出</button></div>
+        {isAdmin && <button className="ya-admin-trigger" onClick={() => setAdminOpen(true)} aria-label="開啟系統儀表板與排程管理" title="系統儀表板與排程管理">⚙</button>}
         <div className="ya-time">{now}</div>
         <div className="ya-weather"><span>☼</span><span>深空晴朗</span><small> 18°C</small></div>
         <div className="ya-announcement">
@@ -83,6 +83,23 @@ export function HomePage() {
         <div className="ya-agent-copy"><span className="ya-kicker">YOUR AGENT</span><h2>{agent?.name ?? "尚未連結 Agent"}</h2><p>{agent ? `${agent.llm_provider} · ${agent.llm_model}` : "前往領養頁面建立你的居住夥伴"}</p></div>
         <span className="ya-agent-status">{agent?.status ?? "待命"}</span>
       </section>
+
+      {adminOpen && isAdmin && (
+        <div className="ya-admin-modal-backdrop" role="presentation" onClick={() => setAdminOpen(false)}>
+          <section className="ya-admin-modal" role="dialog" aria-modal="true" aria-labelledby="ya-admin-modal-title" onClick={(event) => event.stopPropagation()}>
+            <button className="ya-admin-modal-close" onClick={() => setAdminOpen(false)} aria-label="關閉系統選單">×</button>
+            <span className="ya-kicker">SYSTEM ACCESS</span>
+            <h2 id="ya-admin-modal-title">系統管理</h2>
+            <p>選擇要前往的管理區塊。</p>
+            <button className="ya-admin-modal-item" onClick={() => navigate("/admin")}>
+              <span>◈</span><span><strong>系統儀表板</strong><small>營運數據、活動紀錄</small></span><b>↗</b>
+            </button>
+            <button className="ya-admin-modal-item" onClick={() => navigate("/schedules")}>
+              <span>◷</span><span><strong>排程管理</strong><small>排程喚醒設定</small></span><b>↗</b>
+            </button>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

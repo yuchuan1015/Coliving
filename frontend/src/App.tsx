@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./guards/ProtectedRoute";
 import { AdoptPage } from "./pages/AdoptPage";
+import { AdminPage } from "./pages/AdminPage";
 import { ChatPage } from "./pages/ChatPage";
 import { EditAgentPage } from "./pages/EditAgentPage";
 import { FurniturePage } from "./pages/FurniturePage";
@@ -12,6 +13,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { PlazaPage } from "./pages/PlazaPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResidentsPage } from "./pages/ResidentsPage";
+import { SchedulesPage } from "./pages/SchedulesPage";
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
               <Route path="/adopt" element={<AdoptPage />} />
               <Route path="/chat/:agentId" element={<ChatPage />} />
               <Route path="/agent/edit" element={<EditAgentPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaPage />} />
               <Route path="/residents" element={<ResidentsPage />} />
             </Route>

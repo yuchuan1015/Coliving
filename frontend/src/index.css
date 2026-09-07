@@ -2,6 +2,7 @@
 @import "./ya-home.css";
 @import "./module-auth.css";
 @import "./exterior.css";
+@import "./ya-admin.css";
 
 @theme {
   --color-bg: #f5f3ed;

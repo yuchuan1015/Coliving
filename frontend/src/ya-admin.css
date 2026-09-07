@@ -1,0 +1,32 @@
+.ya-admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 1, 8, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.ya-admin-modal {
+  position: relative;
+  width: min(100%, 360px);
+  padding: 26px 20px 20px;
+  border: 1px solid rgba(226, 219, 255, 0.42);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(24, 17, 51, 0.96), rgba(6, 5, 20, 0.97));
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.65), inset 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--ya-ink);
+}
+
+.ya-admin-modal h2 { margin: 7px 0 4px; font-size: 22px; font-weight: 500; }
+.ya-admin-modal p { margin: 0 0 18px; color: var(--ya-muted); font-size: 12px; }
+.ya-admin-modal-close { position: absolute; right: 13px; top: 10px; border: 0; background: none; color: #d7caed; font-size: 25px; line-height: 1; cursor: pointer; }
+.ya-admin-modal-item { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 10px; padding: 14px 13px; border: 1px solid rgba(226, 219, 255, 0.2); border-radius: 13px; background: rgba(255, 255, 255, 0.045); color: #f5efff; text-align: left; cursor: pointer; transition: 0.18s ease; }
+.ya-admin-modal-item:hover, .ya-admin-modal-item:focus-visible { border-color: rgba(226, 219, 255, 0.58); background: rgba(255, 255, 255, 0.1); outline: none; }
+.ya-admin-modal-item > span:first-child { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(201, 167, 255, 0.5); border-radius: 50%; color: #c9a7ff; }
+.ya-admin-modal-item > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+.ya-admin-modal-item strong { font-size: 14px; font-weight: 500; }
+.ya-admin-modal-item small { color: var(--ya-muted); font-size: 10px; }
+.ya-admin-modal-item b { color: #c9a7ff; font-size: 17px; font-weight: 400; }
