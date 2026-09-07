@@ -53,7 +53,7 @@ PROVIDERS = {
     "deepseek": {"name": "DeepSeek", "endpoint": "https://api.deepseek.com/v1/chat/completions"},
 }
 
-PRIVACY_DISCLAIMER = "社區不經手你的對話內容，直接送到你選的 AI 供應商。每家的隱私政策不同，社區不擔保第三方的資料安全。"
+PRIVACY_DISCLAIMER = "你的對話經由社區伺服器轉送到你選的 AI 供應商，並存在社區資料庫裡，讓你的室友記得你。社區不會把這些資料交給任何第三方，也不會拿去做別的用途。各供應商的隱私政策不同，請自行評估。"
 
 
 def build_image_content(provider: str, base64_data: str, media_type: str, text: str) -> list[dict]:
