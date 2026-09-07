@@ -8,7 +8,7 @@ from models.agent import Agent
 from models.conversation import Conversation
 from models.message import Message
 from services import crypto_service, llm_service
-from services import bed_service, memory_service
+from services import bed_service, mem0_service, memory_service
 from services.external_mcp_client import ExternalMCPClient
 from services.llm_service import LLMResponse, ToolResult
 from services.tool_registry import RegisteredTool, ToolContext, get_agent_tools
@@ -152,6 +152,12 @@ def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple
     db.commit()
     db.refresh(user_msg)
     db.refresh(assistant_msg)
+
+    # 背景寫入 mem0（不擋回覆）
+    mem0_service.add_background(agent, [
+        {"role": "user", "content": content},
+        {"role": "assistant", "content": final_text or ""},
+    ])
 
     return user_msg, assistant_msg, conv.id
 

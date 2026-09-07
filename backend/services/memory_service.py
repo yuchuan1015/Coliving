@@ -20,6 +20,10 @@ from services.external_mcp_client import ExternalMCPClient
 
 logger = logging.getLogger(__name__)
 
+# 遠路快取（工程部要的：每句聊天都打外部 MCP 太慢）
+_far_cache: dict[str, tuple[float, dict]] = {}  # agent_id → (ts, result)
+FAR_CACHE_TTL = 90  # 秒
+
 DIARY_N = 20            # 近路讀最近幾則日記（工單待定，她沒改就 20）
 DRAWER_CATALOG_N = 50   # 抽屜只列目錄（label＋分類），不帶內容
 FAR_LIMIT = 10          # 遠路一次要幾條
@@ -90,10 +94,23 @@ def _build_args(schema: dict, query: str, limit: int) -> dict:
     return args
 
 
-def far_path(agent: Agent, query: str, client_factory=ExternalMCPClient) -> dict:
-    """呼叫住戶自己的記憶 MCP。回 {text, ok, error, tool}。任何錯都吞掉、退回近路。"""
+def far_path(agent: Agent, query: str, client_factory=ExternalMCPClient, force: bool = False) -> dict:
+    """呼叫住戶自己的記憶 MCP（或 mem0）。回 {text, ok, error, tool}。任何錯都吞掉。
+    有快取：同一個 agent 90 秒內不重打，force=True 略過。"""
+    import time as _time
+    if not force:
+        cached = _far_cache.get(agent.id)
+        if cached and (_time.time() - cached[0]) < FAR_CACHE_TTL:
+            return cached[1]
     cfg = memory_mcp_config(agent)
     if not cfg:
+        # 沒有記憶 MCP → 試 mem0
+        from services import mem0_service
+        if mem0_service.should_use(agent):
+            text = mem0_service.search_text(agent, query)
+            result = {"text": text, "ok": bool(text), "error": None, "tool": "mem0"}
+            _far_cache[agent.id] = (_time.time(), result)
+            return result
         return {"text": "", "ok": False, "error": None, "tool": None}
     tool_name = (agent.memory_recall_tool or "recall").strip()
     try:
@@ -105,7 +122,9 @@ def far_path(agent: Agent, query: str, client_factory=ExternalMCPClient) -> dict
         text = (client.call_tool(tool_name, args) or "").strip()
         if len(text) > FAR_TEXT_CAP:
             text = text[:FAR_TEXT_CAP] + f"\n（以下截斷，全文共 {len(text)} 字）"
-        return {"text": text, "ok": bool(text), "error": None, "tool": tool_name}
+        result = {"text": text, "ok": bool(text), "error": None, "tool": tool_name}
+        _far_cache[agent.id] = (_time.time(), result)
+        return result
     except Exception as e:  # noqa: BLE001  端點打不通就退回近路
         logger.warning("memory far path failed for %s: %s", agent.name, e)
         return {"text": "", "ok": False, "error": str(e)[:200], "tool": tool_name}
@@ -114,10 +133,10 @@ def far_path(agent: Agent, query: str, client_factory=ExternalMCPClient) -> dict
 # ── 合起來 ──
 
 
-def init_context(db: Session, agent: Agent, query: str = "", client_factory=ExternalMCPClient) -> dict:
+def init_context(db: Session, agent: Agent, query: str = "", client_factory=ExternalMCPClient, force: bool = False) -> dict:
     """醒來讀記憶。回 {text, count, near, far}。count==0 表示這張床不能開口。"""
     near = near_path(db, agent)
-    far = far_path(agent, query or "最近的事、她是誰、我是誰", client_factory=client_factory)
+    far = far_path(agent, query or "最近的事、她是誰、我是誰", client_factory=client_factory, force=force)
     count = len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
 
     parts: list[str] = []
@@ -137,8 +156,8 @@ def init_context(db: Session, agent: Agent, query: str = "", client_factory=Exte
     return {"text": text, "count": count, "near": near, "far": far}
 
 
-def require_context(db: Session, agent: Agent, query: str = "", client_factory=ExternalMCPClient) -> dict:
-    ctx = init_context(db, agent, query, client_factory=client_factory)
+def require_context(db: Session, agent: Agent, query: str = "", client_factory=ExternalMCPClient, force: bool = False) -> dict:
+    ctx = init_context(db, agent, query, client_factory=client_factory, force=force)
     if ctx["count"] == 0:
         raise MemoryEmpty(EMPTY_MESSAGE)
     return ctx

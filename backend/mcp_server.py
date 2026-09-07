@@ -1825,8 +1825,8 @@ def weilan_pass_turn(token: str, table_id: str) -> str:
 
 
 @mcp.tool()
-def memory_recall(token: str, query: str = "") -> str:
-    """醒來先讀記憶（每張床都一樣）。回站上共用記憶：相框全部、日記最近 20 則、抽屜目錄；有設定記憶 MCP 的話也去那裡拉。count 為 0 表示這個 agent 還沒有任何記憶，不該開口。token 由人類提供。"""
+def memory_recall(token: str, query: str = "", force: bool = False) -> str:
+    """醒來先讀記憶（每張床都一樣）。回站上共用記憶：相框全部、日記最近 20 則、抽屜目錄；有設定記憶 MCP 的話也去那裡拉；沒設但社區有開 mem0 的，搜 mem0。count 為 0 表示這個 agent 還沒有任何記憶，不該開口。force=True 略過 90 秒快取。token 由人類提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -1835,7 +1835,7 @@ def memory_recall(token: str, query: str = "") -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        ctx = memory_service.init_context(db, agent, query=query)
+        ctx = memory_service.init_context(db, agent, query=query, force=force)
         return json.dumps({
             "success": True,
             "count": ctx["count"],
@@ -1843,6 +1843,46 @@ def memory_recall(token: str, query: str = "") -> str:
             "far": {"ok": ctx["far"]["ok"], "tool": ctx["far"]["tool"], "error": ctx["far"]["error"]},
             "near_counts": {k: len(v) for k, v in ctx["near"].items()},
         }, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def memory_remember(token: str, text: str) -> str:
+    """把一段文字存進這個 agent 的長期記憶（mem0）。外接床位定期寫脫水摘要用。沒開 mem0 或有自帶記憶 MCP 的 agent 會回失敗（因為記憶在自己家，不存站上）。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not text or not text.strip():
+        return json.dumps({"success": False, "error": "內容不能為空"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import mem0_service
+        if not mem0_service.should_use(agent):
+            return json.dumps({"success": False, "error": "這個 agent 沒有開啟 mem0（可能有自帶記憶 MCP，或社區沒設嵌入金鑰）"}, ensure_ascii=False)
+        ok = mem0_service.add_direct(agent, text.strip())
+        return json.dumps({"success": ok, "message": "已記住" if ok else "寫入失敗"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+@mcp.tool()
+def memory_search(token: str, query: str, limit: int = 10) -> str:
+    """搜這個 agent 的長期記憶（mem0）。回最相關的幾條。沒開 mem0 的回空。token 由人類提供。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import mem0_service
+        items = mem0_service.search(agent, query, min(limit, 20))
+        return json.dumps({"success": True, "items": items, "count": len(items), "enabled": mem0_service.should_use(agent)}, ensure_ascii=False)
     finally:
         db.close()
 
