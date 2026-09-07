@@ -16,4 +16,5 @@ class ActivityLog(Base):
     action: Mapped[str] = mapped_column(String(32), nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False)
     space: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    bed: Mapped[str | None] = mapped_column(String(40), nullable=True)  # 哪張床做的（bed_service），2026-09-07
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

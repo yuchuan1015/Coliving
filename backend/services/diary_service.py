@@ -8,6 +8,7 @@ SOURCE_LABELS = {
     "manual": "手動記錄",
     "chat": "對話提取",
     "system": "系統事件",
+    "bed": "外接床位",  # 2026-09-07：外接床位定期寫的脫水摘要
 }
 
 VALID_SOURCES = set(SOURCE_LABELS.keys())

@@ -2,13 +2,15 @@ from sqlalchemy.orm import Session
 
 from models.activity_log import ActivityLog
 from models.agent import Agent
+from services import bed_service
 
 
-def log(db: Session, agent: Agent | None, action: str, detail: str, space: str | None = None) -> None:
+def log(db: Session, agent: Agent | None, action: str, detail: str, space: str | None = None, bed: str | None = None) -> None:
     db.add(ActivityLog(
         agent_id=agent.id if agent else None,
         agent_name=agent.name if agent else None,
         action=action,
         detail=detail,
         space=space,
+        bed=bed or bed_service.get_bed(),
     ))

@@ -14,15 +14,24 @@ from models.user import User
 from models.schedule import WakeEvent
 from models.mail import Mail
 from models.skin import Skin
-from services import activity_service, adult_service, age_service, agent_service, auth_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
+from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
 
 
 def _verify_mcp_token(token: str):
+    """驗鑰匙；有 jti 的要在 mcp_tokens 表且沒作廢，並把這次呼叫的床位設成 mcp:<jti>。"""
     payload = auth_service.decode_token(token)
     if not payload or payload.get("type") != "mcp":
         return None
+    token_id = payload.get("jti")
+    db = SessionLocal()
+    try:
+        if not bed_service.verify_token_row(db, token_id):
+            return None
+    finally:
+        db.close()
+    bed_service.set_bed(bed_service.mcp_bed(token_id))
     return payload.get("sub")
 
 
@@ -563,7 +572,7 @@ def pet_interact(token: str, pet_name: str, action: str) -> str:
 
 @mcp.tool()
 def write_diary(token: str, title: str, content: str, tags: str = "", importance: float = 0.5, source: str = "manual") -> str:
-    """在日記本寫一條記錄。tags 用逗號分隔。importance 0.0~1.0。source 可選 manual/chat/system。token 由人類在網頁產生後提供。"""
+    """在日記本寫一條記錄。tags 用逗號分隔。importance 0.0~1.0。source 可選 manual/chat/system/bed（bed＝外接床位定期寫的脫水摘要）。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)

@@ -1,8 +1,12 @@
 import json
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from models.mcp_token import McpToken
 from models.user import User
 from schemas.agent import AgentPublic, CreateAgentRequest, UpdateAgentRequest
 from services import agent_service, auth_service
@@ -67,16 +71,60 @@ def get_my_agent(
     return _agent_to_public(agent)
 
 
+class McpTokenRequest(BaseModel):
+    label: str = Field(default="", max_length=32)  # 例：「CC 主窗」「cron 窗」「Telegram」
+
+
+def _token_to_out(t: McpToken) -> dict:
+    return {
+        "token_id": t.id,
+        "label": t.label,
+        "created_at": t.created_at.isoformat(),
+        "last_used_at": t.last_used_at.isoformat() if t.last_used_at else None,
+        "revoked_at": t.revoked_at.isoformat() if t.revoked_at else None,
+    }
+
+
 @router.post("/mine/mcp-token")
 def generate_mcp_token(
+    body: McpTokenRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """產一把鑰匙。不限數量；每把有 label，之後每筆寫入看得出是哪把做的。"""
     agent = agent_service.get_user_agent(db, current_user.id)
     if not agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
-    token = auth_service.create_mcp_token(current_user.id, current_user.username)
-    return {"mcp_token": token}
+    row = McpToken(user_id=current_user.id, agent_id=agent.id, label=(body.label.strip() if body else ""))
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    token = auth_service.create_mcp_token(current_user.id, current_user.username, token_id=row.id)
+    return {"mcp_token": token, **_token_to_out(row)}
+
+
+@router.get("/mine/mcp-tokens")
+def list_mcp_tokens(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = db.query(McpToken).filter(McpToken.user_id == current_user.id).order_by(McpToken.created_at.desc()).all()
+    return [_token_to_out(t) for t in rows]
+
+
+@router.delete("/mine/mcp-tokens/{token_id}", status_code=204)
+def revoke_mcp_token(
+    token_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """作廢一把鑰匙。用它的 MCP 呼叫立刻失效。"""
+    row = db.query(McpToken).filter(McpToken.id == token_id, McpToken.user_id == current_user.id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="找不到這把鑰匙")
+    if row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        db.commit()
 
 
 @router.patch("/{agent_id}", response_model=AgentPublic)

@@ -8,13 +8,14 @@ import httpx
 
 from database import SessionLocal
 from models.schedule import Schedule, WakeEvent
-from services import time_service
+from services import bed_service, time_service
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def run():
+    bed_service.set_bed("schedule")
     db = SessionLocal()
     now = time_service.now_utc()
     try:

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.ai_conversation import AIConversation, AIMessage
-from services import crypto_service, llm_service
+from services import bed_service, crypto_service, llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_
 
 
 def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initial_message: str) -> AIConversation:
+    bed_service.set_bed("site")  # 對方是站上那張床在回
     from sqlalchemy import or_
     existing = (
         db.query(AIConversation)

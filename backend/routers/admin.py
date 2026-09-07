@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config import settings
-from services import time_service
+from services import bed_service, time_service
 from models.activity_log import ActivityLog
 from models.agent import Agent
 from models.announcement import Announcement
@@ -139,6 +139,8 @@ def get_activity(
             "action": log.action,
             "detail": log.detail,
             "space": log.space,
+            "bed": log.bed,
+            "bed_label": bed_service.bed_label(db, log.bed),
             "created_at": log.created_at.isoformat(),
         }
         for log in logs

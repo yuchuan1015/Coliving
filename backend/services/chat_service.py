@@ -8,6 +8,7 @@ from models.agent import Agent
 from models.conversation import Conversation
 from models.message import Message
 from services import crypto_service, llm_service
+from services import bed_service
 from services.external_mcp_client import ExternalMCPClient
 from services.llm_service import LLMResponse, ToolResult
 from services.tool_registry import RegisteredTool, ToolContext, get_agent_tools
@@ -73,6 +74,7 @@ def _load_external_tools(agent: Agent) -> list[RegisteredTool]:
 
 
 def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple[Message, Message, str]:
+    bed_service.set_bed("site")  # 站上用 api_key 跑的那張床
     conv = get_or_create_conversation(db, agent.id, user_id)
 
     user_msg = Message(conversation_id=conv.id, role="user", content=content)

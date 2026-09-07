@@ -38,7 +38,8 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
 
 
-def create_mcp_token(user_id: str, username: str) -> str:
+def create_mcp_token(user_id: str, username: str, token_id: str | None = None) -> str:
+    """token_id = mcp_tokens.id，放進 jti；驗鑰匙時對表、記最後使用、可作廢。"""
     expire = datetime.now(timezone.utc) + timedelta(days=settings.mcp_token_expire_days)
     payload = {
         "sub": user_id,
@@ -46,6 +47,8 @@ def create_mcp_token(user_id: str, username: str) -> str:
         "type": "mcp",
         "exp": expire,
     }
+    if token_id:
+        payload["jti"] = token_id
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
 
 
