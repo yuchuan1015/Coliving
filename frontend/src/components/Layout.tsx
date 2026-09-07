@@ -31,8 +31,6 @@ export function Layout() {
       .catch(() => {});
   }, [location.pathname]);
 
-  const isChat = location.pathname.startsWith("/chat");
-
   const goTo = (path: string) => {
     navigate(path);
     setDrawerOpen(false);
@@ -43,31 +41,6 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh" style={{ background: "var(--bg)" }}>
-      {!isChat && (
-        <header
-          className="app-chrome"
-        >
-          {isAdmin ? (
-            <button
-              onClick={() => setAdminOpen(true)}
-              className="app-chrome-button app-chrome-gear"
-              aria-label="開啟系統儀表板與排程管理"
-              title="系統儀表板與排程管理"
-            >
-              ⚙
-            </button>
-          ) : <span aria-hidden="true" />}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="app-chrome-button app-chrome-menu"
-            aria-label="開啟側拉選單"
-            title="開啟側拉選單"
-          >
-            ☰
-          </button>
-        </header>
-      )}
-
       <Outlet />
 
       {/* Right drawer — 場域 */}
