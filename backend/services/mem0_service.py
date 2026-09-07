@@ -142,7 +142,8 @@ def search(agent: Agent, query: str, limit: int = 10) -> list[dict]:
         if isinstance(results, dict) and "results" in results:
             results = results["results"]
         return [
-            {"text": r.get("memory", r.get("text", str(r))), "score": r.get("score", 0)}
+            {"id": r.get("id"), "text": r.get("memory", r.get("text", str(r))), "score": r.get("score", 0),
+             "created_at": r.get("created_at")}
             for r in (results or [])
         ]
     except Exception as e:
