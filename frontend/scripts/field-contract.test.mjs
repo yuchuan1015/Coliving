@@ -327,13 +327,29 @@ test("workshop owner actions require explicit confirmation and preserve correct 
   await one(h, "ConfirmAction", n => n.props.title === "刪除作品").props.action(); expectCall("delete", "/skins/s");
 });
 
-test("store apply is paused until the backend flush fix is confirmed", () => {
+test("store apply uses the fixed API and reflects confirmed activation", async () => {
   fixture("/skins/store", [{ id: "s", name: "社區作品" }]);
   const h = mount(activity.WorkshopField); tab(h, "store");
-  assert.equal(button(h, "套用暫停").props.disabled, true);
-  assert.equal(components(h, "ConfirmAction").length, 0);
-  assert.equal(button(h, "查看作品").props.disabled, undefined);
   assert.equal(calls.length, 0);
+  writeResult = { id: "copy", is_active: true };
+  const action = one(h, "ConfirmAction"); await action.props.action(); action.props.onDone(); h.render();
+  expectCall("post", "/skins/s/apply"); assert.match(text(h.tree), /已複製並啟用/);
+  assert.equal(components(h, "FieldTabs")[0].props.value, "mine");
+});
+
+test("unexpected inactive apply response never falsely claims activation or repeats the copy", async () => {
+  fixture("/skins/store", [{ id: "s", name: "社區作品" }]);
+  const h = mount(activity.WorkshopField); tab(h, "store"); writeResult = { id: "copy", is_active: false };
+  const action = one(h, "ConfirmAction"); await action.props.action(); action.props.onDone(); h.render();
+  assert.match(text(h.tree), /後端未確認啟用/); assert.equal(calls.length, 1);
+});
+
+test("timed mail receipt navigates to the actual sent list after success", async () => {
+  const h = mount(everyday.MailField); click(h, "寫一封信"); tab(h, "timed", 1);
+  writeResult = { id: "scheduled", deliver_at: "2099-09-08T10:30:00Z" };
+  await submit(h, "確認寄送", { subject: "測試", content: "內容", to_agent_id: "recipient", deliver_at: "2099-09-08T18:30" }, true);
+  assert.equal(components(h, "FieldTabs")[0].props.value, "sent");
+  assert.match(text(h.tree), /可到寄件匣/); assert.ok(reads.includes("/mail/sent?limit=100"));
 });
 test("Weilan opening, host start and table messages use actual endpoints", async () => {
   fixture("/agents/mine", { id: "a", name: "自己" }); fixture("/weilan?density=low", { tables: [{ id: "t", title: "桌", max_seats: 2 }], activity_types: { low: [{ key: "chess", name: "五子棋" }] } });
