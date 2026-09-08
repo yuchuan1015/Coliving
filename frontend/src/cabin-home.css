@@ -103,6 +103,13 @@ body:has(.cabin-home) { background: #090711; }
 .cabin-panel h2 { font-size: 18px; font-weight: 400; }
 .cabin-panel button { min-height: 44px; color: var(--c-moon); font: inherit; border: 1px solid var(--c-snow); padding: 8px 12px; border-radius: 12px; background: none; cursor: pointer; }
 .cabin-panel-actions { display: grid; gap: 8px; }
+.cabin-panel fieldset { border:0; padding:0; min-width:0; }
+.cabin-city-form { display:grid; gap:12px; padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--c-snow); }
+.cabin-city-form input { width:100%; min-width:0; min-height:44px; border:1px solid var(--c-snow); border-radius:12px; background:transparent; color:var(--c-frost); padding:12px; font:inherit; font-size:16px; }
+.cabin-city-form input:focus-visible { outline:2px solid var(--c-moon); outline-offset:2px; }
+.cabin-panel button:disabled, .cabin-city-form input:disabled { opacity:.5; cursor:default; }
+.cabin-city-form p { overflow-wrap:anywhere; margin:0; }
+.cabin-panel dd { overflow-wrap:anywhere; min-width:0; }
 .cabin-panel p, .cabin-panel li { margin-bottom: 12px; line-height: 1.7; font-size: 15px; }
 .cabin-panel small { opacity: .65; }
 .cabin-panel ul { list-style: none; }

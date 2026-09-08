@@ -5,13 +5,14 @@ import api from "../api/client";
 import type { FurnitureSummary } from "../api/furniture";
 import type { CabinPanel } from "../data/cabin";
 import { useAuth } from "../hooks/useAuth";
+import { CitySettings } from "./CitySettings";
 
 const titles: Record<CabinPanel, string> = { settings: "設定", window: "窗外天氣", clock: "時鐘", wardrobe: "衣櫃", dining: "餐桌", pet: "寵物" };
 type SummaryRow = { title: string; detail: string };
 interface Outfit { id: string; name: string; description?: string }
 interface Pet { id: string; name: string; species: string; hunger: number; cleanliness: number; happiness: number }
 
-export function CabinPanelDialog({ panel, summary, now, onClose }: { panel: CabinPanel; summary: FurnitureSummary | null; now: Date; onClose: () => void }) {
+export function CabinPanelDialog({ panel, summary, now, onClose, onRefreshWeather }: { panel: CabinPanel; summary: FurnitureSummary | null; now: Date; onClose: () => void; onRefreshWeather: () => Promise<void> }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export function CabinPanelDialog({ panel, summary, now, onClose }: { panel: Cabi
   const [loading, setLoading] = useState(["wardrobe", "dining", "pet"].includes(panel));
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [cityBusy, setCityBusy] = useState(false);
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
     dialog.current?.showModal();
@@ -52,19 +54,27 @@ export function CabinPanelDialog({ panel, summary, now, onClose }: { panel: Cabi
     return () => { cancelled = true; };
   }, [panel, retry]);
 
-  function go(path: string) { onClose(); navigate(path); }
+  function close() { if (!cityBusy) onClose(); }
+  function go(path: string) { if (cityBusy) return; onClose(); navigate(path); }
   const format = (timeZone?: string) => new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", timeZone }).format(now);
-  return <dialog ref={dialog} className="cabin-panel" aria-labelledby="cabin-panel-title" onCancel={onClose} onClose={onClose} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose(); } }}>
-    <header><h2 id="cabin-panel-title">{titles[panel]}</h2><button onClick={onClose} aria-label="關閉彈窗">×</button></header>
-    {panel === "settings" && <div className="cabin-panel-actions">
+  return <dialog ref={dialog} className="cabin-panel" aria-labelledby="cabin-panel-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close(); } }}>
+    <header><h2 id="cabin-panel-title">{titles[panel]}</h2><button disabled={cityBusy} onClick={close} aria-label="關閉彈窗">×</button></header>
+    {panel === "settings" && <><CitySettings onRefreshWeather={onRefreshWeather} onBusyChange={setCityBusy} /><fieldset disabled={cityBusy} className="cabin-panel-actions">
       <button onClick={() => go("/agent/edit")}>Agent 設定</button>
       <button onClick={() => go("/agent/advanced")}>進階連線與房間設定</button>
       <button onClick={() => go("/schedules")}>排程管理</button>
       {user?.role === "admin" && <button onClick={() => go("/admin")}>系統儀表板</button>}
       <button onClick={() => { onClose(); logout(); }}>登出</button>
-    </div>}
+    </fieldset></>}
     {panel === "clock" && <><dl><dt>當地時間</dt><dd>{format(user?.timezone ?? summary?.clock.timezone)}</dd><dt>社區時間</dt><dd>{format(summary?.clock.community_timezone ?? "Asia/Taipei")}</dd></dl><p><small>社區使用台北時區；艙室使用你的當地時區。</small></p></>}
-    {panel === "window" && <p>{summary?.weather ? `${summary.weather.description} · ${summary.weather.temperature}°C` : "天氣尚未同步，請稍後再來看看。"}</p>}
+    {panel === "window" && <>{summary?.weather ? <>
+      <p>{summary.weather.description} · {summary.weather.temperature}°C</p>
+      <dl><dt>城市</dt><dd>{summary.weather.source === "community" ? "社區" : summary.weather.location ?? "未提供"}</dd>
+        {typeof summary.weather.wind_kmh === "number" && <><dt>風速</dt><dd>{summary.weather.wind_kmh} km/h</dd></>}
+        {typeof summary.weather.is_day === "boolean" && <><dt>日夜</dt><dd>{summary.weather.is_day ? "白天" : "夜間"}</dd></>}
+      </dl>
+      <p><small>{summary.weather.source === "local" ? "當地實際天氣 · Open-Meteo" : summary.weather.source === "community" ? "當地天氣暫不可用，目前顯示社區天氣。" : "天氣來源尚未提供。"}</small></p>
+    </> : <p>天氣尚未同步，請稍後再來看看。</p>}</>}
     {loading && <p role="status">正在讀取…</p>}
     {error && <><p role="alert">{error}</p><button onClick={() => setRetry(value => value + 1)}>重試</button></>}
     {!loading && !error && rows.length > 0 && <><ul>{rows.map((row, index) => <li key={index}>{row.title}<br /><small>{row.detail}</small></li>)}</ul><p><small>目前提供資料檢視；{panel === "wardrobe" ? "換裝" : panel === "dining" ? "發起共餐" : "領養與互動"}操作介面尚待製作。</small></p></>}

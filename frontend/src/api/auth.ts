@@ -26,6 +26,10 @@ export async function getMe(): Promise<UserMe> {
   return data;
 }
 
+export async function updateLocation(location_name: string): Promise<UserMe> {
+  return (await api.patch<UserMe>("/users/me", { location_name })).data;
+}
+
 export async function getDashboard(): Promise<DashboardData> {
   const { data } = await api.get<DashboardData>("/home/dashboard");
   return data;

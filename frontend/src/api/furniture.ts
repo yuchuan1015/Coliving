@@ -1,7 +1,19 @@
 import api from "./client";
 
+export interface CabinWeather {
+  description: string; temperature: number; emoji?: string; weather?: string;
+  location?: string; source?: "local" | "community"; is_day?: boolean; wind_kmh?: number;
+}
+
+export function weatherIcon(weather?: CabinWeather | null) {
+  if (!weather) return "◌";
+  if (weather.weather === "sunny" && weather.is_day === false) return "☾";
+  return weather.emoji || ({ sunny: "☼", cloudy: "☁", rainy: "☂", stormy: "ϟ", windy: "≋", foggy: "≋" }[weather.weather ?? ""] ?? "◌");
+}
+
 export interface FurnitureSummary {
-  weather: { description: string; temperature: number; emoji?: string; weather?: string } | null;
+  weather: CabinWeather | null;
+  community_weather?: CabinWeather & { activities?: unknown[] };
   clock: { utc: string; taipei?: string; timezone?: string; local_time?: string; community_timezone?: string; community_time?: string };
   diary: { count: number };
   drawer: { count: number };
@@ -43,7 +55,7 @@ export interface PhotoFrame {
 }
 
 export function getFurniture() {
-  return api.get<FurnitureSummary & { window?: FurnitureSummary["weather"] }>("/home/furniture").then(({ data }) => ({ ...data, weather: data.window ?? data.weather ?? null }));
+  return api.get<FurnitureSummary & { window?: FurnitureSummary["weather"] }>("/home/furniture").then(({ data }) => ({ ...data, weather: "window" in data ? data.window ?? null : data.weather ?? null }));
 }
 
 export function getDiaryEntries(params?: { keyword?: string }) {

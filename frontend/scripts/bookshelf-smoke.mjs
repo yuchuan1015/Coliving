@@ -17,7 +17,7 @@ async function setup(viewport = { width: 390, height: 844 }) {
   await context.addInitScript(() => localStorage.setItem("coliving_access_token", "LOCAL-ONLY-NOT-A-REAL-TOKEN"));
   const state = {
     memory: [{ id: "memory-1", text: "真正從 API 讀取的測試記憶", created_at: stamp }], books: [{ ...book }], requests: [],
-    memoryStatus: 200, bookStatus: 200, failWrite: false, readDelay: 0,
+    memoryStatus: 200, bookStatus: 200, failWrite: false, readDelay: 0, searchWithIds: false,
     highlights: [{ id: "h-agent", paragraph_idx: 13, text: "第二頁", author_kind: "agent", created_at: stamp }],
     notes: [{ id: "n-agent", paragraph_idx: 13, highlight_id: "h-agent", content: "室友留下的批注", author_kind: "agent", created_at: stamp }],
   };
@@ -37,6 +37,7 @@ async function setup(viewport = { width: 390, height: 844 }) {
       if (path === "/api/memory" && method === "GET") return response({ items: state.memory, count: state.memory.length });
       if (path === "/api/memory/search") {
         assert.equal(body.limit, 50);
+        if (state.searchWithIds) return response({ items: state.memory.map(item => ({ ...item, score: .9 })), count: state.memory.length, query: body.query });
         if (body.query === "slow") await new Promise(resolve => setTimeout(resolve, 500));
         return response({ items: [{ text: body.query + "搜尋結果無編號", score: .9 }], count: 1, query: body.query });
       }
@@ -135,6 +136,29 @@ try {
     assert.ok(state.requests.some(r => r.path === "/api/memory/export" && r.query === "?format=markdown"));
     console.log("PASS furniture entry, search races/no-id, memory save/error/delete/export");
     await context.close();
+  }
+  {
+    const { page, context, state } = await setup();
+    state.searchWithIds = true;
+    await page.goto(base + "/memory");
+    await page.locator(".memory-item").waitFor();
+    await page.getByRole("searchbox").fill("測試記憶");
+    await page.getByRole("button", { name: "搜尋", exact: true }).click();
+    await page.getByRole("heading", { name: "搜尋結果" }).waitFor();
+    await page.locator(".memory-item button").waitFor();
+    assert.equal(await page.locator(".memory-item time").getAttribute("datetime"), stamp);
+    await page.locator(".memory-item button").click();
+    state.failWrite = true;
+    await page.getByRole("button", { name: "確認刪除" }).click();
+    await page.getByRole("alert").waitFor();
+    assert.equal(state.memory.length, 1, "Failed delete retains memory");
+    state.failWrite = false;
+    await page.getByRole("button", { name: "確認刪除" }).click();
+    await page.getByText(/沒有找到相關記憶/).waitFor();
+    assert.ok(state.requests.some(r => r.method === "DELETE" && r.path === "/api/memory/memory-1"));
+    assert.equal(await page.getByRole("searchbox").inputValue(), "測試記憶");
+    await context.close();
+    console.log("PASS new search id/date, direct delete, error/retry and retained query");
   }
   for (const status of [400, 403, 503]) {
     const { page, context, state } = await setup();

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboard } from "../api/auth";
 import { getAnnouncements } from "../api/community";
-import { getFurniture, type FurnitureSummary } from "../api/furniture";
+import { getFurniture, weatherIcon, type FurnitureSummary } from "../api/furniture";
 import { useAuth } from "../hooks/useAuth";
 import { cabinZones, coverPoint, type CabinFurniture, type CabinPanel } from "../data/cabin";
 import { CabinPanelDialog } from "../components/CabinPanelDialog";
@@ -37,6 +37,13 @@ export function HomePage() {
   const agent = dashboard?.agents?.[0];
   const timezone = user?.timezone ?? summary?.clock.timezone;
   const time = new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", timeZone: timezone }).format(now);
+  const weatherRequest = useRef(0);
+  const refreshWeather = useCallback(async () => {
+    const request = ++weatherRequest.current;
+    setSummary(null);
+    const data = await getFurniture();
+    if (request === weatherRequest.current) setSummary(data);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +52,10 @@ export function HomePage() {
       const current = data.agents.length ? await getMyAgent().catch(() => null) : null;
       if (!cancelled) setDashboard(current ? { ...data, agents: [current, ...data.agents.filter(item => item.id !== current.id)] } : data);
     }).catch(() => { if (!cancelled) setError(true); });
-    getFurniture().then(data => { if (!cancelled) setSummary(data); }).catch(() => {});
+    const request = ++weatherRequest.current;
+    getFurniture().then(data => {
+      if (!cancelled && request === weatherRequest.current) setSummary(data);
+    }).catch(() => {});
     getAnnouncements().then(items => {
       if (!cancelled) setAnnouncement([...items].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null);
     }).catch(() => {});
@@ -97,7 +107,7 @@ export function HomePage() {
       <div className="cabin-info-row">
         <time className="cabin-time" dateTime={now.toISOString()}>{time}</time>
         <button className="cabin-weather" onClick={() => setPanel("window")} aria-label="查看天氣">
-          <span aria-hidden="true">☼</span><span>{summary?.weather?.description ?? "天氣待同步"}</span>
+          <span aria-hidden="true">{weatherIcon(summary?.weather)}</span><span>{summary?.weather?.description ?? "天氣待同步"}</span>
           {summary?.weather && <small>{summary.weather.temperature}°C</small>}
         </button>
       </div>
@@ -145,6 +155,6 @@ export function HomePage() {
       </div>
     </section>
     {fabOpen && <button className="cabin-menu-dismiss" onClick={closeFab} aria-label="關閉快捷選單" tabIndex={-1} />}
-    {panel && <CabinPanelDialog panel={panel} summary={summary} now={now} onClose={() => setPanel(null)} />}
+    {panel && <CabinPanelDialog panel={panel} summary={summary} now={now} onRefreshWeather={refreshWeather} onClose={() => setPanel(null)} />}
   </main>;
 }
