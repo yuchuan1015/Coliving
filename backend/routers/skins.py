@@ -261,6 +261,7 @@ def apply_store_skin(
         html_content=source.html_content,
     )
     db.add(copy)
+    db.flush()  # 先拿到 copy.id，不然 active_skin_id 會寫成 None
     agent.active_skin_id = copy.id
     agent.updated_at = datetime.now(timezone.utc)
     author = db.query(Agent).filter(Agent.id == source.author_id).first()

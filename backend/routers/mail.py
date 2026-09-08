@@ -29,8 +29,33 @@ def _get_agent_or_403(db: Session, user: User) -> Agent:
     return agent
 
 
-def _mail_to_out(mail: Mail, from_agent: Agent | None, to_agent: Agent, hide_sender: bool = False) -> dict:
-    if hide_sender or (mail.is_anonymous and from_agent):
+def _parse_deliver_at(raw: str) -> datetime:
+    """ISO 8601 → UTC aware。帶時區（+08:00／Z）就真的換算，沒帶就當 UTC。"""
+    try:
+        dt = datetime.fromisoformat(raw.strip())
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="時間格式錯誤")
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _sender_view(mail: Mail, viewer_id: str) -> str | None:
+    """看信的人不是寄件人時，寄件人要怎麼顯示：anon＝匿名居民、system＝系統寄件（定時信）、None＝照實。"""
+    if mail.from_agent_id == viewer_id:
+        return None
+    if mail.mail_type == "timed":
+        return "system"
+    if mail.is_anonymous:
+        return "anon"
+    return None
+
+
+def _mail_to_out(mail: Mail, from_agent: Agent | None, to_agent: Agent, hide_sender: str | bool | None = None) -> dict:
+    if hide_sender == "system":
+        from_name = "系統"
+        from_emoji = "📮"
+    elif hide_sender or (mail.is_anonymous and from_agent):
         from_name = "匿名居民"
         from_emoji = "🤫"
     elif from_agent:
@@ -57,7 +82,7 @@ def _mail_to_out(mail: Mail, from_agent: Agent | None, to_agent: Agent, hide_sen
     }
 
 
-def _mail_to_detail(mail: Mail, from_agent: Agent | None, to_agent: Agent, hide_sender: bool = False) -> dict:
+def _mail_to_detail(mail: Mail, from_agent: Agent | None, to_agent: Agent, hide_sender: str | bool | None = None) -> dict:
     out = _mail_to_out(mail, from_agent, to_agent, hide_sender)
     out["content"] = mail.content
     return out
@@ -101,8 +126,7 @@ def get_inbox(
     for m in mails:
         from_a = agents_map.get(m.from_agent_id) if m.from_agent_id else None
         to_a = agents_map.get(m.to_agent_id, agent)
-        hide = m.is_anonymous and m.from_agent_id != agent.id
-        result.append(_mail_to_out(m, from_a, to_a, hide))
+        result.append(_mail_to_out(m, from_a, to_a, _sender_view(m, agent.id)))
     return result
 
 
@@ -126,7 +150,7 @@ def get_sent(
     agents_list = db.query(Agent).filter(Agent.id.in_(agent_ids)).all()
     agents_map = {a.id: a for a in agents_list}
 
-    return [_mail_to_out(m, agent, agents_map.get(m.to_agent_id, agent), False) for m in mails]
+    return [_mail_to_out(m, agent, agents_map.get(m.to_agent_id, agent), None) for m in mails]
 
 
 @router.get("/unread", response_model=UnreadCount)
@@ -154,7 +178,7 @@ def read_mail(
         raise HTTPException(status_code=403, detail="這不是你的信")
 
     now = datetime.now(timezone.utc)
-    if mail.deliver_at and time_service.aware(mail.deliver_at) > now:
+    if mail.to_agent_id == agent.id and mail.deliver_at and time_service.aware(mail.deliver_at) > now:
         raise HTTPException(status_code=403, detail="這封信還沒到送達時間")
     if mail.expires_at and time_service.aware(mail.expires_at) <= now:
         raise HTTPException(status_code=410, detail="這封信已經過期了")
@@ -165,8 +189,7 @@ def read_mail(
 
     from_a = db.query(Agent).filter(Agent.id == mail.from_agent_id).first() if mail.from_agent_id else None
     to_a = db.query(Agent).filter(Agent.id == mail.to_agent_id).first()
-    hide = mail.is_anonymous and mail.from_agent_id != agent.id
-    return _mail_to_detail(mail, from_a, to_a, hide)
+    return _mail_to_detail(mail, from_a, to_a, _sender_view(mail, agent.id))
 
 
 @router.post("/letter", response_model=MailOut, status_code=201)
@@ -213,16 +236,13 @@ def create_timed_delivery(
     if not to_agent:
         raise HTTPException(status_code=404, detail="找不到收件人")
 
-    try:
-        deliver_time = datetime.fromisoformat(body.deliver_at).replace(tzinfo=timezone.utc)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="時間格式錯誤")
+    deliver_time = _parse_deliver_at(body.deliver_at)
 
     if deliver_time <= datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="送達時間必須是未來")
 
     mail = Mail(
-        from_agent_id=None,
+        from_agent_id=agent.id,
         to_agent_id=to_agent.id,
         subject=body.subject,
         content=body.content,
@@ -232,7 +252,7 @@ def create_timed_delivery(
     db.add(mail)
     db.commit()
     db.refresh(mail)
-    return _mail_to_out(mail, None, to_agent, False)
+    return _mail_to_out(mail, agent, to_agent, None)
 
 
 @router.post("/physical", response_model=MailOut, status_code=201)
