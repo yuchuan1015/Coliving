@@ -131,6 +131,12 @@ test("eleven actual destinations remain behind authentication and use existing a
   assert.ok(app.includes('path="/home/library" element={<BookshelfPage'));
   assert.ok(app.includes('path="/reading/:bookId"'));
 });
+test("standalone preview returns to the new official domain; API remains same-origin", () => {
+  const preview = readFileSync(resolve(root, "public/field-preview/app.js"), "utf8");
+  assert.ok(preview.includes('href="https://therookery.space/"'));
+  assert.ok(!preview.includes("therookery.duckdns.org"));
+  assert.ok(readFileSync(resolve(root, "src/api/client.ts"), "utf8").includes('baseURL: "/api"'));
+});
 test("safe links, query encoding and Taipei time do not invent source data", () => {
   assert.equal(fieldData.safeLink("javascript:alert(1)"), undefined);
   assert.equal(fieldData.safeLink("//evil.test/path"), undefined);
