@@ -59,6 +59,7 @@ def create_mcp_token(user_id: str, username: str, token_id: str | None = None, i
 
 def decode_token(token: str) -> dict:
     try:
-        return jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
+        # OAuth access token 帶 aud（我們的 /mcp），這裡不驗 aud，oauth_service.verify_access 自己看
+        return jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM], options={"verify_aud": False})
     except JWTError:
         return {}

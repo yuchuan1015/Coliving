@@ -56,6 +56,10 @@ def verify_token_row(db: Session, token_id: str | None) -> bool:
 
 # ───────── 鑰匙的樣子（2026-09-09 她定：一把固定鑰匙，嵌進連線，換窗不用重拿） ─────────
 
+def oauth_bed(grant_id: str) -> str:
+    return f"oauth:{grant_id}"
+
+
 def token_string(row: McpToken, username: str) -> str:
     """把表裡這把鑰匙重新算出來（同 jti、同到期），給主人看／複製。"""
     from services import auth_service, time_service

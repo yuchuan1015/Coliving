@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     mcp_token_expire_days: int = 90        # 沒 jti 的舊鑰匙用；有 jti 的鑰匙不靠過期，靠作廢（見 mcp_key_days）
     mcp_key_days: int = 3650               # 有編號的鑰匙壽命：固定鑰匙，換窗不用重拿
     public_base_url: str = "https://therookery.space"
+    oauth_access_minutes: int = 60          # OAuth access token 壽命
+    oauth_refresh_days: int = 90            # refresh token 壽命（每次用都換新）
+    oauth_consent_url: str = ""             # 同意頁；空＝用後端的 /oauth/consent 陽春頁，Codex 做好 SPA 頁再指過去（例：https://therookery.space/authorize）
     internal_secret: str = ""
     embed_openai_api_key: str = ""
     mem0_qdrant_path: str = "/opt/coliving/backend/memdata/qdrant"

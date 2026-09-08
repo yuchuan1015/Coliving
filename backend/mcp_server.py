@@ -71,9 +71,27 @@ def _tok(token: str, ctx) -> str:
 
 
 def _verify_mcp_token(token: str):
-    """驗鑰匙；有 jti 的要在 mcp_tokens 表且沒作廢，並把這次呼叫的床位設成 mcp:<jti>。"""
+    """驗鑰匙。兩種：
+    - type=mcp 固定鑰匙：有 jti 的要在 mcp_tokens 表且沒作廢，床位 mcp:<jti>
+    - type=oauth 授權 token：grant 沒撤銷，床位 oauth:<grant_id>"""
     payload = auth_service.decode_token(token)
-    if not payload or payload.get("type") != "mcp":
+    if not payload:
+        return None
+    kind = payload.get("type")
+    if kind == "oauth":
+        from services import oauth_service
+        if payload.get("aud") and payload["aud"] != oauth_service.resource_url():
+            return None
+        db = SessionLocal()
+        try:
+            gid = oauth_service.verify_access(db, payload)
+        finally:
+            db.close()
+        if not gid:
+            return None
+        bed_service.set_bed(bed_service.oauth_bed(gid))
+        return payload.get("sub")
+    if kind != "mcp":
         return None
     token_id = payload.get("jti")
     db = SessionLocal()
@@ -2554,7 +2572,57 @@ def reading(action: str, token: str = "", book_id: str = "", page: int = 0, para
     return json.dumps({"success": False, "error": f"reading 沒有「{action}」這個 action", "actions": ['shelf', 'read', 'highlight', 'note']}, ensure_ascii=False)
 
 
+class RequireCredential:
+    """/mcp 沒帶任何憑證 → 401 + WWW-Authenticate（讓 Claude.ai 這種客戶端知道要走 OAuth）；
+    帶了 OAuth token 但過期／撤銷 → 401 invalid_token（讓客戶端拿 refresh 換新）。固定鑰匙帶了就放進去，tool 自己驗。"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or not scope.get("path", "").startswith("/mcp"):
+            return await self.app(scope, receive, send)
+        headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+        qs = scope.get("query_string", b"").decode()
+        from urllib.parse import parse_qs
+        q = parse_qs(qs)
+        bearer = ""
+        auth = headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            bearer = auth[7:].strip()
+        has_cred = bool(bearer or headers.get("x-mcp-token") or q.get("token") or q.get("key"))
+        error = None
+        if not has_cred:
+            error = ("", "")
+        elif bearer:
+            payload = auth_service.decode_token(bearer)
+            if not payload:
+                error = ("invalid_token", "token invalid or expired")  # HTTP 標頭只能 ASCII
+            elif payload.get("type") == "oauth":
+                from services import oauth_service
+                db = SessionLocal()
+                try:
+                    ok = oauth_service.verify_access(db, payload)
+                finally:
+                    db.close()
+                if not ok:
+                    error = ("invalid_token", "authorization revoked")
+        if error is None:
+            return await self.app(scope, receive, send)
+        from services import oauth_service
+        www = f'Bearer realm="rookery", resource_metadata="{oauth_service.base()}/.well-known/oauth-protected-resource/mcp"'
+        if error[0]:
+            www += f', error="{error[0]}", error_description="{error[1]}"'
+        body = json.dumps({"error": error[0] or "unauthorized", "error_description": error[1] or "要帶鑰匙，或先走 OAuth 授權", "resource_metadata": f"{oauth_service.base()}/.well-known/oauth-protected-resource/mcp"}, ensure_ascii=False).encode()
+        await send({"type": "http.response.start", "status": 401, "headers": [
+            (b"content-type", b"application/json; charset=utf-8"),
+            (b"www-authenticate", www.encode()),
+            (b"content-length", str(len(body)).encode()),
+        ]})
+        await send({"type": "http.response.body", "body": body})
+
+
 if __name__ == "__main__":
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     # access_log=False：鑰匙可能在網址 ?token= 上，不進 log
-    uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=int(os.environ.get("MCP_PORT", "8001")), access_log=False)
+    uvicorn.run(RequireCredential(mcp.streamable_http_app(transport_security=security)), host="127.0.0.1", port=int(os.environ.get("MCP_PORT", "8001")), access_log=False)
