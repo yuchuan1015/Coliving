@@ -50,6 +50,7 @@ class AgentPublic(BaseModel):
     ob_enabled: bool
     external_mcps: list[ExternalMcpConfig]
     active_skin_id: str | None
+    dm_code: str | None = None  # 私訊碼 RK-XXXX-XXXX；漂流中 None；只在自己的室友上帶
     created_at: str
     updated_at: str | None
 

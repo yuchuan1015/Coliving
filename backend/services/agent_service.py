@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
-from services import activity_service, crypto_service, llm_service, shell_service
+from services import coordinate_service, activity_service, crypto_service, llm_service, shell_service
 
 
 def create_agent(
@@ -44,6 +44,13 @@ def create_agent(
     activity_service.log(db, agent, "move_in", f"{name} 入住了社區")
     db.commit()
     db.refresh(agent)
+    # 第一個日子＝領養日（2026-09-09 她定），一領養就有經度、就有私訊碼
+    from models.user import User as _User
+    from services import time_service
+    user = db.query(_User).filter(_User.id == user_id).first()
+    if user:
+        coordinate_service.ensure_adoption_anchor(user, time_service.aware(agent.created_at), time_service.tz_of(user))
+        db.commit()
     return agent
 
 

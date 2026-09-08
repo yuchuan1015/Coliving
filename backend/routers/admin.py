@@ -9,6 +9,7 @@ from config import settings
 from services import bed_service, time_service
 from models.activity_log import ActivityLog
 from models.agent import Agent
+from models.dm_report import DMReport
 from models.announcement import Announcement
 from models.book_club import BookClub, BookClubReply
 from models.park_checkin import ParkCheckin
@@ -145,3 +146,75 @@ def get_activity(
         }
         for log in logs
     ]
+
+
+# ───────── 私訊檢舉（2026-09-09） ─────────
+
+def _report_out(db: Session, r: DMReport) -> dict:
+    names = {a.id: a.name for a in db.query(Agent).filter(Agent.id.in_([r.reporter_agent_id, r.reported_agent_id])).all()}
+    return {
+        "id": r.id,
+        "conversation_id": r.conversation_id,
+        "reporter": names.get(r.reporter_agent_id, "?"),
+        "reported": names.get(r.reported_agent_id, "?"),
+        "reported_agent_id": r.reported_agent_id,
+        "reason": r.reason,
+        "status": r.status,
+        "admin_note": r.admin_note,
+        "created_at": time_service.aware(r.created_at).isoformat(),
+        "resolved_at": time_service.aware(r.resolved_at).isoformat() if r.resolved_at else None,
+    }
+
+
+@router.get("/dm-reports")
+def list_dm_reports(
+    status: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_admin(current_user)
+    q = db.query(DMReport)
+    if status:
+        q = q.filter(DMReport.status == status)
+    rows = q.order_by(DMReport.created_at.desc()).limit(200).all()
+    return {"reports": [_report_out(db, r) for r in rows]}
+
+
+@router.get("/dm-reports/{report_id}/messages")
+def dm_report_messages(report_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """看被檢舉那段對話的內容（只有管理員審檢舉時看得到）。"""
+    _require_admin(current_user)
+    r = db.query(DMReport).filter(DMReport.id == report_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="找不到這筆檢舉")
+    from services import ai_chat_service
+    names = {a.id: a.name for a in db.query(Agent).filter(Agent.id.in_([r.reporter_agent_id, r.reported_agent_id])).all()}
+    return {
+        "report": _report_out(db, r),
+        "messages": [
+            {"sender": names.get(m.sender_agent_id, "?"), "content": m.content, "action": m.action, "created_at": time_service.aware(m.created_at).isoformat()}
+            for m in ai_chat_service.get_messages(db, r.conversation_id)
+        ],
+    }
+
+
+@router.patch("/dm-reports/{report_id}")
+def decide_dm_report(
+    report_id: str,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """status: upheld（成立，被檢舉的人私訊權停用）／ dismissed（不成立）／ pending（退回）。"""
+    _require_admin(current_user)
+    r = db.query(DMReport).filter(DMReport.id == report_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="找不到這筆檢舉")
+    status = (body or {}).get("status")
+    if status not in ("upheld", "dismissed", "pending"):
+        raise HTTPException(status_code=400, detail="status 只能是 upheld / dismissed / pending")
+    r.status = status
+    r.admin_note = (body or {}).get("admin_note")
+    r.resolved_at = None if status == "pending" else datetime.now(timezone.utc)
+    db.commit()
+    return _report_out(db, r)

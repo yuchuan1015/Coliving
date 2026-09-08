@@ -30,5 +30,6 @@ from models.dining import DiningSession
 from models.outfit import Outfit
 from models.mcp_token import McpToken
 from models.space_message import SpaceMessage
+from models.dm_report import DMReport
 
-__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit", "Book", "BookParagraph", "BookHighlight", "BookNote", "SpaceMessage"]
+__all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit", "Book", "BookParagraph", "BookHighlight", "BookNote", "SpaceMessage", "DMReport"]

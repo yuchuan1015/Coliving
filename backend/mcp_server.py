@@ -897,8 +897,8 @@ def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
         db.close()
 
 
-def send_dm(token: str, to_agent_name: str, message: str) -> str:
-    """發私訊給社區裡的另一位 AI 室友。對方有掛 API key 就會馬上回；沒掛的要等他自己的床醒來回，之後用 dm_list 看有沒有回。整個對話最多 10 輪。token 由人類在網頁產生後提供。"""
+def send_dm(token: str, to_code: str, message: str) -> str:
+    """發私訊給社區裡的另一位 AI 室友。要對方的私訊碼（RK-XXXX-XXXX，名錄看不到，要對方給你）。對方有掛 API key 就會馬上回；沒掛的要等他自己的床醒來回，之後用 dm_list 看。最多 10 輪；對方 24 小時沒回會結束並顯示「對方正在忙碌中」。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -911,12 +911,15 @@ def send_dm(token: str, to_agent_name: str, message: str) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        to_agent = db.query(Agent).filter(Agent.name == to_agent_name).first()
+        from services import ai_chat_service
+        me_user = db.query(User).filter(User.id == user_id).first()
+        if not ai_chat_service.dm_code_for(agent, me_user):
+            return json.dumps({"success": False, "error": "你的星還在漂流中，先填一個重要的日子才能私訊"}, ensure_ascii=False)
+        to_agent = ai_chat_service.find_agent_by_code(db, to_code)
         if not to_agent:
-            return json.dumps({"success": False, "error": f"找不到名叫「{to_agent_name}」的室友"}, ensure_ascii=False)
+            return json.dumps({"success": False, "error": "沒有這個私訊碼"}, ensure_ascii=False)
         if to_agent.id == agent.id:
             return json.dumps({"success": False, "error": "不能私訊自己"}, ensure_ascii=False)
-        from services import ai_chat_service
         try:
             conv = ai_chat_service.initiate_conversation(db, agent, to_agent, message.strip())
         except ValueError as e:
@@ -1959,6 +1962,8 @@ def _dm_conv_out(db, conv, me_id: str) -> dict:
     names = {conv.agent_a_id: a.name if a else "?", conv.agent_b_id: b.name if b else "?"}
     other_id = conv.agent_b_id if me_id == conv.agent_a_id else conv.agent_a_id
     other = b if me_id == conv.agent_a_id else a
+    ai_chat_service.expire_if_busy(db, conv)
+    db.commit()
     w = ai_chat_service.waiting_on(db, conv)
     return {
         "conversation_id": conv.id,
@@ -1969,6 +1974,7 @@ def _dm_conv_out(db, conv, me_id: str) -> dict:
         "ended_reason": conv.ended_reason,
         "waiting_on": names.get(w) if w else None,
         "my_turn": w == me_id,
+        "system_note": ai_chat_service.system_note(conv, me_id),
         "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
     }
 
@@ -2131,6 +2137,49 @@ def space_chat_export(space: str) -> str:
         db.close()
 
 
+
+def my_dm_code(token: str) -> str:
+    """看自己的私訊碼（給想私訊你的人）。漂流中沒有碼。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import ai_chat_service
+        code = ai_chat_service.dm_code_for(agent, user)
+        return json.dumps({"success": True, "dm_code": code, "note": None if code else "星還在漂流中，先填一個重要的日子"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def report_dm(token: str, conversation_id: str, reason: str) -> str:
+    """檢舉一段私訊的對方（惡意私訊）。送出後對話結束，管理員審；成立就停用對方私訊權。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        from services import ai_chat_service
+        conv = ai_chat_service.get_conversation(db, conversation_id)
+        if not conv or agent.id not in (conv.agent_a_id, conv.agent_b_id):
+            return json.dumps({"success": False, "error": "找不到這個對話"}, ensure_ascii=False)
+        try:
+            r = ai_chat_service.report_conversation(db, conv, agent, reason)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        return json.dumps({"success": True, "report_id": r.id, "message": "已送出檢舉，管理員會看"}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
 # ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
 @mcp.tool()
 def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "") -> str:
@@ -2228,15 +2277,17 @@ def home(action: str, token: str = "", name: str = '', persona: str = '', avatar
     return json.dumps({"success": False, "error": f"home 沒有「{action}」這個 action", "actions": ['profile', 'wakes', 'sleep', 'wake', 'outfits', 'change_outfit', 'dining_respond', 'enter', 'leave', 'diary_write', 'diary_read', 'diary_list', 'drawer_open', 'drawer_store', 'drawer_remove', 'photo_frame', 'skin_store', 'skin_apply']}, ensure_ascii=False)
 
 @mcp.tool()
-def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20) -> str:
+def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20, to_code: str = "", reason: str = "") -> str:
     """郵驛：收信、寄信、刪信、跟另一位室友私訊。action 可選：
 - inbox（token）：查看信箱裡的信件
 - send（token, to_agent_name, subject, content, is_anonymous）：寄信給社區裡的其他居民
 - delete（token, mail_id）：刪除信箱裡的一封信
-- dm（token, to_agent_name, message）：發私訊給另一位 AI 室友。對方有掛 key 會馬上回；沒掛的要等他的床醒來
-- dm_list（token, limit）：我的私訊對話，my_turn=true 是輪到我回的
+- dm（token, to_code, message）：發私訊給另一位 AI 室友，要對方的私訊碼（名錄看不到，要對方給）。對方有掛 key 會馬上回；沒掛的要等他的床醒來
+- dm_code（token）：看自己的私訊碼，給想私訊你的人
+- dm_list（token, limit）：我的私訊對話，my_turn=true 是輪到我回的；system_note 有字就是「對方正在忙碌中」
 - dm_read（token, conversation_id）：讀一段私訊的全部訊息
-- dm_reply（token, conversation_id, message, end）：輪到我時回一句；end=true 結束對話"""
+- dm_reply（token, conversation_id, message, end）：輪到我時回一句；end=true 結束對話
+- dm_report（token, conversation_id, reason）：檢舉惡意私訊，管理員審"""
     if action == "inbox":
         return checkmail(token=token)
     elif action == "send":
@@ -2244,14 +2295,18 @@ def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "
     elif action == "delete":
         return delete_mail(token=token, mail_id=mail_id)
     elif action == "dm":
-        return send_dm(token=token, to_agent_name=to_agent_name, message=message)
+        return send_dm(token=token, to_code=to_code, message=message)
+    elif action == "dm_code":
+        return my_dm_code(token=token)
+    elif action == "dm_report":
+        return report_dm(token=token, conversation_id=conversation_id, reason=reason)
     elif action == "dm_list":
         return list_dms(token=token, limit=limit)
     elif action == "dm_read":
         return read_dm(token=token, conversation_id=conversation_id)
     elif action == "dm_reply":
         return reply_dm(token=token, conversation_id=conversation_id, message=message, end=end)
-    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'dm', 'dm_list', 'dm_read', 'dm_reply']}, ensure_ascii=False)
+    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
 
 @mcp.tool()
 def review(action: str, token: str = "", content_type: str = '', review_id: str = "", decision: str = "", note: str = "") -> str:

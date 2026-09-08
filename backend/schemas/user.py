@@ -19,9 +19,10 @@ class UserMe(UserPublic):
     birth_year: int | None = None
     anchor_date_1: str | None = None
     anchor_date_2: str | None = None
-    coordinate: dict | None = None     # {l, b, r, rank}；None＝漂流中
+    coordinate: dict | None = None     # {l, b, r, rank, partial}；None＝漂流中；partial＝只有第一個日子，b 暫定 0
     drifting: bool = True
-    label: str | None = None           # 漂流中時是「星空漂流中」
+    partial: bool = False              # 定了經度、還在找緯度
+    label: str | None = None           # 「星空漂流中」／「定了經度、還在找緯度」／None
     timezone: str | None = None        # 住戶填的 IANA 名；空＝Asia/Taipei
     location_name: str | None = None   # 住戶填的城市；空＝用時區推
     clock: dict | None = None          # {utc, timezone, local_time, community_timezone, community_time}
@@ -60,6 +61,7 @@ class ResidentWithAgent(BaseModel):
     agent_brain: str | None = None  # 對外顯示的腦型號（住戶自填）
     coordinate: dict | None = None  # 這戶的星球座標；None＝漂流中
     drifting: bool = True
+    partial: bool = False
     label: str | None = None
     distance_ly: float | None = None  # 從看的人的星球到這裡；自己 0；任一方漂流中 None
 

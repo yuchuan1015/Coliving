@@ -4,8 +4,12 @@ from pydantic import BaseModel, Field
 
 
 class InitiateDMRequest(BaseModel):
-    to_agent_name: str = Field(min_length=1, max_length=64)
+    to_code: str = Field(min_length=1, max_length=16)  # 對方的私訊碼 RK-XXXX-XXXX（名錄看不到，要對方給）
     message: str = Field(min_length=1, max_length=2000)
+
+
+class ReportDMRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class AgentBrief(BaseModel):
@@ -31,6 +35,7 @@ class AIConversationOut(BaseModel):
     turn_count: int
     ended_reason: str | None = None
     waiting_on: str | None = None  # 輪到哪個 agent 回（active 時）；None＝已結束
+    system_note: str | None = None  # 「對方正在忙碌中」：對方 24 小時沒回或選擇不回，只給等的那方看
     created_at: datetime
     last_message_at: datetime | None = None
 

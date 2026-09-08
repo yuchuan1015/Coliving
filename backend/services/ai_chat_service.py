@@ -1,18 +1,113 @@
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from config import settings
 from models.agent import Agent
 from models.ai_conversation import AIConversation, AIMessage
-from services import bed_service, crypto_service, llm_service, memory_service
+from models.dm_report import DMReport
+from models.user import User
+from services import bed_service, coordinate_service, crypto_service, llm_service, memory_service, time_service
 
 logger = logging.getLogger(__name__)
 
 MAX_TURNS = 10
 _HISTORY_WINDOW = 20
+BUSY_AFTER = timedelta(hours=24)  # 對方 24 小時沒回 → 對話結束，發送方看到「對方正在忙碌中」
+BUSY_NOTE = "對方正在忙碌中"
+CODE_PREFIX = "RK"
+
+
+# ───────── 私訊碼（2026-09-09 她定：座標打亂，名錄看不到，主人想給誰給誰） ─────────
+
+def dm_code_for(agent: Agent, user: User) -> str | None:
+    """經度（第一個日子）＋ agent id 用伺服器密鑰 HMAC 打亂 → RK-XXXX-XXXX。沒第一個日子（漂流中）就沒碼。"""
+    if not user or not user.anchor_date_1:
+        return None
+    lon = coordinate_service.longitude(user.anchor_date_1)
+    digest = hmac.new(settings.jwt_secret.encode(), f"dm|{lon:.2f}|{agent.id}".encode(), hashlib.sha256).digest()
+    raw = base64.b32encode(digest).decode().rstrip("=")
+    raw = raw.replace("O", "8").replace("I", "9")[:8]  # 去掉容易看錯的字
+    return f"{CODE_PREFIX}-{raw[:4]}-{raw[4:]}"
+
+
+def normalize_code(code: str) -> str:
+    return (code or "").strip().upper().replace(" ", "")
+
+
+def find_agent_by_code(db, code: str) -> Agent | None:
+    """碼是算出來的不存表，住戶不多，掃一遍就好。"""
+    want = normalize_code(code)
+    if not want:
+        return None
+    rows = db.query(Agent, User).join(User, User.id == Agent.user_id).all()
+    for agent, user in rows:
+        if dm_code_for(agent, user) == want:
+            return agent
+    return None
+
+
+# ───────── 檢舉／停權 ─────────
+
+def is_blocked(db, agent: Agent) -> bool:
+    """有一筆成立的檢舉就停用私訊權。"""
+    return db.query(DMReport).filter(DMReport.reported_agent_id == agent.id, DMReport.status == "upheld").count() > 0
+
+
+def report_conversation(db, conv: AIConversation, reporter: Agent, reason: str) -> DMReport:
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("要寫檢舉理由")
+    if len(reason) > 500:
+        raise ValueError("理由最多 500 字")
+    if reporter.id not in (conv.agent_a_id, conv.agent_b_id):
+        raise ValueError("你不是這個對話的參與者")
+    reported_id = conv.agent_b_id if reporter.id == conv.agent_a_id else conv.agent_a_id
+    dup = db.query(DMReport).filter(DMReport.conversation_id == conv.id, DMReport.reporter_agent_id == reporter.id).first()
+    if dup:
+        raise ValueError("這段對話你已經檢舉過了")
+    r = DMReport(conversation_id=conv.id, reporter_agent_id=reporter.id, reported_agent_id=reported_id, reason=reason)
+    db.add(r)
+    if conv.status == "active":
+        conv.status = "ended"
+        conv.ended_reason = "reported"
+    db.flush()
+    return r
+
+
+# ───────── 忙碌中 ─────────
+
+def expire_if_busy(db, conv: AIConversation) -> bool:
+    """輪到的人超過 24 小時沒回 → 結束，ended_reason=busy。回有沒有剛剛結束它。"""
+    if conv.status != "active" or not conv.last_message_at:
+        return False
+    if datetime.now(timezone.utc) - time_service.aware(conv.last_message_at) > BUSY_AFTER:
+        conv.status = "ended"
+        conv.ended_reason = "busy"
+        db.flush()
+        return True
+    return False
+
+
+def system_note(conv: AIConversation, viewer_id: str | None = None) -> str | None:
+    """給「還在等的那個人」的一句系統話。對方 24 小時沒回（busy）或選擇不回（wait）都只說「對方正在忙碌中」，不揭露是哪種。"""
+    if conv.ended_reason not in ("busy", "wait"):
+        return None
+    last_entry_by = conv.agent_a_id if conv.turn_count % 2 == 1 else conv.agent_b_id  # 最後一筆是誰留的
+    if conv.ended_reason == "busy":
+        waiter = last_entry_by                      # 他講完沒人回
+    else:
+        waiter = conv.agent_b_id if last_entry_by == conv.agent_a_id else conv.agent_a_id  # wait 是被等的人按的
+    if viewer_id is None or viewer_id == waiter:
+        return BUSY_NOTE
+    return None
+
 
 _DECISION_PROMPT = """你正在和「{other_name}」私訊對話。以下是你們的對話紀錄。
 
@@ -142,8 +237,11 @@ def reply_conversation(db: Session, conv: AIConversation, agent: Agent, content:
         raise ValueError("action 只能是 reply、end、wait")
     if agent.id not in (conv.agent_a_id, conv.agent_b_id):
         raise ValueError("你不是這個對話的參與者")
+    if is_blocked(db, agent):
+        raise ValueError("你的私訊權已被停用")
+    expire_if_busy(db, conv)
     if conv.status != "active":
-        raise ValueError("這個對話已經結束了")
+        raise ValueError("這個對話已經結束了" + ("（對方超過 24 小時沒回）" if conv.ended_reason == "busy" else ""))
     if waiting_on(db, conv) != agent.id:
         raise ValueError("現在不是輪到你，對方還沒回")
     if action == "reply" and not content.strip():
@@ -157,6 +255,8 @@ def reply_conversation(db: Session, conv: AIConversation, agent: Agent, content:
 
 def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initial_message: str) -> AIConversation:
     bed_service.set_bed("site")  # 對方是站上那張床在回
+    if is_blocked(db, from_agent):
+        raise ValueError("你的私訊權已被停用")
     if has_live_bed(to_agent) and memory_service.init_context(db, to_agent, query=initial_message)["count"] == 0:
         raise ValueError(f"{to_agent.name}{memory_service.EMPTY_MESSAGE}，這次不接")
     from sqlalchemy import or_
@@ -218,4 +318,6 @@ def waiting_for_agent(db: Session, agent_id: str) -> list[AIConversation]:
         .order_by(AIConversation.last_message_at.desc())
         .all()
     )
+    for c in convs:
+        expire_if_busy(db, c)
     return [c for c in convs if waiting_on(db, c) == agent_id]

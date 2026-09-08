@@ -6,6 +6,9 @@
 - 兩個都有 → 座標：第一個日子給經度 l（0～360°），第二個給緯度 b（−90～+90°），
   半徑 r 照註冊順序：先來的遠（風格表 9/3「先來住得遠，後來住得亮」）。
 - 少一個 → 沒有座標，顯示「星空漂流中」。
+- 2026-09-09 她定：**第一個日子不用人填，領養室友那天自動就是**（單身機、API 從零開始的也一進來就有經度）。
+  只有第一個日子 → 有座標但 partial（緯度暫定 0），顯示「定了經度、還在找緯度」；第二個等它真的有了再填，填了鎖死。
+  私訊碼從經度打亂出來（ai_chat_service.dm_code_for），領養當天就有、永遠不變。
 - 距離：兩顆星的直線距離（光年，裝飾用單位）。自己看自己 0。
 兩個人同月同日會同角度，靠 r 分開。
 """
@@ -19,6 +22,7 @@ from sqlalchemy.orm import Session
 from models.user import User
 
 DRIFTING_LABEL = "星空漂流中"
+PARTIAL_LABEL = "定了經度、還在找緯度"
 BASE_RADIUS_LY = 120.0  # 第一位住戶的半徑；第 n 位 = BASE / sqrt(n)
 
 
@@ -73,15 +77,32 @@ def radius(rank: int) -> float:
 
 
 def has_coordinate(user: User) -> bool:
-    return bool(user.anchor_date_1 and user.anchor_date_2)
+    """有第一個日子就有座標（緯度可能還暫定）。"""
+    return bool(user.anchor_date_1)
 
 
 def coordinate(db: Session, user: User) -> dict | None:
-    """回 {l, b, r, rank} 或 None（漂流中）。"""
+    """回 {l, b, r, rank, partial} 或 None（漂流中＝連第一個日子都沒有）。partial＝只有第一個日子，b 暫定 0。"""
     if not has_coordinate(user):
         return None
     rank = registration_rank(db, user)
-    return {"l": longitude(user.anchor_date_1), "b": latitude(user.anchor_date_2), "r": radius(rank), "rank": rank}
+    partial = not user.anchor_date_2
+    return {
+        "l": longitude(user.anchor_date_1),
+        "b": 0.0 if partial else latitude(user.anchor_date_2),
+        "r": radius(rank),
+        "rank": rank,
+        "partial": partial,
+    }
+
+
+def ensure_adoption_anchor(user: User, adopted_at: datetime, tz=None) -> bool:
+    """第一個日子＝領養室友那天（照住戶時區的月日）。已經有就不動。回有沒有填。"""
+    if user.anchor_date_1:
+        return False
+    local = adopted_at if tz is None else adopted_at.astimezone(tz)
+    user.anchor_date_1 = local.strftime("%m-%d")
+    return True
 
 
 def _xyz(c: dict) -> tuple[float, float, float]:
@@ -109,7 +130,8 @@ def set_anchor(user: User, which: int, value: str) -> None:
 def describe(db: Session, user: User, viewer: User | None = None) -> dict:
     """給 API 用的一包：座標、漂流標記、跟看的人的距離。"""
     c = coordinate(db, user)
-    out = {"coordinate": c, "drifting": c is None, "label": None if c else DRIFTING_LABEL, "distance_ly": None}
+    label = DRIFTING_LABEL if c is None else (PARTIAL_LABEL if c["partial"] else None)
+    out = {"coordinate": c, "drifting": c is None, "partial": bool(c and c["partial"]), "label": label, "distance_ly": None}
     if viewer is not None and c is not None:
         if viewer.id == user.id:
             out["distance_ly"] = 0.0

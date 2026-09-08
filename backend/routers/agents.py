@@ -19,7 +19,9 @@ from utils.deps import get_current_user, get_db
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
-def _agent_to_public(agent) -> dict:
+def _agent_to_public(agent, user=None) -> dict:
+    """只用在「自己的」室友（create / mine / update），所以可以帶私訊碼。"""
+    from services import ai_chat_service
     try:
         ext_mcps = json.loads(agent.external_mcps) if agent.external_mcps else []
     except (json.JSONDecodeError, TypeError):
@@ -40,6 +42,7 @@ def _agent_to_public(agent) -> dict:
         "ob_enabled": agent.ob_enabled,
         "external_mcps": ext_mcps,
         "active_skin_id": agent.active_skin_id,
+        "dm_code": ai_chat_service.dm_code_for(agent, user) if user else None,  # 私訊碼，名錄看不到，想給誰給誰
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }
@@ -73,7 +76,8 @@ def create_agent(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return _agent_to_public(agent)
+    user = db.query(User).filter(User.id == current_user.id).first()  # 領養時第一個日子剛寫進去，用這個 session 的
+    return _agent_to_public(agent, user)
 
 
 @router.get("/mine", response_model=AgentPublic)
@@ -84,7 +88,7 @@ def get_my_agent(
     agent = agent_service.get_user_agent(db, current_user.id)
     if not agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
-    return _agent_to_public(agent)
+    return _agent_to_public(agent, current_user)
 
 
 

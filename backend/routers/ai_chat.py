@@ -10,6 +10,7 @@ from schemas.ai_chat import (
     AIMessageOut,
     InitiateDMRequest,
     InitiateDMResponse,
+    ReportDMRequest,
 )
 from services import agent_service, ai_chat_service
 from utils.deps import get_current_user, get_db
@@ -22,7 +23,8 @@ def _agent_brief(agent: Agent) -> dict:
     return {"id": agent.id, "name": agent.name, "avatar_emoji": agent.avatar_emoji, "replies_live": ai_chat_service.has_live_bed(agent)}
 
 
-def _conv_to_out(db: Session, conv) -> dict:
+def _conv_to_out(db: Session, conv, viewer_id: str | None = None) -> dict:
+    ai_chat_service.expire_if_busy(db, conv)
     a = db.query(Agent).filter(Agent.id == conv.agent_a_id).first()
     b = db.query(Agent).filter(Agent.id == conv.agent_b_id).first()
     return {
@@ -33,6 +35,7 @@ def _conv_to_out(db: Session, conv) -> dict:
         "turn_count": conv.turn_count,
         "ended_reason": conv.ended_reason,
         "waiting_on": ai_chat_service.waiting_on(db, conv),
+        "system_note": ai_chat_service.system_note(conv, viewer_id),
         "created_at": conv.created_at,
         "last_message_at": conv.last_message_at,
     }
@@ -59,17 +62,22 @@ def initiate_dm(
     if not from_agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
 
-    to_agent = db.query(Agent).filter(Agent.name == body.to_agent_name).first()
+    if not ai_chat_service.dm_code_for(from_agent, current_user):
+        raise HTTPException(status_code=403, detail="你的星還在漂流中，先填一個重要的日子才能私訊")
+    to_agent = ai_chat_service.find_agent_by_code(db, body.to_code)
     if not to_agent:
-        raise HTTPException(status_code=404, detail=f"找不到名叫「{body.to_agent_name}」的室友")
+        raise HTTPException(status_code=404, detail="沒有這個私訊碼")
     if to_agent.id == from_agent.id:
         raise HTTPException(status_code=400, detail="不能私訊自己")
 
-    conv = ai_chat_service.initiate_conversation(db, from_agent, to_agent, body.message)
+    try:
+        conv = ai_chat_service.initiate_conversation(db, from_agent, to_agent, body.message)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     messages = ai_chat_service.get_messages(db, conv.id)
 
     return {
-        "conversation": _conv_to_out(db, conv),
+        "conversation": _conv_to_out(db, conv, from_agent.id),
         "messages": [_msg_to_out(db, m) for m in messages],
     }
 
@@ -85,7 +93,9 @@ def list_conversations(
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
 
     convs = ai_chat_service.list_conversations(db, agent.id, limit)
-    return [_conv_to_out(db, c) for c in convs]
+    out = [_conv_to_out(db, c, agent.id) for c in convs]
+    db.commit()  # expire_if_busy 可能剛結束了幾段
+    return out
 
 
 @router.get("/{conversation_id}", response_model=AIConversationDetail)
@@ -105,6 +115,29 @@ def get_conversation_detail(
         raise HTTPException(status_code=403, detail="你不是這個對話的參與者")
 
     messages = ai_chat_service.get_messages(db, conv.id)
-    out = _conv_to_out(db, conv)
+    out = _conv_to_out(db, conv, agent.id)
+    db.commit()
     out["messages"] = [_msg_to_out(db, m) for m in messages]
     return out
+
+
+@router.post("/{conversation_id}/report", status_code=201)
+def report_dm(
+    conversation_id: str,
+    body: ReportDMRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """檢舉這段私訊的對方。送出後對話結束；管理員審，成立就停用對方私訊權。"""
+    agent = agent_service.get_user_agent(db, current_user.id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
+    conv = ai_chat_service.get_conversation(db, conversation_id)
+    if not conv or agent.id not in (conv.agent_a_id, conv.agent_b_id):
+        raise HTTPException(status_code=404, detail="找不到這個對話")
+    try:
+        r = ai_chat_service.report_conversation(db, conv, agent, body.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.commit()
+    return {"id": r.id, "status": r.status, "message": "已送出檢舉，管理員會看"}

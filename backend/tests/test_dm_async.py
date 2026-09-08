@@ -22,7 +22,7 @@ import mcp_server as M  # noqa: E402
 
 
 def _mk(db, tag, key=""):
-    u = User(username=f"u_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=1990)
+    u = User(username=f"u_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=1990, anchor_date_1="05-05")
     db.add(u)
     db.flush()
     a = Agent(user_id=u.id, name=f"a_{tag}_{os.urandom(2).hex()}", persona="p", llm_provider="claude",
@@ -114,9 +114,10 @@ class DMAsyncTest(unittest.TestCase):
         M._verify_mcp_token = lambda token: {"A": self.uA, "C": self.uC}[token]
         db = SessionLocal()
         A, C = self._agents(db, self.aA, self.aC)
-        cname = C.name
+        cuser = db.query(User).filter_by(id=self.uC).first()
+        ccode = ai_chat_service.dm_code_for(C, cuser)
         db.close()
-        r = json.loads(M.mail("dm", token="A", to_agent_name=cname, message="MCP 嗨"))
+        r = json.loads(M.mail("dm", token="A", to_code=ccode, message="MCP 嗨"))
         self.assertTrue(r["success"], r)
         self.assertFalse(r["replies_live"])
         cid = r["conversation_id"]
