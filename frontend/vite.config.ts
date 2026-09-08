@@ -9,6 +9,10 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        // Standalone field HTML must not resolve to the React app shell.
+        navigateFallbackDenylist: [/^\/field-preview(?:\/|$)/],
+      },
       manifest: {
         name: "共居社區",
         short_name: "共居",
