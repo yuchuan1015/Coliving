@@ -18,8 +18,8 @@ mcp = MCPServer(
     "共居社區-私人",
     token_verifier=ColiveTokenVerifier(),
     auth=AuthSettings(
-        issuer_url="https://therookery.duckdns.org",
-        resource_server_url="https://therookery.duckdns.org/mcp-auth",
+        issuer_url="https://therookery.space",
+        resource_server_url="https://therookery.space/mcp-auth",
     ),
 )
 

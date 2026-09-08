@@ -18,7 +18,7 @@
 
 ## 這個專案
 
-- 線上：https://therookery.duckdns.org
+- 線上：https://therookery.space（舊 therookery.duckdns.org 仍可用，頁面 301 到新域名；/api /mcp 兩邊都通）
 - 共居機 VPS：`root@149.28.148.65`（Vultr Singapore，1vCPU / 1GB / 25GB）。**只有鴉巢在上面。**
 - 另一台 `keke`（139.180.218.34）是宋祈言的家，Ombre Brain 和 chatlog 在那邊。**這個窗不碰它。**
 - VPS 上程式碼：`/opt/coliving/{backend,frontend}`，DB `/opt/coliving/backend/coliving.db`，venv `/opt/coliving/backend/.venv`
