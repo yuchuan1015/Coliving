@@ -1,5 +1,5 @@
 import client from "./client";
-import type { AgentPublic, CreateAgentPayload, LlmProvider } from "../types";
+import type { AgentPublic, CreateAgentPayload, LlmProvider, McpKey } from "../types";
 
 export interface ProviderSettings {
   providers: { key: LlmProvider; name: string }[];
@@ -36,9 +36,16 @@ export async function getMyAgent(): Promise<AgentPublic | null> {
   }
 }
 
-export async function generateMcpToken(): Promise<string> {
-  const res = await client.post<{ mcp_token: string }>("/agents/mine/mcp-token");
-  return res.data.mcp_token;
+export async function listMcpTokens(signal?: AbortSignal): Promise<McpKey[]> {
+  return (await client.get<McpKey[]>("/agents/mine/mcp-tokens", { signal })).data;
+}
+
+export async function generateMcpToken(label: string): Promise<McpKey> {
+  return (await client.post<McpKey>("/agents/mine/mcp-token", { label })).data;
+}
+
+export async function revokeMcpToken(tokenId: string): Promise<void> {
+  await client.delete(`/agents/mine/mcp-tokens/${encodeURIComponent(tokenId)}`);
 }
 
 export async function updateAgent(

@@ -1,0 +1,23 @@
+.mcp-keys,.mcp-adopt-success{background:rgba(10,8,28,.82);border:1px solid var(--ya-line,rgba(226,219,255,.22));border-radius:24px;padding:24px;color:var(--ya-ink,#f4f0ff);line-height:1.7;min-width:0}
+.mcp-keys h2,.mcp-keys h3{font-size:1rem;font-weight:500;margin:0;overflow-wrap:anywhere}
+.mcp-keys p,.mcp-adopt-success p{font-size:1rem;margin:12px 0}
+.mcp-key-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.mcp-key-list{display:grid;gap:16px;margin:24px 0}
+.mcp-key-row{min-width:0;padding:16px;border:1px solid var(--ya-line,rgba(226,219,255,.22));border-radius:16px;background:rgba(255,255,255,.025)}
+.mcp-key-dates{display:flex;flex-wrap:wrap;gap:8px 24px;margin:12px 0;font-size:.875rem;color:var(--ya-muted,#a9a1c7)}
+.mcp-key-dates dd{margin:0;color:var(--ya-ink,#f4f0ff)}
+.mcp-key-actions{display:flex;flex-wrap:wrap;gap:8px}
+.mcp-keys button,.mcp-connect button,.mcp-adopt-success button{min-height:44px;max-width:100%;padding:8px 16px;border:1px solid var(--ya-line,rgba(226,219,255,.22));border-radius:12px;background:rgba(201,167,255,.1);color:var(--ya-accent,#c9a7ff);font-size:.875rem;line-height:1.5;overflow-wrap:anywhere;cursor:pointer}
+.mcp-keys button:disabled,.mcp-connect button:disabled{opacity:.5;cursor:default}
+.mcp-keys :focus-visible,.mcp-connect :focus-visible,.mcp-adopt-success :focus-visible{outline:2px solid var(--ya-accent,#c9a7ff);outline-offset:4px}
+.mcp-connect .mcp-key-note,.mcp-keys .mcp-key-note{font-size:.875rem;color:var(--ya-muted,#a9a1c7)}
+.mcp-secret,.mcp-key-create{display:grid;gap:8px;margin:16px 0;font-size:.875rem;min-width:0}
+.mcp-secret textarea,.mcp-key-create input{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid var(--ya-line,rgba(226,219,255,.22));border-radius:12px;background:rgba(255,255,255,.055);color:var(--ya-ink,#f4f0ff);font-size:1rem;line-height:1.5}
+.mcp-secret textarea{overflow-wrap:anywhere;resize:vertical;min-height:96px}
+.mcp-key-create button{justify-self:start}
+.mcp-revoke{padding-top:12px}.mcp-revoke-button{margin-top:12px}
+.mcp-keys [role=alert]{border-left:2px solid var(--ya-accent,#c9a7ff);padding-left:12px}
+.mcp-adopt-success{max-width:640px;margin:24px auto;padding:24px}
+.mcp-adopt-success h1{font-size:1.5rem;font-weight:400;margin:0 0 16px}
+.mcp-adopt-success>.mcp-key-actions{margin-top:24px}
+@media(max-width:480px){.mcp-keys{padding:16px}.mcp-adopt-success{margin:16px}.mcp-key-actions>button{flex:1 1 160px}}

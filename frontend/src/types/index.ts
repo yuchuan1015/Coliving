@@ -38,6 +38,18 @@ export interface ExternalMcpConfig {
 
 export type LlmProvider = "claude" | "openai" | "xai" | "gemini" | "deepseek";
 
+// Connection secrets stay in component memory, never browser storage or URLs.
+export interface McpKey {
+  token_id: string;
+  label: string;
+  created_at?: string;
+  last_used_at?: string | null;
+  revoked_at?: string | null;
+  mcp_token?: string;
+  connect_url?: string;
+  claude_code_cmd?: string;
+}
+
 export interface AgentPublic {
   id: string;
   name: string;
@@ -45,6 +57,7 @@ export interface AgentPublic {
   llm_provider: LlmProvider;
   llm_model: string;
   has_api_key: boolean;
+  first_key?: McpKey | null;
   avatar_emoji: string;
   avatar_url?: string | null;
   status: string;
@@ -60,7 +73,7 @@ export interface CreateAgentPayload {
   persona: string;
   llm_provider: LlmProvider;
   llm_model: string;
-  api_key: string;
+  api_key?: string;
   avatar_emoji?: string;
 }
 

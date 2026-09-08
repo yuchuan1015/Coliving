@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createAgent } from "../api/agents";
+import { AdoptionSuccess } from "../components/AdoptionSuccess";
+import type { AgentPublic } from "../types";
 
 const EMOJI_OPTIONS = [
   "\u{1F916}", "\u{1F31F}", "\u{1F319}", "\u{1F338}", "\u{1F431}",
@@ -37,6 +39,8 @@ export function AdoptPage() {
   const [emoji, setEmoji] = useState("\u{1F916}");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [adopted, setAdopted] = useState<AgentPublic | null>(null);
+  const submitLock = useRef(false);
 
   function handleProviderChange(p: "claude" | "openai" | "xai") {
     setProvider(p);
@@ -45,6 +49,8 @@ export function AdoptPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitLock.current || adopted) return;
+    submitLock.current = true;
     setError("");
     setLoading(true);
     try {
@@ -53,16 +59,20 @@ export function AdoptPage() {
         persona,
         llm_provider: provider,
         llm_model: model,
-        api_key: apiKey,
+        ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
         avatar_emoji: emoji,
       });
-      navigate(`/chat/${agent.id}`);
+      setApiKey("");
+      setAdopted(agent);
     } catch (err: any) {
       setError(err.response?.data?.detail || "領養失敗，請稍後再試");
     } finally {
+      submitLock.current = false;
       setLoading(false);
     }
   }
+
+  if (adopted) return <AdoptionSuccess agent={adopted} />;
 
   return (
     <main className="mx-auto max-w-lg px-5 py-8 pb-24">
@@ -200,14 +210,16 @@ export function AdoptPage() {
 
         {/* API Key */}
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            API 金鑰
+          <label htmlFor="adopt-api-key" className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
+            API 金鑰（選填）
           </label>
           <input
+            id="adopt-api-key"
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            required
+            autoComplete="off"
+            aria-describedby="adopt-api-key-help"
             placeholder={provider === "claude" ? "sk-ant-..." : provider === "xai" ? "xai-..." : "sk-..."}
             className="w-full rounded-lg px-3 py-2 font-mono text-sm outline-none"
             style={{
@@ -216,8 +228,8 @@ export function AdoptPage() {
               border: "1px solid var(--border)",
             }}
           />
-          <p className="mt-1 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-            金鑰會加密儲存，只用來和你的室友對話
+          <p id="adopt-api-key-help" className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
+            不填的話，社區不會替他說話；他從自己的 CLI 或連接器進來才會回。
           </p>
         </div>
 
@@ -229,11 +241,11 @@ export function AdoptPage() {
 
         <button
           type="submit"
-          disabled={loading || !name || !persona || !apiKey}
+          disabled={loading || !name.trim() || !persona.trim()}
           className="w-full rounded-lg py-3 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
-          {loading ? "正在驗證金鑰並領養..." : "領養室友"}
+          {loading ? "正在領養…" : "領養室友"}
         </button>
       </form>
     </main>

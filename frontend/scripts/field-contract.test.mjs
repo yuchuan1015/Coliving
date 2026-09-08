@@ -35,6 +35,7 @@ const windowStub = { location: { origin: "https://example.test" }, setInterval: 
 const sessionValues = new Map();
 const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
 const documentStub = { hidden: false, activeElement: null };
+const navigatorStub = { clipboard: { writeText: async value => { calls.push({ method: "copy", args: [value] }); } } };
 class TestFormData extends FormData {
   constructor(source) { super(); if (source) for (const [key, value] of source) this.append(key, value); }
 }
@@ -67,7 +68,7 @@ function load(relative) {
     const value = load(filename);
     return filename.endsWith("/fields/fieldData.ts") ? { ...value, useFieldResource: fixtureResource } : value;
   }
-  new Function("require", "module", "exports", "window", "document", "FormData", "sessionStorage", code)(localRequire, module, module.exports, windowStub, documentStub, TestFormData, sessionStorageStub);
+  new Function("require", "module", "exports", "window", "document", "FormData", "sessionStorage", "navigator", code)(localRequire, module, module.exports, windowStub, documentStub, TestFormData, sessionStorageStub, navigatorStub);
   return module.exports;
 }
 function mount(component, props = {}) {
@@ -117,6 +118,7 @@ const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
 beforeEach(() => {
   fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null;
   sessionValues.clear();
+  navigatorStub.clipboard = { writeText: async value => { calls.push({ method: "copy", args: [value] }); } };
   auth = { user: { id: "me", role: "resident", birth_year: null },
     updateBirthYear: async year => { calls.push({ method: "birth", args: [year] }); auth.user.birth_year = year; },
     refreshUser: async () => { calls.push({ method: "profile", args: [] }); return auth.user; },
@@ -620,7 +622,8 @@ test("settings removes only Agent edit entry and preserves account, advanced and
 test("advanced page no longer renders or submits basic fields or the legacy OB switch", async () => {
   const h = await loadedAdvanced();
   assert.match(text(h.tree), /進階連線與房間設定/);
-  for (const label of ["MCP Token", "外部 MCP", "房間皮膚"]) assert.ok(text(h.tree).includes(label));
+  for (const label of ["外部 MCP", "房間皮膚"]) assert.ok(text(h.tree).includes(label));
+  assert.equal(components(h, "McpKeysPanel").length, 1);
   for (const label of ["個性描述", "API 金鑰", "長期記憶", "儲存變更"]) assert.ok(!text(h.tree).includes(label));
   assert.equal(nodes(h.tree, n => n.type === "form" || n.props.type === "submit" || n.type === "select").length, 0);
   const source = readFileSync(resolve(root, "src/pages/AdvancedAgentPage.tsx"), "utf8");
@@ -643,12 +646,9 @@ test("advanced external MCP add/delete send only connection data, never basic pr
   expectCall("patch", "/agents/agent-a", { external_mcps: [] });
 });
 
-test("advanced token and skin operations survive the removal of the basic form", async () => {
+test("advanced keys panel and skin operations survive the removal of the basic form", async () => {
   const h = await loadedAdvanced();
-  answer = async () => ({ data: { mcp_token: "test-only-token" } });
-  await button(h, "產生 MCP Token").props.onClick(); h.render();
-  expectCall("post", "/agents/mine/mcp-token");
-  assert.equal(nodes(h.tree, n => n.type === "textarea" && n.props.readOnly)[0].props.value, "test-only-token");
+  assert.equal(components(h, "McpKeysPanel").length, 1);
   nodes(h.tree, n => n.type === "input" && n.props.placeholder === "皮膚名稱")[0].props.onChange({ target: { value: "測試皮膚" } }); h.render();
   nodes(h.tree, n => n.type === "textarea" && !n.props.readOnly)[0].props.onChange({ target: { value: "<main>test</main>" } }); h.render();
   answer = async () => ({ data: { id: "skin-test", name: "測試皮膚" } });
@@ -662,4 +662,200 @@ test("legacy AgentCard cannot reintroduce an edit shortcut", () => {
   assert.ok(!text(h.tree).includes("編輯"));
   click(h, "聊天"); expectCall("navigate", "/chat/agent-a");
   click(h, "排程"); expectCall("navigate", "/schedules");
+});
+
+// Fake values only: never fetch a resident's real connector credentials in tests.
+const fixedKey = {
+  token_id: "test-key", label: "第一把", created_at: "2026-09-09T00:00:00Z", last_used_at: null, revoked_at: null,
+  mcp_token: "test-only-raw-secret", connect_url: "https://example.test/mcp?token=test-only-key",
+  claude_code_cmd: 'claude mcp add --transport http rookery https://example.test/mcp --header "Authorization: Bearer test-only-key"',
+};
+const { McpKeysPanel } = load("src/components/McpKeysPanel.tsx");
+const { McpConnectionActions } = load("src/components/McpConnectionActions.tsx");
+const { AdoptionSuccess } = load("src/components/AdoptionSuccess.tsx");
+const { AdoptPage } = load("src/pages/AdoptPage.tsx");
+async function loadedKeys(rows = [fixedKey]) {
+  answer = async () => ({ data: rows });
+  const h = mount(McpKeysPanel); h.effects(); await tick(); h.render(); return h;
+}
+function keyLabel(h, value) {
+  nodes(h.tree, n => n.props.id === "mcp-key-label")[0].props.onChange({ target: { value } }); h.render();
+}
+function fillAdopt(h, apiKey = "") {
+  nodes(h.tree, n => n.props.placeholder === "幫室友取個名字")[0].props.onChange({ target: { value: "測試室友" } }); h.render();
+  nodes(h.tree, n => n.type === "textarea")[0].props.onChange({ target: { value: "測試個性" } }); h.render();
+  nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.onChange({ target: { value: apiKey } }); h.render();
+}
+
+test("fixed keys load existing credentials and metadata without minting anything", async () => {
+  const revoked = { ...fixedKey, token_id: "revoked", revoked_at: "2026-09-09T01:00:00Z" };
+  const h = await loadedKeys([fixedKey, revoked]);
+  assert.equal(calls.length, 1); expectCall("get", "/agents/mine/mcp-tokens");
+  assert.ok(calls[0].args[1].signal instanceof AbortSignal);
+  assert.match(text(h.tree), /第一把/); assert.match(text(h.tree), /建立時間/); assert.match(text(h.tree), /最後使用尚未使用/);
+  assert.equal(components(h, "McpConnectionActions").length, 2);
+  assert.deepEqual(components(h, "McpConnectionActions")[0].props.connection, fixedKey);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "作廢").length, 1);
+  assert.ok(!text(h.tree).includes("只顯示一次")); h.dispose();
+});
+
+test("empty key list is explicit and never automatically issues a key", async () => {
+  const h = await loadedKeys([]);
+  assert.match(text(h.tree), /還沒有鑰匙/);
+  assert.equal(button(h, "產生 MCP Token").props.disabled, true);
+  keyLabel(h, "   "); assert.equal(button(h, "產生 MCP Token").props.disabled, true);
+  keyLabel(h, "x".repeat(33)); assert.equal(button(h, "產生 MCP Token").props.disabled, true);
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+
+test("key generation sends the trimmed label once and retains full returned connection data", async () => {
+  const h = await loadedKeys([]); keyLabel(h, " 主窗 ");
+  const write = deferred(); answer = () => write.promise;
+  const action = button(h, "產生 MCP Token").props.onClick;
+  const first = action(); await action();
+  assert.equal(calls.filter(c => c.method === "post").length, 1);
+  expectCall("post", "/agents/mine/mcp-token", { label: "主窗" });
+  write.resolve({ data: { ...fixedKey, label: "主窗" } }); await first; h.render();
+  assert.equal(components(h, "McpConnectionActions")[0].props.connection.connect_url, fixedKey.connect_url);
+  assert.equal(nodes(h.tree, n => n.props.id === "mcp-key-label")[0].props.value, "");
+  assert.match(text(h.tree), /下次回來仍能複製/); h.dispose();
+});
+
+test("failed key generation keeps the label, does not retry, and suggests checking the list", async () => {
+  const h = await loadedKeys([]); keyLabel(h, "別重複產生");
+  answer = async () => { throw Error("offline"); };
+  await button(h, "產生 MCP Token").props.onClick(); h.render();
+  assert.match(text(h.tree), /請先更新清單確認/);
+  assert.equal(nodes(h.tree, n => n.props.id === "mcp-key-label")[0].props.value, "別重複產生");
+  assert.equal(calls.filter(c => c.method === "post").length, 1); h.dispose();
+});
+
+test("list failures are not empty states and refresh recovers; unmounted reads are ignored", async () => {
+  answer = async () => { throw { response: { data: { detail: "暫時讀不到" } } }; };
+  const h = mount(McpKeysPanel); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /暫時讀不到/); assert.ok(!text(h.tree).includes("還沒有鑰匙"));
+  const read = deferred(); answer = () => read.promise;
+  click(h, "更新清單"); h.effects(); h.render();
+  const signal = calls.at(-1).args[1].signal;
+  h.dispose(); assert.ok(signal.aborted);
+  read.resolve({ data: [fixedKey] }); await tick(); h.render();
+  assert.equal(components(h, "McpConnectionActions").length, 0);
+});
+
+test("refresh clears old connection data and shows the latest revoked state", async () => {
+  const h = await loadedKeys(); answer = async () => ({ data: [{ ...fixedKey, revoked_at: "2026-09-09T01:00:00Z" }] });
+  click(h, "更新清單"); h.effects(); h.render();
+  assert.equal(components(h, "McpConnectionActions").length, 0);
+  await tick(); h.render();
+  assert.ok(components(h, "McpConnectionActions")[0].props.connection.revoked_at);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "作廢").length, 0); h.dispose();
+});
+
+test("revocation requires confirmation, sends the exact id, and discards only that key's secrets", async () => {
+  const other = { ...fixedKey, token_id: "other", label: "另一把", revoked_at: "2026-09-08T00:00:00Z" };
+  const h = await loadedKeys([fixedKey, other]); click(h, "作廢");
+  assert.ok(calls.every(c => c.method === "get")); click(h, "取消");
+  assert.ok(calls.every(c => c.method === "get")); click(h, "作廢");
+  const write = deferred(); answer = () => write.promise;
+  const action = button(h, "確認作廢").props.onClick;
+  const pending = action(); await action();
+  assert.equal(calls.filter(c => c.method === "delete").length, 1);
+  expectCall("delete", "/agents/mine/mcp-tokens/test-key");
+  write.resolve({}); await pending; h.render();
+  const changed = components(h, "McpConnectionActions").map(n => n.props.connection);
+  assert.ok(changed[0].revoked_at);
+  for (const key of ["mcp_token", "connect_url", "claude_code_cmd"]) assert.equal(changed[0][key], undefined);
+  assert.deepEqual(changed[1], other); h.dispose();
+});
+
+test("failed revocation displays detail and leaves the selected key intact", async () => {
+  const h = await loadedKeys(); click(h, "作廢");
+  answer = async () => { throw { response: { data: { detail: "暫時不能作廢" } } }; };
+  await button(h, "確認作廢").props.onClick(); h.render();
+  assert.match(text(h.tree), /暫時不能作廢/);
+  assert.deepEqual(components(h, "McpConnectionActions")[0].props.connection, fixedKey); h.dispose();
+});
+
+test("copy reports success only after clipboard resolves and never opens a secret URL", async () => {
+  const h = mount(McpConnectionActions, { connection: fixedKey }); const write = deferred();
+  navigatorStub.clipboard = { writeText: value => { calls.push({ method: "copy", args: [value] }); return write.promise; } };
+  const pending = button(h, "複製連接器網址").props.onClick(); h.render();
+  assert.ok(!text(h.tree).includes("已複製")); assert.equal(button(h, "複製 Claude Code 指令").props.disabled, true);
+  expectCall("copy", fixedKey.connect_url); write.resolve(); await pending; h.render();
+  assert.match(text(h.tree), /已複製連接器網址/);
+  assert.equal(nodes(h.tree, n => n.type === "a" || n.type === "textarea").length, 0);
+});
+
+test("connector copy failures offer the exact selected value for manual copy without false success", async () => {
+  for (const [label, field] of [["複製連接器網址", "connect_url"], ["複製 Claude Code 指令", "claude_code_cmd"]]) {
+    const h = mount(McpConnectionActions, { connection: fixedKey });
+    navigatorStub.clipboard = { writeText: async () => { throw Error("denied"); } };
+    await button(h, label).props.onClick(); h.render();
+    assert.match(text(h.tree), /未能自動複製/); assert.ok(!text(h.tree).includes("已複製"));
+    const fieldNode = nodes(h.tree, n => n.type === "textarea")[0];
+    assert.equal(fieldNode.props.value, fixedKey[field]); assert.equal(fieldNode.props.readOnly, true);
+    assert.equal(fieldNode.props.autoComplete, "off");
+    let selected = false; fieldNode.props.onFocus({ currentTarget: { select() { selected = true; } } }); assert.ok(selected);
+  }
+});
+
+test("missing Clipboard API also falls back; revoked keys never show or copy provided secrets", async () => {
+  navigatorStub.clipboard = undefined;
+  const h = mount(McpConnectionActions, { connection: fixedKey });
+  await button(h, "複製連接器網址").props.onClick(); h.render(); assert.match(text(h.tree), /未能自動複製/);
+  const revoked = mount(McpConnectionActions, { connection: { ...fixedKey, revoked_at: "now" }, showUrl: true });
+  assert.equal(nodes(revoked.tree, n => n.type === "button" || n.type === "textarea").length, 0);
+  assert.ok(!text(revoked.tree).includes(fixedKey.connect_url));
+});
+
+test("missing connection fields disable copy rather than inventing a URL from the raw token", () => {
+  const h = mount(McpConnectionActions, { connection: { token_id: "old", mcp_token: "test-only-old", label: "舊資料" } });
+  assert.equal(button(h, "複製連接器網址").props.disabled, true);
+  assert.equal(button(h, "複製 Claude Code 指令").props.disabled, true);
+  assert.match(text(h.tree), /不必重新產生鑰匙/);
+});
+
+test("adoption without an API key submits once and retains first_key in the success screen", async () => {
+  const h = mount(AdoptPage); fillAdopt(h, "  ");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.required, undefined);
+  assert.equal(button(h, "領養室友").props.disabled, false);
+  const write = deferred(); answer = () => write.promise;
+  const submit = nodes(h.tree, n => n.type === "form")[0].props.onSubmit;
+  const pending = submit({ preventDefault() {} }); await submit({ preventDefault() {} });
+  assert.equal(calls.length, 1); expectCall("post", "/agents");
+  assert.ok(!Object.hasOwn(calls[0].args[1], "api_key"));
+  write.resolve({ data: { ...settingsAgent, has_api_key: false, first_key: fixedKey } }); await pending; h.render();
+  assert.deepEqual(components(h, "AdoptionSuccess")[0].props.agent.first_key, fixedKey);
+  assert.ok(!calls.some(c => c.method === "navigate"));
+});
+
+test("adoption with a key still sends it; failure retains inputs and backend detail", async () => {
+  const h = mount(AdoptPage); fillAdopt(h, " test-only-provider-key ");
+  answer = async () => { throw { response: { data: { detail: "測試：金鑰不正確" } } }; };
+  await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+  assert.equal(calls[0].args[1].api_key, "test-only-provider-key");
+  assert.match(text(h.tree), /測試：金鑰不正確/);
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.value, " test-only-provider-key ");
+  assert.equal(components(h, "AdoptionSuccess").length, 0);
+});
+
+test("adoption success shows the connection URL, not raw token; missing first_key has a recovery entry", () => {
+  const h = mount(AdoptionSuccess, { agent: { ...settingsAgent, first_key: fixedKey } });
+  const child = components(h, "McpConnectionActions")[0]; assert.equal(child.props.showUrl, true);
+  const c = mount(McpConnectionActions, child.props);
+  assert.equal(nodes(c.tree, n => n.type === "textarea")[0].props.value, fixedKey.connect_url);
+  assert.match(text(h.tree), /之後每個窗都不用再拿鑰匙/);
+  click(h, "返回艙室"); expectCall("navigate", "/");
+  click(h, "查看鑰匙清單"); expectCall("navigate", "/agent/advanced");
+  const missing = mount(AdoptionSuccess, { agent: settingsAgent });
+  assert.match(text(missing.tree), /不必重新領養/); assert.equal(components(missing, "McpConnectionActions").length, 0);
+});
+
+test("connector secrets never go to storage, navigation, logs or an executable element", () => {
+  for (const file of ["src/components/McpConnectionActions.tsx", "src/components/McpKeysPanel.tsx", "src/components/AdoptionSuccess.tsx"]) {
+    const source = readFileSync(resolve(root, file), "utf8");
+    for (const pattern of [/localStorage/, /sessionStorage/, /console\./, /window\.open/, /<iframe/, /href=/, /dangerouslySetInnerHTML/]) assert.ok(!pattern.test(source), `${file}: ${pattern}`);
+  }
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(app.indexOf('path="/agent/advanced"') > app.indexOf("<ProtectedRoute"));
 });
