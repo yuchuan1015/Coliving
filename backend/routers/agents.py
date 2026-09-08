@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from models.mcp_token import McpToken
 from models.user import User
 from schemas.agent import AgentPublic, CreateAgentRequest, UpdateAgentRequest
-from services import agent_service, auth_service
+from services import bed_service, agent_service, auth_service
 from services.llm_service import PROVIDERS, PRIVACY_DISCLAIMER
 from utils.deps import get_current_user, get_db
 
@@ -77,7 +77,13 @@ def create_agent(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     user = db.query(User).filter(User.id == current_user.id).first()  # 領養時第一個日子剛寫進去，用這個 session 的
-    return _agent_to_public(agent, user)
+    # 領養就配第一把鑰匙（她定：一個 agent 一把固定鑰匙，貼進連接器一次就好）
+    key = bed_service.issue_key(db, user.id, agent.id, label="第一把")
+    db.commit()
+    db.refresh(key)
+    out = _agent_to_public(agent, user)
+    out["first_key"] = {"token_id": key.id, "label": key.label, **bed_service.connect_info(key, user.username)}
+    return out
 
 
 @router.get("/mine", response_model=AgentPublic)
@@ -171,12 +177,10 @@ def generate_mcp_token(
     agent = agent_service.get_user_agent(db, current_user.id)
     if not agent:
         raise HTTPException(status_code=404, detail="你還沒有 AI 室友")
-    row = McpToken(user_id=current_user.id, agent_id=agent.id, label=(body.label.strip() if body else ""))
-    db.add(row)
+    row = bed_service.issue_key(db, current_user.id, agent.id, body.label if body else "")
     db.commit()
     db.refresh(row)
-    token = auth_service.create_mcp_token(current_user.id, current_user.username, token_id=row.id)
-    return {"mcp_token": token, **_token_to_out(row)}
+    return {**_token_to_out(row), **bed_service.connect_info(row, current_user.username)}
 
 
 @router.get("/mine/mcp-tokens")
@@ -184,8 +188,15 @@ def list_mcp_tokens(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """列出鑰匙。沒作廢的每把都帶 mcp_token / connect_url / claude_code_cmd（同一把重新算出來的，隨時看得到、複製得到）。"""
     rows = db.query(McpToken).filter(McpToken.user_id == current_user.id).order_by(McpToken.created_at.desc()).all()
-    return [_token_to_out(t) for t in rows]
+    out = []
+    for t in rows:
+        d = _token_to_out(t)
+        if t.revoked_at is None:
+            d.update(bed_service.connect_info(t, current_user.username))
+        out.append(d)
+    return out
 
 
 @router.delete("/mine/mcp-tokens/{token_id}", status_code=204)

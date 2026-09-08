@@ -51,6 +51,7 @@ class AgentPublic(BaseModel):
     external_mcps: list[ExternalMcpConfig]
     active_skin_id: str | None
     dm_code: str | None = None  # 私訊碼 RK-XXXX-XXXX；漂流中 None；只在自己的室友上帶
+    first_key: dict | None = None  # 只在領養那一刻回：{token_id, label, mcp_token, connect_url, claude_code_cmd}
     created_at: str
     updated_at: str | None
 

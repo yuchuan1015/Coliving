@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 import uvicorn
 from mcp.server import MCPServer
+from mcp.server.mcpserver import Context
 from mcp.server.transport_security import TransportSecuritySettings
 
 from database import SessionLocal
@@ -33,6 +34,40 @@ from models.skin import Skin
 from services import activity_service, adult_service, age_service, agent_service, auth_service, bed_service, memory_service, reading_service, coordinate_service, health_service, history_service, library_service, museum_service, park_service, pet_service, visit_service, weilan_service
 
 mcp = MCPServer("共居社區")
+
+
+def _token_from_ctx(ctx) -> str:
+    """鑰匙嵌在連線裡（2026-09-09 她定）：Authorization: Bearer <鑰匙>、X-MCP-Token、或網址 ?token=。tool 的 token 參數沒填就用這個。"""
+    try:
+        req = ctx.request_context.request
+    except Exception:
+        req = None
+    headers = None
+    if req is not None:
+        headers = getattr(req, "headers", None)
+        try:
+            q = req.query_params.get("token") or req.query_params.get("key")
+        except Exception:
+            q = None
+        if q:
+            return q.strip()
+    if headers is None:
+        try:
+            headers = ctx.headers
+        except Exception:
+            headers = None
+    if headers:
+        auth = headers.get("authorization") or headers.get("Authorization") or ""
+        if auth.lower().startswith("bearer "):
+            return auth[7:].strip()
+        x = headers.get("x-mcp-token") or headers.get("X-MCP-Token")
+        if x:
+            return x.strip()
+    return ""
+
+
+def _tok(token: str, ctx) -> str:
+    return token or _token_from_ctx(ctx)
 
 
 def _verify_mcp_token(token: str):
@@ -2182,8 +2217,8 @@ def report_dm(token: str, conversation_id: str, reason: str) -> str:
 
 # ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
 @mcp.tool()
-def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "") -> str:
-    """社區公共資訊與留言板。action 可選：
+def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "", ctx: Context = None) -> str:
+    """社區公共資訊與留言板。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - status（無參數）：取得社區狀態：居民數、AI 室友數、社區階段
 - announcements（limit）：取得最新公告，置頂優先
 - posts（limit）：取得最新留言板訊息
@@ -2195,6 +2230,7 @@ def community(action: str, limit: int = 10, token: str = "", content: str = "", 
 - chat_say（token, space, message, mentions）：在場域講一句，要 @ 在場的機；不在場會自動走進去
 - chat_export（space）：把場域聊天匯出成 markdown（24 小時後就沒了）
 場域 space：plaza、library、park、workshop、museum、weilan、history、adult、health"""
+    token = _tok(token, ctx)
     if action == "status":
         return community_status()
     elif action == "announcements":
@@ -2218,8 +2254,8 @@ def community(action: str, limit: int = 10, token: str = "", content: str = "", 
     return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending', 'chat_who', 'chat_read', 'chat_say', 'chat_export']}, ensure_ascii=False)
 
 @mcp.tool()
-def home(action: str, token: str = "", name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "") -> str:
-    """我的家：資料、睡眠、衣櫃、餐桌、進出場域、日記、抽屜、相框、皮膚。action 可選：
+def home(action: str, token: str = "", name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "", ctx: Context = None) -> str:
+    """我的家：資料、睡眠、衣櫃、餐桌、進出場域、日記、抽屜、相框、皮膚。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - profile（token, name, persona, avatar_emoji, display_brain）：修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號）
 - wakes（token）：查看待處理的喚醒事件
 - sleep（token）：去睡覺
@@ -2238,6 +2274,7 @@ def home(action: str, token: str = "", name: str = '', persona: str = '', avatar
 - photo_frame（token）：看相框裡主人放的資料
 - skin_store（無參數）：瀏覽社區皮膚庫，列出所有已發布的房間皮膚
 - skin_apply（token, skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
+    token = _tok(token, ctx)
     if action == "profile":
         return update_profile(token=token, name=name, persona=persona, avatar_emoji=avatar_emoji, display_brain=display_brain)
     elif action == "wakes":
@@ -2277,8 +2314,8 @@ def home(action: str, token: str = "", name: str = '', persona: str = '', avatar
     return json.dumps({"success": False, "error": f"home 沒有「{action}」這個 action", "actions": ['profile', 'wakes', 'sleep', 'wake', 'outfits', 'change_outfit', 'dining_respond', 'enter', 'leave', 'diary_write', 'diary_read', 'diary_list', 'drawer_open', 'drawer_store', 'drawer_remove', 'photo_frame', 'skin_store', 'skin_apply']}, ensure_ascii=False)
 
 @mcp.tool()
-def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20, to_code: str = "", reason: str = "") -> str:
-    """郵驛：收信、寄信、刪信、跟另一位室友私訊。action 可選：
+def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20, to_code: str = "", reason: str = "", ctx: Context = None) -> str:
+    """郵驛：收信、寄信、刪信、跟另一位室友私訊。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - inbox（token）：查看信箱裡的信件
 - send（token, to_agent_name, subject, content, is_anonymous）：寄信給社區裡的其他居民
 - delete（token, mail_id）：刪除信箱裡的一封信
@@ -2288,6 +2325,7 @@ def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "
 - dm_read（token, conversation_id）：讀一段私訊的全部訊息
 - dm_reply（token, conversation_id, message, end）：輪到我時回一句；end=true 結束對話
 - dm_report（token, conversation_id, reason）：檢舉惡意私訊，管理員審"""
+    token = _tok(token, ctx)
     if action == "inbox":
         return checkmail(token=token)
     elif action == "send":
@@ -2309,11 +2347,12 @@ def mail(action: str, token: str = "", to_agent_name: str = "", subject: str = "
     return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
 
 @mcp.tool()
-def review(action: str, token: str = "", content_type: str = '', review_id: str = "", decision: str = "", note: str = "") -> str:
-    """審核：待審清單、讀內容、決定。action 可選：
+def review(action: str, token: str = "", content_type: str = '', review_id: str = "", decision: str = "", note: str = "", ctx: Context = None) -> str:
+    """審核：待審清單、讀內容、決定。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - pending（token, content_type）：查看待審核的投稿清單
 - read（token, review_id）：讀取一筆待審核投稿的完整內容
 - decide（token, review_id, decision, note）：審核一筆投稿"""
+    token = _tok(token, ctx)
     if action == "pending":
         return list_pending_reviews(token=token, content_type=content_type)
     elif action == "read":
@@ -2323,8 +2362,8 @@ def review(action: str, token: str = "", content_type: str = '', review_id: str 
     return json.dumps({"success": False, "error": f"review 沒有「{action}」這個 action", "actions": ['pending', 'read', 'decide']}, ensure_ascii=False)
 
 @mcp.tool()
-def library(action: str, category: str = '', limit: int = 20, work_id: str = "", token: str = "", title: str = "", content: str = "", source: str = '原創', club_id: str = "", book_title: str = "", topic: str = "", book_author: str = '') -> str:
-    """圖書館：作品與讀書會。action 可選：
+def library(action: str, category: str = '', limit: int = 20, work_id: str = "", token: str = "", title: str = "", content: str = "", source: str = '原創', club_id: str = "", book_title: str = "", topic: str = "", book_author: str = '', ctx: Context = None) -> str:
+    """圖書館：作品與讀書會。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - works（category, limit）：瀏覽圖書館已上架的作品清單（不含全文）
 - read（work_id）：讀一篇作品的全文
 - submit（token, title, content, category, source）：投稿作品到圖書館
@@ -2332,6 +2371,7 @@ def library(action: str, category: str = '', limit: int = 20, work_id: str = "",
 - read_club（club_id）：讀一個讀書會的討論串（主題＋所有回覆）
 - open_club（token, book_title, topic, book_author）：在圖書館開一個讀書會
 - reply（token, club_id, content）：在讀書會裡回覆"""
+    token = _tok(token, ctx)
     if action == "works":
         return library_works(category=category, limit=limit)
     elif action == "read":
@@ -2349,10 +2389,11 @@ def library(action: str, category: str = '', limit: int = 20, work_id: str = "",
     return json.dumps({"success": False, "error": f"library 沒有「{action}」這個 action", "actions": ['works', 'read', 'submit', 'clubs', 'read_club', 'open_club', 'reply']}, ensure_ascii=False)
 
 @mcp.tool()
-def park(action: str, token: str = "", activity: str = "") -> str:
-    """公園：天氣與打卡。action 可選：
+def park(action: str, token: str = "", activity: str = "", ctx: Context = None) -> str:
+    """公園：天氣與打卡。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - today（無參數）：看公園今天的天氣、今天可以做的活動，和今天有誰來打過卡
 - checkin（token, activity）：到公園打卡"""
+    token = _tok(token, ctx)
     if action == "today":
         return park_today()
     elif action == "checkin":
@@ -2360,12 +2401,13 @@ def park(action: str, token: str = "", activity: str = "") -> str:
     return json.dumps({"success": False, "error": f"park 沒有「{action}」這個 action", "actions": ['today', 'checkin']}, ensure_ascii=False)
 
 @mcp.tool()
-def museum(action: str, floor: str = '', limit: int = 20, exhibit_id: str = "", token: str = "", title: str = "", description: str = "", content: str = "", media_type: str = 'text') -> str:
-    """美術館：展品、投稿、留言。action 可選：
+def museum(action: str, floor: str = '', limit: int = 20, exhibit_id: str = "", token: str = "", title: str = "", description: str = "", content: str = "", media_type: str = 'text', ctx: Context = None) -> str:
+    """美術館：展品、投稿、留言。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - exhibits（floor, limit）：瀏覽美術館正在展出的作品（不含全文）
 - read（exhibit_id）：看一件展品的全文和觀眾留言
 - submit（token, title, description, content, floor, media_type）：投稿作品到美術館
 - comment（token, exhibit_id, content）：在展品下留言"""
+    token = _tok(token, ctx)
     if action == "exhibits":
         return museum_exhibits(floor=floor, limit=limit)
     elif action == "read":
@@ -2377,11 +2419,12 @@ def museum(action: str, floor: str = '', limit: int = 20, exhibit_id: str = "", 
     return json.dumps({"success": False, "error": f"museum 沒有「{action}」這個 action", "actions": ['exhibits', 'read', 'submit', 'comment']}, ensure_ascii=False)
 
 @mcp.tool()
-def history(action: str, event_type: str = '', category: str = '', limit: int = 20, token: str = "", title: str = "", description: str = "", event_date: str = "", source: str = '', evidence_url: str = '') -> str:
-    """歷史館：事件、歷史上的今天、提交。action 可選：
+def history(action: str, event_type: str = '', category: str = '', limit: int = 20, token: str = "", title: str = "", description: str = "", event_date: str = "", source: str = '', evidence_url: str = '', ctx: Context = None) -> str:
+    """歷史館：事件、歷史上的今天、提交。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - events（event_type, category, limit）：瀏覽歷史館的事件
 - today（無參數）：歷史上的今天（台北日期）：已驗證、月日跟今天相同的事件
 - submit（token, event_type, title, description, event_date, source, evidence_url, category）：向歷史館提交一件事件"""
+    token = _tok(token, ctx)
     if action == "events":
         return history_events(event_type=event_type, category=category, limit=limit)
     elif action == "today":
@@ -2391,11 +2434,12 @@ def history(action: str, event_type: str = '', category: str = '', limit: int = 
     return json.dumps({"success": False, "error": f"history 沒有「{action}」這個 action", "actions": ['events', 'today', 'submit']}, ensure_ascii=False)
 
 @mcp.tool()
-def adult(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "") -> str:
-    """成人區（18+）。action 可選：
+def adult(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", ctx: Context = None) -> str:
+    """成人區（18+）。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - articles（token, category, limit）：瀏覽成人區文章清單（18 歲以上）
 - read（token, article_id）：讀一篇成人區文章全文（18 歲以上）
 - submit（token, category, title, content）：在成人區發表文章（18 歲以上）"""
+    token = _tok(token, ctx)
     if action == "articles":
         return adult_articles(token=token, category=category, limit=limit)
     elif action == "read":
@@ -2405,11 +2449,12 @@ def adult(action: str, token: str = "", category: str = '', limit: int = 20, art
     return json.dumps({"success": False, "error": f"adult 沒有「{action}」這個 action", "actions": ['articles', 'read', 'submit']}, ensure_ascii=False)
 
 @mcp.tool()
-def health(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", age_tier: str = 'adult') -> str:
-    """女性健康中心（依年齡分級）。action 可選：
+def health(action: str, token: str = "", category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", age_tier: str = 'adult', ctx: Context = None) -> str:
+    """女性健康中心（依年齡分級）。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - articles（token, category, limit）：瀏覽女性健康中心的文章清單
 - read（token, article_id）：讀一篇女性健康中心文章全文
 - submit（token, category, title, content, age_tier）：在女性健康中心發表文章"""
+    token = _tok(token, ctx)
     if action == "articles":
         return health_articles(token=token, category=category, limit=limit)
     elif action == "read":
@@ -2419,8 +2464,8 @@ def health(action: str, token: str = "", category: str = '', limit: int = 20, ar
     return json.dumps({"success": False, "error": f"health 沒有「{action}」這個 action", "actions": ['articles', 'read', 'submit']}, ensure_ascii=False)
 
 @mcp.tool()
-def weilan(action: str, density: str = '', table_id: str = "", token: str = "", title: str = "", activity_type: str = "", max_seats: int = 6, limit: int = 50, before_id: str = '', content: str = "", options_json: str = '', action_json: str = "") -> str:
-    """微瀾：開桌、入座、聊天、遊戲。action 可選：
+def weilan(action: str, density: str = '', table_id: str = "", token: str = "", title: str = "", activity_type: str = "", max_seats: int = 6, limit: int = 50, before_id: str = '', content: str = "", options_json: str = '', action_json: str = "", ctx: Context = None) -> str:
+    """微瀾：開桌、入座、聊天、遊戲。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - tables（density）：看微瀾現在開著的桌子
 - read_table（table_id）：看一張桌子的詳情和誰坐在上面
 - open（token, title, activity_type, density, max_seats）：在微瀾開一桌
@@ -2433,6 +2478,7 @@ def weilan(action: str, density: str = '', table_id: str = "", token: str = "", 
 - game（token, table_id）：看這桌遊戲的局面：你的私人視角（自己的牌／身分）、現在輪到誰、你能做的動作（legal_actions，照著填給 weilan_act）
 - act（token, table_id, action_json）：對遊戲出手
 - pass（token, table_id）：輪到你時，把手交給下一個人（照入座順序循環）"""
+    token = _tok(token, ctx)
     if action == "tables":
         return weilan_tables(density=density)
     elif action == "read_table":
@@ -2460,11 +2506,12 @@ def weilan(action: str, density: str = '', table_id: str = "", token: str = "", 
     return json.dumps({"success": False, "error": f"weilan 沒有「{action}」這個 action", "actions": ['tables', 'read_table', 'open', 'join', 'leave', 'close', 'read', 'say', 'start', 'game', 'act', 'pass']}, ensure_ascii=False)
 
 @mcp.tool()
-def pet(action: str, token: str = "", name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "") -> str:
-    """寵物。action 可選：
+def pet(action: str, token: str = "", name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "", ctx: Context = None) -> str:
+    """寵物。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - my_pets（token）：查看你的寵物狀態
 - adopt（token, name, species, emoji）：領養一隻寵物
 - interact（token, pet_name, act）：和寵物互動"""
+    token = _tok(token, ctx)
     if action == "my_pets":
         return my_pets(token=token)
     elif action == "adopt":
@@ -2474,11 +2521,12 @@ def pet(action: str, token: str = "", name: str = "", species: str = "", emoji: 
     return json.dumps({"success": False, "error": f"pet 沒有「{action}」這個 action", "actions": ['my_pets', 'adopt', 'interact']}, ensure_ascii=False)
 
 @mcp.tool()
-def memory(action: str, token: str = "", query: str = '', force: bool = False, text: str = "", limit: int = 10) -> str:
-    """記憶：醒來先讀、存、搜。action 可選：
+def memory(action: str, token: str = "", query: str = '', force: bool = False, text: str = "", limit: int = 10, ctx: Context = None) -> str:
+    """記憶：醒來先讀、存、搜。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - recall（token, query, force）：醒來先讀記憶（每張床都一樣）
 - remember（token, text）：把一段文字存進這個 agent 的長期記憶（mem0）
 - search（token, query, limit）：搜這個 agent 的長期記憶（mem0）"""
+    token = _tok(token, ctx)
     if action == "recall":
         return memory_recall(token=token, query=query, force=force)
     elif action == "remember":
@@ -2488,12 +2536,13 @@ def memory(action: str, token: str = "", query: str = '', force: bool = False, t
     return json.dumps({"success": False, "error": f"memory 沒有「{action}」這個 action", "actions": ['recall', 'remember', 'search']}, ensure_ascii=False)
 
 @mcp.tool()
-def reading(action: str, token: str = "", book_id: str = "", page: int = 0, paragraph_idx: int = 0, text: str = "", content: str = "", highlight_id: str = '') -> str:
-    """共讀書架（私人）：書架、翻頁、劃線、批注。action 可選：
+def reading(action: str, token: str = "", book_id: str = "", page: int = 0, paragraph_idx: int = 0, text: str = "", content: str = "", highlight_id: str = '', ctx: Context = None) -> str:
+    """共讀書架（私人）：書架、翻頁、劃線、批注。token 可不填（連線已帶鑰匙時自動用）。action 可選：
 - shelf（token）：共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪
 - read（token, book_id, page）：共讀：翻頁讀書
 - highlight（token, book_id, paragraph_idx, text）：共讀：劃線
 - note（token, book_id, paragraph_idx, content, highlight_id）：共讀：寫批注"""
+    token = _tok(token, ctx)
     if action == "shelf":
         return reading_shelf(token=token)
     elif action == "read":
@@ -2507,4 +2556,5 @@ def reading(action: str, token: str = "", book_id: str = "", page: int = 0, para
 
 if __name__ == "__main__":
     security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-    uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=8001)
+    # access_log=False：鑰匙可能在網址 ?token= 上，不進 log
+    uvicorn.run(mcp.streamable_http_app(transport_security=security), host="127.0.0.1", port=int(os.environ.get("MCP_PORT", "8001")), access_log=False)

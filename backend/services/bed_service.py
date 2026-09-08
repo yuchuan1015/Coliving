@@ -52,3 +52,29 @@ def verify_token_row(db: Session, token_id: str | None) -> bool:
     t.last_used_at = datetime.now(timezone.utc)
     db.commit()
     return True
+
+
+# ───────── 鑰匙的樣子（2026-09-09 她定：一把固定鑰匙，嵌進連線，換窗不用重拿） ─────────
+
+def token_string(row: McpToken, username: str) -> str:
+    """把表裡這把鑰匙重新算出來（同 jti、同到期），給主人看／複製。"""
+    from services import auth_service, time_service
+    return auth_service.create_mcp_token(row.user_id, username, token_id=row.id, issued_at=time_service.aware(row.created_at))
+
+
+def connect_info(row: McpToken, username: str) -> dict:
+    from config import settings
+    tok = token_string(row, username)
+    base = settings.public_base_url.rstrip("/")
+    return {
+        "mcp_token": tok,
+        "connect_url": f"{base}/mcp?token={tok}",  # Claude.ai 連接器：貼這條就好
+        "claude_code_cmd": f'claude mcp add --transport http rookery {base}/mcp --header "Authorization: Bearer {tok}"',  # Claude Code：跑一次，之後所有窗共用
+    }
+
+
+def issue_key(db: Session, user_id: str, agent_id: str, label: str = "") -> McpToken:
+    row = McpToken(user_id=user_id, agent_id=agent_id, label=(label or "").strip()[:32])
+    db.add(row)
+    db.flush()
+    return row

@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     first_admin_password: str = "changeme"
     ob_default_endpoint: str = ""
     ob_default_token: str = ""
-    mcp_token_expire_days: int = 90
+    mcp_token_expire_days: int = 90        # 沒 jti 的舊鑰匙用；有 jti 的鑰匙不靠過期，靠作廢（見 mcp_key_days）
+    mcp_key_days: int = 3650               # 有編號的鑰匙壽命：固定鑰匙，換窗不用重拿
+    public_base_url: str = "https://therookery.space"
     internal_secret: str = ""
     embed_openai_api_key: str = ""
     mem0_qdrant_path: str = "/opt/coliving/backend/memdata/qdrant"
