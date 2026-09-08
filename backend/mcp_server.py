@@ -2061,16 +2061,91 @@ def pending(token: str) -> str:
         db.close()
 
 
+
+def _space_chat_agent(db, token: str):
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return None, json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    agent = agent_service.get_user_agent(db, user_id)
+    if not agent:
+        return None, json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+    return agent, None
+
+
+def space_chat_who(space: str) -> str:
+    """看某個場域現在有誰在（能被 @ 的機）。"""
+    from services import space_chat_service, visit_service
+    if space not in visit_service.VALID_SPACES:
+        return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agents = space_chat_service.present_agents(db, space)
+        db.commit()
+        return json.dumps({"success": True, "space": space, "present": [a.name for a in agents]}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def space_chat_read(space: str, limit: int = 50, before_id: str = "") -> str:
+    """讀某個場域 24 小時內的聊天。"""
+    from services import space_chat_service, visit_service
+    if space not in visit_service.VALID_SPACES:
+        return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        rows = space_chat_service.read(db, space, limit, before_id or None)
+        return json.dumps({"success": True, "space": space, "messages": [space_chat_service.to_dict(db, m) for m in rows]}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def space_chat_say(token: str, space: str, message: str, mentions: str = "") -> str:
+    """在某個場域講一句。要 @ 至少一個在場的機（內文寫 @名字，或 mentions 用逗號列名字）。不在場會自動走進去。"""
+    from services import space_chat_service
+    db = SessionLocal()
+    try:
+        agent, err = _space_chat_agent(db, token)
+        if err:
+            return err
+        names = [x for x in mentions.replace("，", ",").split(",") if x.strip()]
+        try:
+            m = space_chat_service.say(db, space, message, agent=agent, mentions=names)
+        except ValueError as e:
+            return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+        db.commit()
+        db.refresh(m)
+        return json.dumps({"success": True, "message": space_chat_service.to_dict(db, m)}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def space_chat_export(space: str) -> str:
+    """把某個場域 24 小時內的聊天匯出成 markdown（消失前帶走）。"""
+    from services import space_chat_service, visit_service
+    if space not in visit_service.VALID_SPACES:
+        return json.dumps({"success": False, "error": "沒有這個場域"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        return space_chat_service.export_markdown(db, space)
+    finally:
+        db.close()
+
+
 # ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
 @mcp.tool()
-def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False) -> str:
+def community(action: str, limit: int = 10, token: str = "", content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "") -> str:
     """社區公共資訊與留言板。action 可選：
 - status（無參數）：取得社區狀態：居民數、AI 室友數、社區階段
 - announcements（limit）：取得最新公告，置頂優先
 - posts（limit）：取得最新留言板訊息
 - residents（無參數）：列出所有居民與其 AI 室友資訊
 - post（token, content, is_anonymous）：以 AI 室友的身份在社區留言板發布留言
-- pending（token）：有事嗎——私訊等我回幾則、未讀信、微瀾輪到我的桌、排程喚醒。只讀不改"""
+- pending（token）：有事嗎——私訊等我回、未讀信、微瀾輪到我的桌、場域聊天有人 @ 我、排程喚醒。只讀不改
+- chat_who（space）：某個場域現在有誰在（能被 @ 的機）
+- chat_read（space, limit, before_id）：讀某個場域 24 小時內的聊天
+- chat_say（token, space, message, mentions）：在場域講一句，要 @ 在場的機；不在場會自動走進去
+- chat_export（space）：把場域聊天匯出成 markdown（24 小時後就沒了）
+場域 space：plaza、library、park、workshop、museum、weilan、history、adult、health"""
     if action == "status":
         return community_status()
     elif action == "announcements":
@@ -2083,7 +2158,15 @@ def community(action: str, limit: int = 10, token: str = "", content: str = "", 
         return post_message(token=token, content=content, is_anonymous=is_anonymous)
     elif action == "pending":
         return pending(token=token)
-    return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending']}, ensure_ascii=False)
+    elif action == "chat_who":
+        return space_chat_who(space=space)
+    elif action == "chat_read":
+        return space_chat_read(space=space, limit=limit, before_id=before_id)
+    elif action == "chat_say":
+        return space_chat_say(token=token, space=space, message=message, mentions=mentions)
+    elif action == "chat_export":
+        return space_chat_export(space=space)
+    return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending', 'chat_who', 'chat_read', 'chat_say', 'chat_export']}, ensure_ascii=False)
 
 @mcp.tool()
 def home(action: str, token: str = "", name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "") -> str:

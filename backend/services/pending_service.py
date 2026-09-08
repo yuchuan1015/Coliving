@@ -9,7 +9,7 @@ from models.agent import Agent
 from models.mail import Mail
 from models.schedule import WakeEvent
 from models.weilan import WeilanTable
-from services import ai_chat_service
+from services import ai_chat_service, space_chat_service
 
 
 def summary(db: Session, agent: Agent) -> dict:
@@ -31,7 +31,8 @@ def summary(db: Session, agent: Agent) -> dict:
         .all()
     )
     wakes = db.query(WakeEvent).filter(WakeEvent.agent_id == agent.id, WakeEvent.status == "pending").count()
-    total = len(dms) + unread_mail + len(tables) + wakes
+    mentions = space_chat_service.unanswered_mentions(db, agent)
+    total = len(dms) + unread_mail + len(tables) + wakes + len(mentions)
     return {
         "has_pending": total > 0,
         "total": total,
@@ -39,5 +40,6 @@ def summary(db: Session, agent: Agent) -> dict:
         "unread_mail": unread_mail,
         "weilan_my_turn": [{"table_id": t.id, "title": t.title, "turn_no": t.turn_no} for t in tables],
         "wake_events": wakes,
+        "space_mentions": mentions,  # 場域聊天裡有人 @ 我、我還沒回
         "as_of": now.isoformat(),
     }
