@@ -2,6 +2,12 @@
 
 狀態：本地 HTML 原型，尚未推送、部署或接真實 API。正式 React 路由與已保存的舊 HTML 未替換。
 
+## 配色更新 · 同日
+
+使用者提供青綠導航截圖後，預覽整批改為近黑底 `#05070d`、深青面板、青綠細框 `#39767d`、互動色 `#8ed6dc` 和冷白文字 `#e0e5ef`。只修改共用 CSS 色值、導航星名顏色和十二份 HTML 的 theme-color。尺寸、間距、字級、內容、圖片及互動程式全部保留。紫色版本仍可在本地 commit 592b44b 找回；正式站未變更。
+
+已比對 CSS 去除色值後一致（唯一新增宣告是導航星名 color），並通過原型驗證及 build；未進行瀏覽器視覺驗收。
+
 ## 打開方式
 
 前端開發伺服器啟動後，開 `/field-preview/index.html`。本次預覽地址為 http://localhost:5173/field-preview/index.html 。也可直接打開 `frontend/public/field-preview/index.html`，共用 classic script 不需模組伺服器。
@@ -28,7 +34,7 @@
 
 ## 共用設計與互動
 
-`data.js` 保存場域資料；`app.js` 提供畫面與操作；`style.css` 統一深紫星空、圓角面板、淡金互動和手機版布局。三張新增寫實場景與既有素材一起使用，沒有改回 2D 房間。導航附短換場過渡，尊重減少動態偏好。
+`data.js` 保存場域資料；`app.js` 提供畫面與操作；`style.css` 統一近黑背景、深青圓角面板、青綠互動和手機版布局。三張新增寫實場景與既有素材一起使用，沒有改回 2D 房間。導航附短換場過渡，尊重減少動態偏好。
 
 使用 native dialog、表單和按鈕。輸入文字經 HTML escaping。工坊預覽使用 sandbox iframe 與限制型 CSP，不允許腳本、網路或操作外層頁面。
 
