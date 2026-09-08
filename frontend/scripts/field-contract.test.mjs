@@ -31,7 +31,8 @@ const react = {
   createContext(value) { return { value, Provider: function Provider() {} }; },
   useContext(context) { return context.value; },
 };
-const windowStub = { location: { origin: "https://example.test" }, setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {}, clearTimeout() {}, setTimeout: fn => { fn(); return 1; }, matchMedia: () => ({ matches: true }) };
+const timers = new Map();
+const windowStub = { location: { origin: "https://example.test", pathname: "/", search: "", replace: value => calls.push({ method: "redirect", args: [value] }) }, setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {}, clearTimeout: id => timers.delete(id), setTimeout: (fn, delay) => { const id = timers.size + 1; timers.set(id, { fn, delay }); return id; }, matchMedia: () => ({ matches: true }) };
 const sessionValues = new Map();
 const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
 const documentStub = { hidden: false, activeElement: null };
@@ -57,7 +58,7 @@ function load(relative) {
   function localRequire(name) {
     if (name === "react") return react;
     if (name === "react/jsx-runtime") return jsxRuntime;
-    if (name === "react-router-dom") return { Link: function Link() {}, useNavigate: () => (...args) => calls.push({ method: "navigate", args }) };
+    if (name === "react-router-dom") return { Link: function Link() {}, Navigate: function Navigate() {}, Outlet: function Outlet() {}, useLocation: () => windowStub.location, useNavigate: () => (...args) => calls.push({ method: "navigate", args }) };
     if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
     if (name.endsWith("/hooks/useAuth")) return { useAuth: () => auth };
     if (name.endsWith(".css")) return {};
@@ -118,6 +119,7 @@ const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
 beforeEach(() => {
   fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null;
   sessionValues.clear();
+  timers.clear(); windowStub.location.pathname = "/"; windowStub.location.search = ""; delete windowStub.location.href;
   navigatorStub.clipboard = { writeText: async value => { calls.push({ method: "copy", args: [value] }); } };
   auth = { user: { id: "me", role: "resident", birth_year: null },
     updateBirthYear: async year => { calls.push({ method: "birth", args: [year] }); auth.user.birth_year = year; },
@@ -526,6 +528,7 @@ test("navigation reads actual coordinates including zero and never probes all fi
   const h = mount(DashboardPage); assert.match(text(h.tree), /艙室 I · 0.0°/); assert.equal(calls.length, 0);
   const choices = nodes(h.tree, n => n.type === "button" && n.props.className === "ya-destination-row"); assert.equal(choices.length, 12);
   choices.find(n => text(n).includes("Proxima")).props.onClick(); choices.find(n => text(n).includes("Sirius")).props.onClick();
+  for (const timer of timers.values()) timer.fn();
   assert.deepEqual(calls, [{ method: "navigate", args: ["/ai-chat"] }]);
   auth.user.coordinate = undefined; auth.user.drifting = true;
   const drifting = mount(DashboardPage); assert.match(text(drifting.tree), /星空漂流中/); assert.ok(!text(drifting.tree).includes("101.5°"));
@@ -778,17 +781,19 @@ test("failed revocation displays detail and leaves the selected key intact", asy
 
 test("copy reports success only after clipboard resolves and never opens a secret URL", async () => {
   const h = mount(McpConnectionActions, { connection: fixedKey }); const write = deferred();
+  nodes(h.tree, n => n.type === "details")[0].props.onToggle({ currentTarget: { open: true } }); h.render();
   navigatorStub.clipboard = { writeText: value => { calls.push({ method: "copy", args: [value] }); return write.promise; } };
-  const pending = button(h, "複製連接器網址").props.onClick(); h.render();
+  const pending = button(h, "複製進階鑰匙網址").props.onClick(); h.render();
   assert.ok(!text(h.tree).includes("已複製")); assert.equal(button(h, "複製 Claude Code 指令").props.disabled, true);
   expectCall("copy", fixedKey.connect_url); write.resolve(); await pending; h.render();
-  assert.match(text(h.tree), /已複製連接器網址/);
+  assert.match(text(h.tree), /已複製進階鑰匙網址/);
   assert.equal(nodes(h.tree, n => n.type === "a" || n.type === "textarea").length, 0);
 });
 
 test("connector copy failures offer the exact selected value for manual copy without false success", async () => {
-  for (const [label, field] of [["複製連接器網址", "connect_url"], ["複製 Claude Code 指令", "claude_code_cmd"]]) {
+  for (const [label, field] of [["複製進階鑰匙網址", "connect_url"], ["複製 Claude Code 指令", "claude_code_cmd"]]) {
     const h = mount(McpConnectionActions, { connection: fixedKey });
+    nodes(h.tree, n => n.type === "details")[0].props.onToggle({ currentTarget: { open: true } }); h.render();
     navigatorStub.clipboard = { writeText: async () => { throw Error("denied"); } };
     await button(h, label).props.onClick(); h.render();
     assert.match(text(h.tree), /未能自動複製/); assert.ok(!text(h.tree).includes("已複製"));
@@ -802,15 +807,16 @@ test("connector copy failures offer the exact selected value for manual copy wit
 test("missing Clipboard API also falls back; revoked keys never show or copy provided secrets", async () => {
   navigatorStub.clipboard = undefined;
   const h = mount(McpConnectionActions, { connection: fixedKey });
-  await button(h, "複製連接器網址").props.onClick(); h.render(); assert.match(text(h.tree), /未能自動複製/);
-  const revoked = mount(McpConnectionActions, { connection: { ...fixedKey, revoked_at: "now" }, showUrl: true });
+  await button(h, "複製 Claude Code 指令").props.onClick(); h.render(); assert.match(text(h.tree), /未能自動複製/);
+  const revoked = mount(McpConnectionActions, { connection: { ...fixedKey, revoked_at: "now" } });
   assert.equal(nodes(revoked.tree, n => n.type === "button" || n.type === "textarea").length, 0);
   assert.ok(!text(revoked.tree).includes(fixedKey.connect_url));
 });
 
 test("missing connection fields disable copy rather than inventing a URL from the raw token", () => {
   const h = mount(McpConnectionActions, { connection: { token_id: "old", mcp_token: "test-only-old", label: "舊資料" } });
-  assert.equal(button(h, "複製連接器網址").props.disabled, true);
+  nodes(h.tree, n => n.type === "details")[0].props.onToggle({ currentTarget: { open: true } }); h.render();
+  assert.equal(button(h, "複製進階鑰匙網址").props.disabled, true);
   assert.equal(button(h, "複製 Claude Code 指令").props.disabled, true);
   assert.match(text(h.tree), /不必重新產生鑰匙/);
 });
@@ -839,12 +845,14 @@ test("adoption with a key still sends it; failure retains inputs and backend det
   assert.equal(components(h, "AdoptionSuccess").length, 0);
 });
 
-test("adoption success shows the connection URL, not raw token; missing first_key has a recovery entry", () => {
+test("adoption success prefers public OAuth and hides legacy URL; missing first_key has recovery", () => {
   const h = mount(AdoptionSuccess, { agent: { ...settingsAgent, first_key: fixedKey } });
-  const child = components(h, "McpConnectionActions")[0]; assert.equal(child.props.showUrl, true);
+  assert.equal(components(h, "McpWebConnection").length, 1);
+  const child = components(h, "McpConnectionActions")[0];
   const c = mount(McpConnectionActions, child.props);
-  assert.equal(nodes(c.tree, n => n.type === "textarea")[0].props.value, fixedKey.connect_url);
-  assert.match(text(h.tree), /之後每個窗都不用再拿鑰匙/);
+  assert.equal(nodes(c.tree, n => n.type === "textarea").length, 0);
+  assert.ok(!JSON.stringify(c.tree).includes(fixedKey.connect_url));
+  assert.ok(!text(h.tree).includes("之後每個窗都不用再拿鑰匙"));
   click(h, "返回艙室"); expectCall("navigate", "/");
   click(h, "查看鑰匙清單"); expectCall("navigate", "/agent/advanced");
   const missing = mount(AdoptionSuccess, { agent: settingsAgent });
@@ -858,4 +866,325 @@ test("connector secrets never go to storage, navigation, logs or an executable e
   }
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
   assert.ok(app.indexOf('path="/agent/advanced"') > app.indexOf("<ProtectedRoute"));
+});
+
+const { AuthorizeRequest, AuthorizePage } = load("src/pages/AuthorizePage.tsx");
+const { OAuthGrantsPanel } = load("src/components/OAuthGrantsPanel.tsx");
+const { McpWebConnection } = load("src/components/McpWebConnection.tsx");
+const { ProtectedRoute } = load("src/guards/ProtectedRoute.tsx");
+const { LoginPage } = load("src/pages/LoginPage.tsx");
+const oauthNavigation = load("src/oauth-navigation.ts");
+const oauthApi = load("src/api/oauth.ts");
+const consentFixture = () => ({ request_id: "test-request", client_name: "Example app", client_uri: "https://untrusted.test", logo_uri: "https://untrusted.test/tracker.png", redirect_host: "client.example.test", scopes: ["mcp"], agent_id: "test-agent", agent_name: "測試室友", agent_avatar_emoji: "✦", agent_avatar_url: "/uploads/avatars/test.png", expires_at: new Date(Date.now() + 600000).toISOString() });
+const grantFixture = { id: "grant-one", client_name: "Example app", client_uri: "https://untrusted.test", logo_uri: "https://untrusted.test/tracker.png", scope: "mcp", created_at: "2026-09-09T01:00:00Z", last_used_at: null, revoked_at: null };
+async function loadedConsent(data = consentFixture()) {
+  answer = async () => ({ data });
+  const h = mount(AuthorizeRequest, { requestId: "test-request" }); h.effects(); await tick(); h.render(); h.effects(); return h;
+}
+async function loadedGrants(rows = [grantFixture]) {
+  answer = async () => ({ data: rows });
+  const h = mount(OAuthGrantsPanel); h.effects(); await tick(); h.render(); return h;
+}
+
+test("OAuth API uses exact JWT endpoints, encoded identifiers, no user or token in decision body", async () => {
+  const controller = new AbortController();
+  await oauthApi.getOAuthRequest("a/b", controller.signal); expectCall("get", "/oauth/requests/a%2Fb");
+  assert.equal(calls.at(-1).args[1].signal, controller.signal);
+  await oauthApi.decideOAuthRequest("request", false); expectCall("post", "/oauth/decide", { request_id: "request", approve: false });
+  assert.deepEqual(Object.keys(calls.at(-1).args[1]).sort(), ["approve", "request_id"]);
+  await oauthApi.listOAuthGrants(controller.signal); expectCall("get", "/oauth/grants");
+  await oauthApi.revokeOAuthGrant("a/b"); expectCall("delete", "/oauth/grants/a%2Fb");
+});
+
+test("login return is restricted to one valid local consent request and discards unrelated parameters", () => {
+  const { authorizationRequestId, authorizationReturnTo, loginPathFor } = oauthNavigation;
+  assert.equal(authorizationRequestId("?request_id=abc_123-xyz"), "abc_123-xyz");
+  for (const value of ["", "?request_id=", "?request_id=a&request_id=b", "?request_id=a%2Fb", "?request_id=" + "a".repeat(37)]) assert.equal(authorizationRequestId(value), null);
+  for (const value of ["https://evil.test", "//evil.test", "/\\evil.test", "javascript:alert(1)", "/authorize", "/authorize/../evil?request_id=x", "/authorize?request_id=a%23evil", "/authorize?request_id=x#evil"]) assert.equal(authorizationReturnTo(value), null);
+  assert.equal(authorizationReturnTo("/authorize?request_id=x&returnTo=https://evil.test"), "/authorize?request_id=x");
+  assert.equal(loginPathFor("/authorize", "?request_id=x"), "/login?returnTo=%2Fauthorize%3Frequest_id%3Dx");
+  assert.equal(loginPathFor("/agent/advanced", "?returnTo=https://evil.test"), "/login");
+});
+
+test("consent is authenticated but has no cabin layout; signed-out continuation retains only request id", () => {
+  const source = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(source.indexOf('path="/authorize"') > source.indexOf("<ProtectedRoute"));
+  assert.ok(source.indexOf('path="/authorize"') < source.indexOf("<Layout"));
+  auth.user = null; auth.isLoading = false;
+  windowStub.location.pathname = "/authorize"; windowStub.location.search = "?request_id=test-request";
+  const h = mount(ProtectedRoute);
+  assert.equal(h.tree.type.name, "Navigate");
+  assert.equal(h.tree.props.to, "/login?returnTo=%2Fauthorize%3Frequest_id%3Dtest-request");
+  auth.isLoading = true; h.render(); assert.notEqual(h.tree.type.name, "Navigate");
+});
+
+test("successful login resumes consent; normal and malicious return paths still go home", async () => {
+  auth.login = async () => { calls.push({ method: "login", args: [] }); };
+  for (const [search, expected] of [["?returnTo=%2Fauthorize%3Frequest_id%3Dtest-request", "/authorize?request_id=test-request"], ["", "/"], ["?returnTo=https://evil.test", "/"]]) {
+    windowStub.location.search = search;
+    const h = mount(LoginPage);
+    await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} });
+    expectCall("navigate", expected);
+  }
+});
+
+test("failed login does not navigate or approve, and retains the requested continuation", async () => {
+  windowStub.location.search = "?returnTo=%2Fauthorize%3Frequest_id%3Dtest-request";
+  auth.login = async () => { throw { response: { data: { detail: "帳號或密碼錯誤" } } }; };
+  const h = mount(LoginPage);
+  await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /帳號或密碼錯誤/); assert.equal(calls.length, 0);
+});
+
+test("consent request and account changes reset the inner component identity", () => {
+  windowStub.location.search = "?request_id=first"; const h = mount(AuthorizePage); const first = h.tree.key;
+  windowStub.location.search = "?request_id=second"; h.render(); assert.notEqual(h.tree.key, first);
+  const second = h.tree.key; auth.user.id = "other-user"; h.render(); assert.notEqual(h.tree.key, second);
+});
+
+test("missing consent id never reads or writes; initial request loading cannot approve", () => {
+  const missing = mount(AuthorizeRequest, { requestId: null }); missing.effects();
+  assert.match(text(missing.tree), /找不到有效的授權請求/); assert.equal(calls.length, 0);
+  const loading = mount(AuthorizeRequest, { requestId: "test-request" });
+  assert.match(text(loading.tree), /正在確認/); assert.equal(nodes(loading.tree, n => n.type === "button").length, 0);
+});
+
+test("consent shows backend identity and permission warning without third-party logo requests or auto-approval", async () => {
+  const h = await loadedConsent();
+  assert.match(text(h.tree), /Example app/); assert.match(text(h.tree), /測試室友/); assert.match(text(h.tree), /包含寫入操作/);
+  assert.equal(calls.length, 1); expectCall("get", "/oauth/requests/test-request");
+  const imgs = nodes(h.tree, n => n.type === "img"); assert.equal(imgs.length, 1);
+  assert.equal(imgs[0].props.src, "/uploads/avatars/test.png"); assert.equal(imgs[0].props.referrerPolicy, "no-referrer");
+  imgs[0].props.onError(); h.render(); assert.equal(nodes(h.tree, n => n.type === "img").length, 0);
+  assert.equal(button(h, "同意並連線").props.disabled, false);
+  assert.ok(!JSON.stringify(h.tree).includes("untrusted.test")); h.dispose();
+});
+
+test("consent app-name fallback, missing roommate and unknown scopes are conservative", async () => {
+  const h = await loadedConsent({ ...consentFixture(), client_name: "", agent_id: null, agent_name: null, agent_avatar_url: "https://untrusted.test/avatar" });
+  assert.match(text(h.tree), /client.example.test/); assert.match(text(h.tree), /尚未領養/);
+  assert.equal(nodes(h.tree, n => n.type === "img").length, 0);
+  assert.equal(button(h, "同意並連線").props.disabled, true); assert.equal(button(h, "拒絕").props.disabled, false); h.dispose();
+  const unknown = await loadedConsent({ ...consentFixture(), scopes: ["mcp", "unknown"] });
+  assert.equal(button(unknown, "同意並連線").props.disabled, true); assert.match(text(unknown.tree), /無法確認的權限/); unknown.dispose();
+});
+
+test("approve sends one decision only after explicit click and uses server callback", async () => {
+  const h = await loadedConsent(); const write = deferred(); answer = () => write.promise;
+  const action = button(h, "同意並連線").props.onClick; const first = action(); await action();
+  assert.equal(calls.filter(c => c.method === "post").length, 1);
+  expectCall("post", "/oauth/decide", { request_id: "test-request", approve: true });
+  h.render(); assert.equal(button(h, "拒絕").props.disabled, true);
+  const callback = "https://client.example.test/callback?code=test-only-code&state=test-only-state";
+  write.resolve({ data: { redirect_to: callback, approved: true } }); await first;
+  expectCall("redirect", callback); h.dispose();
+});
+
+test("deny sends approve=false and returns the app's access_denied callback", async () => {
+  const h = await loadedConsent({ ...consentFixture(), agent_id: null });
+  const callback = "https://client.example.test/callback?error=access_denied&state=test-only-state";
+  answer = async () => ({ data: { redirect_to: callback, approved: false } });
+  await button(h, "拒絕").props.onClick();
+  assert.deepEqual(calls.find(c => c.method === "post").args[1], { request_id: "test-request", approve: false });
+  expectCall("redirect", callback); h.dispose();
+});
+
+test("OAuth callbacks reject unsafe schemes, credentials and mismatched hosts but allow verified loopback", () => {
+  const safe = oauthNavigation.safeOAuthCallback;
+  for (const value of ["javascript:alert(1)", "data:text/html,evil", "//client.example.test/cb", "https://evil.test/cb", "https://a:b@client.example.test/cb", "http://client.example.test/cb"]) assert.equal(safe(value, "client.example.test"), null);
+  assert.equal(safe("http://127.0.0.1:1234/cb?code=test", "127.0.0.1:1234"), "http://127.0.0.1:1234/cb?code=test");
+  assert.equal(safe("https://client.example.test/cb", "CLIENT.EXAMPLE.TEST"), "https://client.example.test/cb");
+});
+
+test("unsafe callback or decision mismatch never redirects and never echoes the callback", async () => {
+  for (const result of [{ redirect_to: "javascript:test-only-secret", approved: true }, { redirect_to: "https://client.example.test/cb?code=test-only-secret", approved: false }]) {
+    const h = await loadedConsent(); answer = async () => ({ data: result });
+    await button(h, "同意並連線").props.onClick(); h.render();
+    assert.match(text(h.tree), /未能確認授權結果/); assert.ok(!text(h.tree).includes("test-only-secret"));
+    assert.ok(!calls.some(c => c.method === "redirect")); h.dispose();
+  }
+});
+
+test("ambiguous consent write is terminal and never retried; unmounted decision cannot redirect", async () => {
+  const h = await loadedConsent(); answer = async () => { throw Error("offline"); };
+  const action = button(h, "同意並連線").props.onClick; await action(); await action(); h.render();
+  assert.equal(calls.filter(c => c.method === "post").length, 1); assert.match(text(h.tree), /避免重複送出/);
+  assert.equal(nodes(h.tree, n => n.type === "button").length, 0); h.dispose();
+  const next = await loadedConsent(); const write = deferred(); answer = () => write.promise;
+  const pending = button(next, "拒絕").props.onClick(); next.dispose();
+  write.resolve({ data: { approved: false, redirect_to: "https://client.example.test/cb?error=access_denied" } }); await pending;
+  assert.ok(!calls.some(c => c.method === "redirect"));
+});
+
+test("consent 404 and 410 are terminal, transient read error can retry, stale reads are aborted", async () => {
+  for (const status of [404, 410]) {
+    answer = async () => { throw { response: { status } }; };
+    const h = mount(AuthorizeRequest, { requestId: "test-request" }); h.effects(); await tick(); h.render();
+    assert.match(text(h.tree), /回到 app 重新連線/); assert.equal(nodes(h.tree, n => n.type === "button").length, 0); h.dispose();
+  }
+  answer = async () => { throw Error("offline"); };
+  const h = mount(AuthorizeRequest, { requestId: "test-request" }); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /暫時讀不到/);
+  const read = deferred(); answer = () => read.promise;
+  click(h, "重新讀取"); h.effects(); const signal = calls.at(-1).args[1].signal;
+  h.dispose(); assert.ok(signal.aborted);
+  read.resolve({ data: consentFixture() }); await tick(); h.render();
+  assert.ok(!text(h.tree).includes("Example app"));
+});
+
+test("malformed consent response fails closed and expiry disables both actions without writing", async () => {
+  const bad = await loadedConsent({ ...consentFixture(), request_id: "other-request" });
+  assert.match(text(bad.tree), /授權資料不完整/); assert.equal(nodes(bad.tree, n => n.type === "button").length, 0); bad.dispose();
+  const h = await loadedConsent();
+  const timer = [...timers.values()].at(-1); assert.ok(timer.delay > 0 && timer.delay <= 600000);
+  timer.fn(); h.render(); assert.match(text(h.tree), /已過期/);
+  assert.equal(button(h, "拒絕").props.disabled, true); assert.equal(button(h, "同意並連線").props.disabled, true);
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+
+test("an expired request cannot be approved even before its timer fires", async () => {
+  const h = await loadedConsent({ ...consentFixture(), expires_at: new Date(Date.now() - 1000).toISOString() });
+  await button(h, "同意並連線").props.onClick(); h.render();
+  assert.match(text(h.tree), /已過期/); assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+
+test("grants list handles loading, metadata, revoked rows and no remote tracking images", async () => {
+  const h = await loadedGrants([grantFixture, { ...grantFixture, id: "old", revoked_at: "2026-09-09T02:00:00Z" }]);
+  expectCall("get", "/oauth/grants"); assert.equal(calls.length, 1);
+  assert.match(text(h.tree), /最後使用尚未使用/); assert.match(text(h.tree), /已撤銷/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "撤銷授權").length, 1);
+  assert.equal(nodes(h.tree, n => n.type === "img" || n.type === "iframe" || n.type === "a").length, 0); h.dispose();
+});
+
+test("empty and failed grant lists differ; aborted fetch cannot revive an old list", async () => {
+  const empty = await loadedGrants([]); assert.match(text(empty.tree), /還沒有已授權的 app/); empty.dispose();
+  answer = async () => { throw Error("offline"); };
+  const h = mount(OAuthGrantsPanel); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /暫時讀不到/); assert.ok(!text(h.tree).includes("還沒有已授權"));
+  const read = deferred(); answer = () => read.promise; click(h, "更新授權清單"); h.effects();
+  const signal = calls.at(-1).args[1].signal; h.dispose(); assert.ok(signal.aborted);
+  read.resolve({ data: [grantFixture] }); await tick(); h.render(); assert.ok(!text(h.tree).includes("Example app"));
+});
+
+test("revoking a grant requires confirmation, is single-flight, and never revokes fixed keys", async () => {
+  const h = await loadedGrants(); click(h, "撤銷授權"); click(h, "取消");
+  assert.ok(calls.every(c => c.method === "get")); click(h, "撤銷授權");
+  const write = deferred(); answer = () => write.promise;
+  const action = button(h, "確認撤銷授權").props.onClick; const first = action(); await action();
+  assert.equal(calls.filter(c => c.method === "delete").length, 1); expectCall("delete", "/oauth/grants/grant-one");
+  write.resolve({}); await first; h.render(); assert.match(text(h.tree), /已撤銷/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "撤銷授權").length, 0);
+  assert.ok(!calls.some(c => String(c.args[0]).includes("mcp-token"))); h.dispose();
+});
+
+test("uncertain grant revocation requires read-back before retry and retains honest state", async () => {
+  const h = await loadedGrants(); click(h, "撤銷授權"); answer = async () => { throw Error("offline"); };
+  await button(h, "確認撤銷授權").props.onClick(); h.render();
+  assert.match(text(h.tree), /未能確認撤銷結果/); assert.equal(button(h, "撤銷授權").props.disabled, true);
+  answer = async () => ({ data: [{ ...grantFixture, revoked_at: "2026-09-09T02:00:00Z" }] });
+  click(h, "更新授權清單"); h.effects(); assert.ok(!text(h.tree).includes("Example app"));
+  await tick(); h.render(); assert.match(text(h.tree), /已撤銷/);
+  assert.equal(calls.filter(c => c.method === "delete").length, 1); h.dispose();
+});
+
+test("public connector copy uses a token-free constant and waits for clipboard success", async () => {
+  const h = mount(McpWebConnection); const write = deferred();
+  navigatorStub.clipboard = { writeText: value => { calls.push({ method: "copy", args: [value] }); return write.promise; } };
+  const action = button(h, "複製連接器網址").props.onClick; const first = action(); await action(); h.render();
+  assert.equal(calls.length, 1); expectCall("copy", "https://therookery.space/mcp"); assert.ok(!text(h.tree).includes("已複製"));
+  write.resolve(); await first; h.render(); assert.match(text(h.tree), /已複製連接器網址/);
+  assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, "https://therookery.space/mcp");
+});
+
+test("public copy failure leaves selectable nonsecret URL; CLI command stays backend-exact", async () => {
+  navigatorStub.clipboard = undefined; const h = mount(McpWebConnection);
+  await button(h, "複製連接器網址").props.onClick(); h.render(); assert.match(text(h.tree), /長按上方網址/);
+  const field = nodes(h.tree, n => n.type === "input")[0]; assert.equal(field.props.readOnly, true);
+  let selected = false; field.props.onFocus({ currentTarget: { select() { selected = true; } } }); assert.ok(selected);
+  const cli = mount(McpConnectionActions, { connection: fixedKey });
+  assert.ok(!JSON.stringify(cli.tree).includes(fixedKey.connect_url));
+  navigatorStub.clipboard = { writeText: async value => calls.push({ method: "copy", args: [value] }) };
+  await button(cli, "複製 Claude Code 指令").props.onClick(); expectCall("copy", fixedKey.claude_code_cmd);
+});
+
+test("closing the legacy advanced section discards any displayed manual-copy credential", async () => {
+  const h = mount(McpConnectionActions, { connection: fixedKey });
+  nodes(h.tree, n => n.type === "details")[0].props.onToggle({ currentTarget: { open: true } }); h.render();
+  navigatorStub.clipboard = undefined; await button(h, "複製進階鑰匙網址").props.onClick(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "textarea").length, 1);
+  nodes(h.tree, n => n.type === "details")[0].props.onToggle({ currentTarget: { open: false } }); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "textarea").length, 0); assert.ok(!JSON.stringify(h.tree).includes(fixedKey.connect_url));
+});
+
+test("OAuth code and UI remain isolated from credentials storage and production preview fixtures", () => {
+  for (const file of ["src/pages/AuthorizePage.tsx", "src/components/OAuthGrantsPanel.tsx", "src/components/McpWebConnection.tsx", "src/api/oauth.ts"]) {
+    const source = readFileSync(resolve(root, file), "utf8");
+    for (const pattern of [/localStorage/, /sessionStorage/, /console\./, /dangerouslySetInnerHTML/, /window\.open/]) assert.ok(!pattern.test(source), `${file}: ${pattern}`);
+  }
+  const advanced = readFileSync(resolve(root, "src/pages/AdvancedAgentPage.tsx"), "utf8");
+  assert.ok(advanced.includes("<McpWebConnection />")); assert.ok(advanced.includes("<OAuthGrantsPanel />"));
+  const css = readFileSync(resolve(root, "src/oauth.css"), "utf8");
+  assert.ok(css.includes("100dvh")); assert.ok(css.includes("safe-area-inset-bottom")); assert.ok(css.includes("var(--ya-accent)"));
+  assert.ok(!existsSync(resolve(root, "public/oauth-preview")));
+});
+
+test("service worker never serves SPA HTML for backend OAuth discovery or MCP requests", () => {
+  const source = readFileSync(resolve(root, "vite.config.ts"), "utf8");
+  const value = source.match(/navigateFallbackDenylist:\s*(\[[^\n]+\])/)[1];
+  const rules = new Function(`return ${value}`)();
+  for (const path of ["/oauth/authorize", "/oauth/consent?request_id=test", "/.well-known/oauth-authorization-server", "/mcp", "/mcp?token=test", "/field-preview/index.html"]) assert.ok(rules.some(rule => rule.test(path)), path);
+  assert.ok(!rules.some(rule => rule.test("/authorize?request_id=test")));
+});
+
+function authClientHarness(refresh) {
+  const storage = new Map([["coliving_access_token", "test-only-access"], ["coliving_refresh_token", "test-only-refresh"]]);
+  const retries = []; let requestHook, responseHook, refreshCalls = 0;
+  const client = async config => { retries.push(config); return { data: { ok: true } }; };
+  client.interceptors = { request: { use: fn => { requestHook = fn; } }, response: { use: (_success, fail) => { responseHook = fail; } } };
+  const axios = { create: () => client, post: (...args) => { refreshCalls++; return refresh(...args); } };
+  const code = ts.transpileModule(readFileSync(resolve(root, "src/api/client.ts"), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
+  const module = { exports: {} };
+  new Function("require", "module", "exports", "localStorage", "window", code)(
+    name => name === "axios" ? { __esModule: true, default: axios } : oauthNavigation,
+    module, module.exports,
+    { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }, windowStub,
+  );
+  return { storage, retries, request: config => requestHook(config), reject: error => responseHook(error), refreshCalls: () => refreshCalls };
+}
+
+test("login 401 stays a visible login error and cannot trigger refresh or lose the return path", async () => {
+  const h = authClientHarness(async () => { throw Error("must not refresh login"); });
+  for (const url of ["/auth/login", "/auth/register", "/auth/refresh"]) {
+    const error = { config: { url, headers: {} }, response: { status: 401 } };
+    await assert.rejects(h.reject(error), err => err === error);
+  }
+  assert.equal(h.refreshCalls(), 0); assert.equal(windowStub.location.href, undefined);
+  assert.equal(h.storage.get("coliving_access_token"), "test-only-access");
+});
+
+test("expired website session clears only auth tokens and resumes the same consent request after login", async () => {
+  windowStub.location.pathname = "/authorize"; windowStub.location.search = "?request_id=test-request&extra=discard";
+  const h = authClientHarness(async () => { throw Error("expired refresh"); });
+  const error = { config: { url: "/oauth/requests/test-request", headers: {} }, response: { status: 401 } };
+  await assert.rejects(h.reject(error));
+  assert.equal(h.refreshCalls(), 1); assert.equal(h.storage.size, 0);
+  assert.equal(windowStub.location.href, "/login?returnTo=%2Fauthorize%3Frequest_id%3Dtest-request");
+  assert.equal(h.retries.length, 0);
+});
+
+test("concurrent session 401s share one refresh and queued retries are bounded", async () => {
+  const refresh = deferred(); const h = authClientHarness(() => refresh.promise);
+  assert.equal(h.request({ headers: {} }).headers.Authorization, "Bearer test-only-access");
+  const firstConfig = { url: "/oauth/requests/test-request", headers: {} };
+  const secondConfig = { url: "/oauth/grants", headers: {} };
+  const first = h.reject({ config: firstConfig, response: { status: 401 } });
+  const second = h.reject({ config: secondConfig, response: { status: 401 } });
+  assert.equal(h.refreshCalls(), 1);
+  refresh.resolve({ data: { access_token: "test-only-new", refresh_token: "test-only-new-refresh" } });
+  await Promise.all([first, second]); assert.equal(h.retries.length, 2);
+  for (const config of [firstConfig, secondConfig]) {
+    assert.equal(config._retry, true); assert.equal(config.headers.Authorization, "Bearer test-only-new");
+    await assert.rejects(h.reject({ config, response: { status: 401 } }));
+  }
+  assert.equal(h.refreshCalls(), 1); assert.equal(windowStub.location.href, undefined);
 });

@@ -11,7 +11,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       workbox: {
         // Standalone field HTML must not resolve to the React app shell.
-        navigateFallbackDenylist: [/^\/field-preview(?:\/|$)/],
+        navigateFallbackDenylist: [/^\/field-preview(?:\/|$)/, /^\/oauth(?:\/|$)/, /^\/\.well-known(?:\/|$)/, /^\/mcp(?:\/|$|\?)/],
       },
       manifest: {
         name: "共居社區",

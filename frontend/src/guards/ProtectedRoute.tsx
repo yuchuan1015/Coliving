@@ -1,8 +1,10 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { loginPathFor } from "../oauth-navigation";
 
 export function ProtectedRoute() {
   const { user, isLoading } = useAuth();
+  const { pathname, search } = useLocation();
 
   if (isLoading) {
     return (
@@ -12,7 +14,7 @@ export function ProtectedRoute() {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={loginPathFor(pathname, search)} replace />;
 
   return <Outlet />;
 }

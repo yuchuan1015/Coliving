@@ -1,4 +1,5 @@
 import axios from "axios";
+import { loginPathFor } from "../oauth-navigation";
 
 const TOKEN_KEY = "coliving_access_token";
 const REFRESH_KEY = "coliving_refresh_token";
@@ -29,10 +30,11 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status !== 401 || original._retry) {
+    if (!original || error.response?.status !== 401 || original._retry || /^\/auth\/(login|register|refresh)$/.test(original.url ?? "")) {
       return Promise.reject(error);
     }
 
+    original._retry = true;
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         pendingQueue.push({
@@ -45,7 +47,6 @@ api.interceptors.response.use(
       });
     }
 
-    original._retry = true;
     isRefreshing = true;
 
     try {
@@ -66,7 +67,7 @@ api.interceptors.response.use(
       processQueue(null, err);
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_KEY);
-      window.location.href = "/login";
+      window.location.href = loginPathFor(window.location.pathname, window.location.search);
       return Promise.reject(err);
     } finally {
       isRefreshing = false;

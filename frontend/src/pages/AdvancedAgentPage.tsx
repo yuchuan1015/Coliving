@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyAgent, updateAgent } from "../api/agents";
 import { McpKeysPanel } from "../components/McpKeysPanel";
+import { McpWebConnection } from "../components/McpWebConnection";
+import { OAuthGrantsPanel } from "../components/OAuthGrantsPanel";
 import {
   activateSkin,
   createSkin,
@@ -70,6 +72,8 @@ export function AdvancedAgentPage() {
       </p>
 
       <div className="space-y-5">
+        <McpWebConnection />
+        <OAuthGrantsPanel />
         <McpKeysPanel />
 
         {/* External MCPs */}

@@ -1,25 +1,27 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { McpKey } from "../types";
 import "../mcp-keys.css";
 
 type CopyField = "connect_url" | "claude_code_cmd";
 const labels: Record<CopyField, string> = {
-  connect_url: "連接器網址",
+  connect_url: "進階鑰匙網址",
   claude_code_cmd: "Claude Code 指令",
 };
 
-export function McpConnectionActions({ connection, showUrl = false, disabled = false }: {
+export function McpConnectionActions({ connection, disabled = false }: {
   connection: McpKey;
-  showUrl?: boolean;
   disabled?: boolean;
 }) {
   const [feedback, setFeedback] = useState("");
   const [manual, setManual] = useState<CopyField | null>(null);
   const [copying, setCopying] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const copyLock = useRef(false);
 
   async function copy(field: CopyField) {
     const value = connection[field];
-    if (!value || disabled || copying || connection.revoked_at) return;
+    if (!value || disabled || copyLock.current || connection.revoked_at || (field === "connect_url" && !advanced)) return;
+    copyLock.current = true;
     setFeedback("");
     setManual(null);
     setCopying(true);
@@ -31,6 +33,7 @@ export function McpConnectionActions({ connection, showUrl = false, disabled = f
       setManual(field);
       setFeedback("未能自動複製，請長按下方文字選取、複製。");
     } finally {
+      copyLock.current = false;
       setCopying(false);
     }
   }
@@ -39,15 +42,14 @@ export function McpConnectionActions({ connection, showUrl = false, disabled = f
   if (connection.revoked_at) return <p className="mcp-key-note">這把鑰匙已作廢，無法再連線。</p>;
 
   return <div className="mcp-connect">
-    {showUrl && connection.connect_url && <label className="mcp-secret">
-      連接器網址
-      <textarea readOnly value={connection.connect_url} rows={3} spellCheck={false} autoComplete="off" onFocus={e => e.currentTarget.select()} />
-    </label>}
     <div className="mcp-key-actions">
-      {(["connect_url", "claude_code_cmd"] as const).map(field => <button key={field} type="button" disabled={disabled || copying || !connection[field]} onClick={() => copy(field)}>
-        {field === "connect_url" ? "複製連接器網址" : "複製 Claude Code 指令"}
-      </button>)}
+      <button type="button" disabled={disabled || copying || !connection.claude_code_cmd} onClick={() => copy("claude_code_cmd")}>複製 Claude Code 指令</button>
     </div>
+    <details className="mcp-advanced" onToggle={e => { setAdvanced(e.currentTarget.open); setManual(null); setFeedback(""); }}>
+      <summary>進階：不支援 OAuth 的客戶端</summary>
+      {advanced && <><p className="mcp-key-note">這個網址內含你的鑰匙，只供無法使用 OAuth 的相容客戶端。請勿公開、截圖分享或貼進聊天。</p>
+        <button type="button" disabled={disabled || copying || !connection.connect_url} onClick={() => copy("connect_url")}>複製進階鑰匙網址</button></>}
+    </details>
     {(!connection.connect_url || !connection.claude_code_cmd) && <p className="mcp-key-note">連線資料尚未齊全，請更新鑰匙清單。不必重新產生鑰匙。</p>}
     {feedback && <p className="mcp-key-note" role="status">{feedback}</p>}
     {manual && <label className="mcp-secret">

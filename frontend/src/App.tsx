@@ -27,6 +27,7 @@ import { AIChatField, MailField, ParkField } from "./fields/EverydayFields";
 import { ArticlesField, HistoryField, LibraryField, MuseumField } from "./fields/ContentFields";
 import { WorkshopField, WeilanField } from "./fields/ActivityFields";
 import { PlazaField } from "./fields/PlazaField";
+import { AuthorizePage } from "./pages/AuthorizePage";
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>
+            <Route path="/authorize" element={<AuthorizePage />} />
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/home/diary" element={<DiaryPage />} />

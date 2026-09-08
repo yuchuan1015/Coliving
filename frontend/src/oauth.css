@@ -1,0 +1,25 @@
+/* Extend the approved login palette; never restyle the login or cabin globally. */
+.ya-auth-page.oauth-page{box-sizing:border-box;min-height:100vh;min-height:100dvh;padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));overflow:visible;color-scheme:dark}
+.oauth-page .ya-auth-stars{pointer-events:none}
+.oauth-page .oauth-card{box-sizing:border-box;width:min(100%,480px);min-width:0;padding:24px;line-height:1.7}
+.oauth-card .ya-auth-logo{margin-bottom:24px}
+.oauth-card h1{font-size:1.5rem;font-weight:400;margin:12px 0}
+.oauth-card h2{font-size:1rem;font-weight:500;margin:0;overflow-wrap:anywhere}
+.oauth-card p{font-size:1rem;margin:8px 0;overflow-wrap:anywhere}
+.oauth-muted,.oauth-card .oauth-host,.oauth-card .oauth-expiry{color:var(--ya-muted);font-size:.875rem}
+.oauth-identity,.oauth-agent{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid var(--ya-line);border-radius:16px;background:rgba(201,167,255,.04);margin-top:24px;min-width:0}
+.oauth-identity>div,.oauth-agent>div:last-child{min-width:0}
+.oauth-app-mark,.oauth-avatar{width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border:1px solid var(--ya-line);border-radius:50%;color:var(--ya-accent);font-size:1.5rem;overflow:hidden}
+.oauth-avatar img{width:100%;height:100%;object-fit:cover}
+.oauth-agent{margin-top:12px}
+.oauth-permissions{margin:24px 0;padding-top:24px;border-top:1px solid var(--ya-line)}
+.oauth-decisions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.oauth-secondary,.oauth-card .ya-auth-submit{min-height:48px;box-sizing:border-box;padding:12px 16px;font:inherit;border-radius:12px;cursor:pointer}
+.oauth-secondary{border:1px solid var(--ya-line);background:rgba(201,167,255,.06);color:var(--ya-ink)}
+.oauth-card .ya-auth-submit{margin:0;font-weight:500}
+.oauth-card button:disabled{opacity:.5;cursor:default}
+.oauth-card .oauth-message{border-left:2px solid var(--ya-accent);padding:12px;background:rgba(201,167,255,.06);margin:24px 0}
+.oauth-card .oauth-expiry{margin-top:16px;text-align:center}
+.oauth-home{display:inline-block;margin-top:16px;padding:8px 0;color:var(--ya-accent);font-size:.875rem}
+.oauth-card :is(button,a):focus-visible{outline:2px solid var(--ya-accent);outline-offset:4px}
+@media(max-width:360px){.oauth-page .oauth-card{padding:24px 16px}.oauth-decisions{grid-template-columns:1fr}}

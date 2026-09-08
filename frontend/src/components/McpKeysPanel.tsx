@@ -82,14 +82,14 @@ export function McpKeysPanel() {
 
   return <section className="mcp-keys" aria-labelledby="mcp-keys-title">
     <div className="mcp-key-heading">
-      <h2 id="mcp-keys-title">連接器鑰匙</h2>
+      <h2 id="mcp-keys-title">CLI 與進階鑰匙</h2>
       <button type="button" disabled={loading || !!pending} onClick={() => {
         setLoading(true); setKeys([]); setError("");
         setConfirmId(null); setNotice(""); setRevision(n => n + 1);
       }}>更新清單</button>
     </div>
-    <p>貼到 Claude 連接器就好，之後每個窗都不用再拿鑰匙。現有鑰匙可以重複複製，不必每次產生新的。</p>
-    <p className="mcp-key-note">網址和指令內含你的鑰匙，請勿公開、截圖分享或貼給他人。</p>
+    <p>給 Claude Code 等客戶端使用。現有鑰匙可以重複複製，不必每次產生新的；網頁連接器請優先使用上方的登入授權。</p>
+    <p className="mcp-key-note">指令與進階網址內含你的鑰匙，請勿公開、截圖分享或貼進聊天。Claude Code 指令目前依客戶端的預設專案範圍設定，不保證所有專案共用。</p>
     {loading && <p role="status">正在讀取鑰匙…</p>}
     {error && <p role="alert">{error}</p>}
     {notice && <p role="status">{notice}</p>}
