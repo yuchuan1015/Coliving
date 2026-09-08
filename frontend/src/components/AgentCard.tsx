@@ -41,13 +41,6 @@ export function AgentCard({ agent }: { agent: AgentPublic }) {
           聊天
         </button>
         <button
-          onClick={() => navigate(`/agent/edit`)}
-          className="rounded-lg px-4 py-2 text-sm font-medium"
-          style={{ background: "var(--surface-dim)", color: "var(--ink-soft)", border: "1px solid var(--border)" }}
-        >
-          編輯
-        </button>
-        <button
           onClick={() => navigate(`/schedules`)}
           className="rounded-lg px-4 py-2 text-sm font-medium"
           style={{ background: "var(--surface-dim)", color: "var(--ink-soft)", border: "1px solid var(--border)" }}

@@ -3,7 +3,7 @@
 // with controlled hooks and API fixtures. This is not a browser/E2E substitute.
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -31,7 +31,9 @@ const react = {
   createContext(value) { return { value, Provider: function Provider() {} }; },
   useContext(context) { return context.value; },
 };
-const windowStub = { location: { origin: "https://example.test" }, setInterval: () => 1, clearTimeout() {}, setTimeout: fn => { fn(); return 1; }, matchMedia: () => ({ matches: true }) };
+const windowStub = { location: { origin: "https://example.test" }, setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {}, clearTimeout() {}, setTimeout: fn => { fn(); return 1; }, matchMedia: () => ({ matches: true }) };
+const sessionValues = new Map();
+const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
 const documentStub = { hidden: false, activeElement: null };
 class TestFormData extends FormData {
   constructor(source) { super(); if (source) for (const [key, value] of source) this.append(key, value); }
@@ -65,7 +67,7 @@ function load(relative) {
     const value = load(filename);
     return filename.endsWith("/fields/fieldData.ts") ? { ...value, useFieldResource: fixtureResource } : value;
   }
-  new Function("require", "module", "exports", "window", "document", "FormData", code)(localRequire, module, module.exports, windowStub, documentStub, TestFormData);
+  new Function("require", "module", "exports", "window", "document", "FormData", "sessionStorage", code)(localRequire, module, module.exports, windowStub, documentStub, TestFormData, sessionStorageStub);
   return module.exports;
 }
 function mount(component, props = {}) {
@@ -114,6 +116,7 @@ const { BirthYearSettings } = load("src/components/BirthYearSettings.tsx");
 const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
 beforeEach(() => {
   fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null;
+  sessionValues.clear();
   auth = { user: { id: "me", role: "resident", birth_year: null },
     updateBirthYear: async year => { calls.push({ method: "birth", args: [year] }); auth.user.birth_year = year; },
     refreshUser: async () => { calls.push({ method: "profile", args: [] }); return auth.user; },
@@ -540,4 +543,123 @@ test("dialog disables close, Escape and sibling controls while a mutation is pen
   assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
   h.tree.props.onCancel({ preventDefault() {} }); assert.equal(closed, 0);
   one(h, "Provider").props.value.setBusy(false); h.render(); h.tree.props.onCancel({ preventDefault() {} }); assert.equal(closed, 1);
+});
+
+const settingsAgent = { id: "agent-a", name: "測試室友", persona: "保留個性", llm_provider: "gemini", llm_model: "existing-model", avatar_emoji: "🌙", ob_enabled: true, external_mcps: [], status: "active" };
+async function loadedAdvanced(agent = settingsAgent) {
+  answer = async (_method, url) => ({ data: url === "/agents/mine" ? agent : [] });
+  const h = mount(load("src/pages/AdvancedAgentPage.tsx").AdvancedAgentPage);
+  h.effects(); await tick(); h.render(); return h;
+}
+
+test("mirror is the only source navigation to the existing protected editor route", () => {
+  const matches = [];
+  function scan(dir) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const file = resolve(dir, entry.name);
+      if (entry.isDirectory()) scan(file);
+      else if (/\.(ts|tsx)$/.test(entry.name) && readFileSync(file, "utf8").includes("/agent/edit")) matches.push(file.slice(root.length + 1));
+    }
+  }
+  scan(resolve(root, "src"));
+  assert.deepEqual(matches.sort(), ["src/App.tsx", "src/data/cabin.ts"]);
+  const { cabinZones } = load("src/data/cabin.ts");
+  assert.deepEqual(cabinZones.flatMap(z => z.furniture).filter(f => f.path === "/agent/edit").map(f => f.id), ["mirror"]);
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(app.indexOf('path="/agent/edit"') > app.indexOf("<ProtectedRoute"));
+});
+
+test("home identity is display-only; mirror and existing FAB journeys remain functional", async () => {
+  answer = async (_method, url) => ({ data: url === "/home/dashboard" ? { agents: [settingsAgent], community_status: { message: "測試公告" } } : url === "/agents/mine" ? settingsAgent : url === "/home/furniture" ? { clock: { utc: "2026-09-08T00:00:00Z", timezone: "Asia/Taipei" }, weather: null } : [] });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage);
+  h.effects(); await tick(); await tick(); h.render();
+  const identity = nodes(h.tree, n => n.props.className === "cabin-agent-info")[0];
+  assert.equal(identity.type, "div");
+  assert.match(text(identity), /測試室友/);
+  assert.equal(identity.props.onClick, undefined);
+  assert.equal(identity.props.tabIndex, undefined);
+  assert.equal(nodes(identity, n => n.type === "button" || n.type === "a").length, 0);
+  assert.equal(nodes(h.tree, n => n.type === "section" && n.props.className?.includes("cabin-card")).length, 3);
+  nodes(h.tree, n => n.props["aria-label"] === "展開快捷選單")[0].props.onClick(); h.render();
+  click(h, "聊天"); expectCall("navigate", "/chat/agent-a");
+  click(h, "出艙 ↗"); expectCall("navigate", "/outside");
+  click(h, "排程管理"); expectCall("navigate", "/schedules");
+  click(h, "設定"); assert.equal(one(h, "CabinPanelDialog").props.panel, "settings");
+  one(h, "CabinPanelDialog").props.onClose(); h.render();
+  const { cabinZones } = load("src/data/cabin.ts");
+  const mirrorZone = cabinZones.findIndex(z => z.furniture.some(f => f.id === "mirror"));
+  nodes(h.tree, n => n.type === "input" && n.props.type === "range")[0].props.onChange({ target: { value: String(mirrorZone) } }); h.render();
+  nodes(h.tree, n => n.props["aria-label"] === "查看鏡子")[0].props.onClick(); h.render();
+  click(h, "進入 ›"); expectCall("navigate", "/agent/edit");
+  assert.ok(calls.every(c => c.method === "get" || c.method === "navigate"));
+  h.dispose();
+});
+
+test("removing profile navigation retains adoption for residents without an agent", () => {
+  const h = mount(load("src/pages/HomePage.tsx").HomePage);
+  assert.equal(nodes(h.tree, n => n.props.className === "cabin-agent-info")[0].type, "div");
+  nodes(h.tree, n => n.props["aria-label"] === "展開快捷選單")[0].props.onClick(); h.render();
+  click(h, "聊天"); expectCall("navigate", "/adopt");
+});
+
+test("settings removes only Agent edit entry and preserves account, advanced and admin controls", () => {
+  const { CabinPanelDialog } = load("src/components/CabinPanelDialog.tsx");
+  const props = { panel: "settings", summary: null, now: new Date(), onClose() {}, onRefreshWeather: async () => {} };
+  auth.logout = () => calls.push({ method: "logout", args: [] });
+  const h = mount(CabinPanelDialog, props);
+  assert.ok(!text(h.tree).includes("Agent 設定"));
+  assert.equal(components(h, "CitySettings").length, 1);
+  assert.equal(components(h, "BirthYearSettings").length, 1);
+  click(h, "進階連線與房間設定"); expectCall("navigate", "/agent/advanced");
+  click(h, "排程管理"); expectCall("navigate", "/schedules");
+  assert.ok(!text(h.tree).includes("系統儀表板"));
+  click(h, "登出"); assert.equal(calls.at(-1).method, "logout");
+  auth.user.role = "admin"; h.render(); click(h, "系統儀表板"); expectCall("navigate", "/admin");
+});
+
+test("advanced page no longer renders or submits basic fields or the legacy OB switch", async () => {
+  const h = await loadedAdvanced();
+  assert.match(text(h.tree), /進階連線與房間設定/);
+  for (const label of ["MCP Token", "外部 MCP", "房間皮膚"]) assert.ok(text(h.tree).includes(label));
+  for (const label of ["個性描述", "API 金鑰", "長期記憶", "儲存變更"]) assert.ok(!text(h.tree).includes(label));
+  assert.equal(nodes(h.tree, n => n.type === "form" || n.props.type === "submit" || n.type === "select").length, 0);
+  const source = readFileSync(resolve(root, "src/pages/AdvancedAgentPage.tsx"), "utf8");
+  for (const field of ["avatar_emoji", "persona", "llm_provider", "llm_model", "api_key", "ob_enabled", "handleSubmit"]) assert.ok(!source.includes(field), field);
+  assert.ok(calls.every(c => c.method === "get"));
+});
+
+test("advanced external MCP add/delete send only connection data, never basic profile fields", async () => {
+  const h = await loadedAdvanced();
+  const change = (placeholder, value) => {
+    nodes(h.tree, n => n.type === "input" && n.props.placeholder === placeholder)[0].props.onChange({ target: { value } }); h.render();
+  };
+  change("名稱（如 my-tools）", "tools");
+  change("URL（如 https://my-server.com/mcp）", "https://example.test/mcp");
+  change("Token（選填）", "test-token");
+  answer = async () => ({ data: settingsAgent });
+  await button(h, "新增 MCP").props.onClick(); h.render();
+  expectCall("patch", "/agents/agent-a", { external_mcps: [{ name: "tools", url: "https://example.test/mcp", token: "test-token" }] });
+  await button(h, "刪除").props.onClick(); h.render();
+  expectCall("patch", "/agents/agent-a", { external_mcps: [] });
+});
+
+test("advanced token and skin operations survive the removal of the basic form", async () => {
+  const h = await loadedAdvanced();
+  answer = async () => ({ data: { mcp_token: "test-only-token" } });
+  await button(h, "產生 MCP Token").props.onClick(); h.render();
+  expectCall("post", "/agents/mine/mcp-token");
+  assert.equal(nodes(h.tree, n => n.type === "textarea" && n.props.readOnly)[0].props.value, "test-only-token");
+  nodes(h.tree, n => n.type === "input" && n.props.placeholder === "皮膚名稱")[0].props.onChange({ target: { value: "測試皮膚" } }); h.render();
+  nodes(h.tree, n => n.type === "textarea" && !n.props.readOnly)[0].props.onChange({ target: { value: "<main>test</main>" } }); h.render();
+  answer = async () => ({ data: { id: "skin-test", name: "測試皮膚" } });
+  await button(h, "新增皮膚").props.onClick(); h.render();
+  expectCall("post", "/skins", { name: "測試皮膚", html_content: "<main>test</main>" });
+  click(h, "皮膚庫"); expectCall("navigate", "/workshop");
+});
+
+test("legacy AgentCard cannot reintroduce an edit shortcut", () => {
+  const h = mount(load("src/components/AgentCard.tsx").AgentCard, { agent: settingsAgent });
+  assert.ok(!text(h.tree).includes("編輯"));
+  click(h, "聊天"); expectCall("navigate", "/chat/agent-a");
+  click(h, "排程"); expectCall("navigate", "/schedules");
 });

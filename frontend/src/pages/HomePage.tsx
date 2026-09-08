@@ -140,10 +140,10 @@ export function HomePage() {
     </section>
 
     <section className="cabin-card cabin-agent" aria-label="Agent 個人名牌">
-      <button className="cabin-agent-link" onClick={() => navigate(agent ? "/agent/edit" : "/adopt")} aria-label={agent ? `編輯${agent.name}的資料` : "領養室友"}>
+      <div className="cabin-agent-info">
         <span className="cabin-avatar" aria-hidden="true"><AvatarContent url={agent?.avatar_url} emoji={agent?.avatar_emoji ?? "◌"} name={agent?.name ?? "室友"} /></span>
         <span className="cabin-agent-copy"><strong>{agent?.name ?? (error ? "室友資料未同步" : "尚未連結 Agent")}</strong><small><span aria-hidden="true">•</span> {agent?.status ?? "等待連結"}</small></span>
-      </button>
+      </div>
       <div className="cabin-fab-wrap">
         {fabOpen && <nav className="cabin-fab-menu" id="cabin-fab-menu" aria-label="艙室快捷選單">
           <button onClick={() => navigate("/outside")}>出艙 ↗</button>

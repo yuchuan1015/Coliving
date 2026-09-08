@@ -61,7 +61,6 @@ export function CabinPanelDialog({ panel, summary, now, onClose, onRefreshWeathe
   return <dialog ref={dialog} className="cabin-panel" aria-labelledby="cabin-panel-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close(); } }}>
     <header><h2 id="cabin-panel-title">{titles[panel]}</h2><button disabled={cityBusy} onClick={close} aria-label="關閉彈窗">×</button></header>
     {panel === "settings" && <><fieldset disabled={cityBusy} style={{ border: 0, padding: 0, margin: 0 }}><CitySettings onRefreshWeather={onRefreshWeather} onBusyChange={setCityBusy} /><BirthYearSettings onBusyChange={setCityBusy} /></fieldset><fieldset disabled={cityBusy} className="cabin-panel-actions">
-      <button onClick={() => go("/agent/edit")}>Agent 設定</button>
       <button onClick={() => go("/agent/advanced")}>進階連線與房間設定</button>
       <button onClick={() => go("/schedules")}>排程管理</button>
       {user?.role === "admin" && <button onClick={() => go("/admin")}>系統儀表板</button>}
