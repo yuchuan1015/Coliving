@@ -1,10 +1,26 @@
 # 場域 HTML 預覽 · 2026-09-08
 
-狀態：本地 HTML 原型，尚未推送、部署或接真實 API。正式 React 路由與已保存的舊 HTML 未替換。
+狀態：已依使用者「可以！就這個！推送！部署！」推送並部署。這批仍是未接真實 API 的 HTML 原型，正式 React 場域路由與已保存的舊 HTML 未替換。
+
+線上入口：https://therookery.duckdns.org/field-preview/index.html 。程式在 `codex/ui-chrome`，留言與部署文件另同步 `master`，不把前端程式硬合入後端分支。
+
+## 部署紀錄 · 1a655f9
+
+- 2026-09-08，來源 `1a655f9866c21a962f953e537e98410e57de3816` 已推至 GitHub `codex/ui-chrome`。
+- 發布包含青綠十一場域 HTML、先前本地完成的城市／當地天氣設定（64c7b7b），以及獨立 HTML 的 PWA fallback 排除。未把正式場域入口接到假資料頁。
+- `navigateFallbackDenylist` 排除 `/field-preview/`，防止獨立 HTML 導航被 SPA shell 接走。既有 PWA 裝置可能需先回正式首頁重新整理以更新舊 service worker。
+- Build 與十二份 HTML／十一場域的非瀏覽器驗證通過。
+- 上傳前完整備份 dist，rsync checksum dry-run 一致。備份：`/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/deploy-backups/before-field-teal-uoxChg/`。
+- 舊 index SHA256：`c7db3304ec32010ee5fd9f49faace955c9469ee65d465e7f6ab46e863816425d`；舊 sw：`90f266e00a8f09ffb7fc456b421a0a2c35b07a942d584f9cc053a01ff269d3df`。
+- 只写 `/opt/coliving/frontend/dist`；資產先上傳並校驗，index／sw 在同目錄暫存、校驗新舊雜湊後逐檔原子替換，再 chmod -R 755。保留所有舊雜湊資產，不動 backend、不重啟服務。
+- 新 index SHA256：`2ee632a20716c2500aa62710dce154fb4035d02c191890d28d9280c63afb0b1b`；新 sw：`73be36c4770dc6a2c6f68d71a2ab7f083ba4b31c5ed7791b8bc5c78c72780c15`。
+- 正式 app CSS `index-CXkjLzsh.css`、JS `index-3lD2WSpL.js`。
+- 全部十二份場域 HTML、共用 JS／CSS、九張場景圖與核心靜態檔共32項，HTTPS 200、MIME 與 SHA256 逐項符合本地 build。
+- 本輪部署驗證為靜態檔核對，未登入真實帳號、未寫 API、未做手機實機／瀏覽器點擊或正式後端 E2E；勿混稱全部後端功能已通。
 
 ## 配色更新 · 同日
 
-使用者提供青綠導航截圖後，預覽整批改為近黑底 `#05070d`、深青面板、青綠細框 `#39767d`、互動色 `#8ed6dc` 和冷白文字 `#e0e5ef`。只修改共用 CSS 色值、導航星名顏色和十二份 HTML 的 theme-color。尺寸、間距、字級、內容、圖片及互動程式全部保留。紫色版本仍可在本地 commit 592b44b 找回；正式站未變更。
+使用者提供青綠導航截圖後，預覽整批改為近黑底 `#05070d`、深青面板、青綠細框 `#39767d`、互動色 `#8ed6dc` 和冷白文字 `#e0e5ef`。只修改共用 CSS 色值、導航星名顏色和十二份 HTML 的 theme-color。尺寸、間距、字級、內容、圖片及互動程式全部保留。紫色版本仍可在 commit 592b44b 找回；正式艙室配色未變更。
 
 已比對 CSS 去除色值後一致（唯一新增宣告是導航星名 color），並通過原型驗證及 build；未進行瀏覽器視覺驗收。
 
@@ -45,7 +61,7 @@
 - 微瀾只展示九種活動所需操作區，不是九套完成的遊戲引擎；規則、輪次、勝負與 legal_actions 須接後端。
 - 健康文章是版位內容，不編造醫療建議。年齡切換用於驗收畫面，不是真實權限；健康與成人區正式權限必須由後端檢查。
 - 公園是社區天氣示意，與艙室當地真天氣分開。
-- 真正資料接線、正式導航替換、推送及部署待下一步確認。
+- 真正資料接線、正式導航替換待下一步確認；獨立原型的推送部署已完成。
 
 ## 驗證
 
