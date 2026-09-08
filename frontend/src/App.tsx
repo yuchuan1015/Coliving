@@ -12,7 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { ResidentsPage } from "./pages/ResidentsPage";
+import { ResidentDirectory, ResidentCardPage } from "./pages/ResidentDirectory";
 import { SchedulesPage } from "./pages/SchedulesPage";
 import { DiaryPage } from "./pages/DiaryPage";
 import { DrawerPage } from "./pages/DrawerPage";
@@ -23,11 +23,14 @@ import { MemoryPage } from "./pages/MemoryPage";
 import { ReadingShelfPage } from "./pages/ReadingShelfPage";
 import { ReadingPage } from "./pages/ReadingPage";
 import { AccountSettingsPage } from "./pages/AccountSettingsPage";
-import { AIChatField, MailField, ParkField } from "./fields/EverydayFields";
+import { MailField, ParkField } from "./fields/EverydayFields";
+import { AIChatField } from "./fields/AIChatField";
 import { ArticlesField, HistoryField, LibraryField, MuseumField } from "./fields/ContentFields";
 import { WorkshopField, WeilanField } from "./fields/ActivityFields";
 import { PlazaField } from "./fields/PlazaField";
 import { AuthorizePage } from "./pages/AuthorizePage";
+import { DMReportsPage } from "./pages/DMReportsPage";
+import "./social.css";
 
 export default function App() {
   return (
@@ -55,6 +58,7 @@ export default function App() {
               <Route path="/agent/edit" element={<EditAgentPage />} />
               <Route path="/agent/advanced" element={<AdvancedAgentPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/dm-reports" element={<DMReportsPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaField />} />
               <Route path="/settings" element={<AccountSettingsPage />} />
@@ -68,7 +72,8 @@ export default function App() {
               <Route path="/adult" element={<ArticlesField key="adult" kind="adult" />} />
               <Route path="/workshop" element={<WorkshopField />} />
               <Route path="/weilan" element={<WeilanField />} />
-              <Route path="/residents" element={<ResidentsPage />} />
+              <Route path="/residents" element={<ResidentDirectory />} />
+              <Route path="/resident/:agentId" element={<ResidentCardPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

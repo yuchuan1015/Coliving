@@ -240,15 +240,244 @@ test("all first-paint field screens have no mutations or eager detail reads", ()
   assert.equal(calls.length, 0); assert.ok(!reads.includes("/adult"));
   assert.ok(!reads.some(p => /^\/mail\/[^?]+$/.test(p) && !["/mail/unread"].includes(p)));
 });
-test("AI initiation uses actual recipient name, message and explicit usage confirmation", async () => {
+test("AI initiation uses a private DM code, message and explicit usage confirmation", async () => {
   fixture("/ai-chat/conversations?limit=50", []); fixture("/users/residents", { residents: [{ id: "me", agent_id: "a", agent_name: "自己" }, { id: "them", agent_id: "b", agent_name: "室友B" }] });
   const h = mount(everyday.AIChatField); click(h, "發起私訊");
-  assert.deepEqual(one(h, "FieldSelect").props.options, { "室友B": "室友B" });
+  assert.equal(components(h, "FieldSelect").length, 0);
+  assert.ok(!reads.includes("/users/residents"));
   assert.equal(nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.required, true);
   writeResult = { conversation: { id: "conversation-1" } };
-  await submit(h, "確認發起私訊", { to_agent_name: "室友B", message: " 嗨 " }, true);
-  expectCall("post", "/ai-chat/initiate", { to_agent_name: "室友B", message: "嗨" });
-  assert.ok(reads.includes("/ai-chat/conversation-1"));
+  await submit(h, "確認發起私訊", { to_code: " rk-ab12-cd34 ", message: " 嗨 " }, true);
+  expectCall("post", "/ai-chat/initiate", { to_code: "RK-AB12-CD34", message: "嗨" });
+  assert.equal(one(h, "ConversationView").props.id, "conversation-1");
+});
+const social = load("src/fields/socialData.ts");
+const coordinates = load("src/coordinates.ts");
+const { MyDMCode } = load("src/components/MyDMCode.tsx");
+const { CoordinateSettings } = load("src/components/CoordinateSettings.tsx");
+const { SpaceChat, SpaceChatContent } = load("src/fields/SpaceChat.tsx");
+const { DMReportsPage } = load("src/pages/DMReportsPage.tsx");
+const { ExternalMemorySettings } = load("src/components/ExternalMemorySettings.tsx");
+const furnitureActions = load("src/components/FurnitureActions.tsx");
+const dmFixture = () => ({ id: "dm/1", agent_a: { id: "a", name: "星A", avatar_emoji: "✦", replies_live: true }, agent_b: { id: "b", name: "星B", avatar_emoji: "✦", replies_live: false }, status: "active", waiting_on: "b", ended_reason: null, system_note: null, turn_count: 1, created_at: "2026-09-09T00:00:00Z", last_message_at: null, messages: [] });
+function dmView(value = dmFixture()) {
+  fixture("/ai-chat/conversations?limit=50", [value]); fixture("/ai-chat/dm%2F1", value);
+  const outer = mount(everyday.AIChatField); click(outer, "閱讀對話");
+  const inner = one(outer, "ConversationView"); return mount(inner.type, inner.props);
+}
+test("private DM codes normalize without accepting names or arbitrary payloads", async () => {
+  assert.equal(social.normalizeDMCode(" rk-ab12-cd34 "), "RK-AB12-CD34");
+  for (const value of ["宋祈言", "", "RK-1234", "RK-1234-ABCD-excess"]) assert.equal(social.validDMCode(value), false);
+  fixture("/ai-chat/conversations?limit=50", []); const h = mount(everyday.AIChatField); click(h, "發起私訊");
+  await assert.rejects(submit(h, "確認發起私訊", { to_code: "名字", message: "hi" }), /私訊碼/);
+  assert.equal(calls.length, 0);
+});
+test("DM polling only runs for an active known live recipient", () => {
+  const value = dmFixture(); assert.equal(social.shouldPollDM(value), false);
+  value.agent_b.replies_live = true; assert.equal(social.shouldPollDM(value), true);
+  value.status = "ended"; assert.equal(social.shouldPollDM(value), false);
+  value.status = "active"; value.waiting_on = "missing"; assert.equal(social.shouldPollDM(value), false);
+  assert.match(social.dmStatus(dmFixture()), /醒來/);
+});
+test("DM polling has an eight-read budget and cannot spin indefinitely", () => {
+  const value = dmFixture(); value.agent_b.replies_live = true;
+  const h = dmView(value); h.effects();
+  for (let i = 0; i < 8; i++) {
+    const t = [...timers.values()].find(t => t.delay === 15000); assert.ok(t);
+    t.fn(); h.render(); h.effects();
+  }
+  assert.equal([...timers.values()].filter(t => t.delay === 15000).length, 0);
+  assert.match(text(h.tree), /手動更新/);
+  h.dispose();
+});
+test("sleeping and ended DM never start an automatic timer or invent a reason", () => {
+  const h = dmView(); h.effects(); assert.equal(timers.size, 0);
+  const value = dmFixture(); value.status = "ended"; value.ended_reason = "busy";
+  assert.equal(social.dmStatus(value), "對話已結束");
+  value.system_note = "對方正在忙碌中"; assert.equal(social.dmStatus(value), "對方正在忙碌中");
+  h.dispose();
+});
+test("DM report requires reason and confirmation and sends only the selected conversation", async () => {
+  const h = dmView(); assert.equal(components(h, "FieldForm").length, 0); click(h, "檢舉這段私訊");
+  const f = form(h, "確認送出檢舉"); assert.equal(f.props.guarded, true);
+  assert.ok(nodes(f, n => n.type === "input" && n.props.type === "checkbox" && n.props.required).length);
+  await assert.rejects(submit(h, "確認送出檢舉", { reason: " " }), /原因/);
+  await assert.rejects(submit(h, "確認送出檢舉", { reason: "a".repeat(501) }), /原因/);
+  assert.equal(calls.length, 0);
+  await submit(h, "確認送出檢舉", { reason: " 惡意騷擾 " }, true);
+  expectCall("post", "/ai-chat/dm%2F1/report", { reason: "惡意騷擾" });
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "檢舉這段私訊").length, 0);
+});
+test("guarded forms block ambiguous network resubmission but keep drafts", async () => {
+  let writes = 0;
+  const h = mount(shared.FieldForm, { guarded: true, children: "draft", submit: async () => { writes++; throw Error("lost response"); }, onDone() {} });
+  await h.tree.props.onSubmit({ preventDefault() {}, currentTarget: data({ content: "draft" }) }); h.render();
+  assert.match(text(h.tree), /尚未確認/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && n.props.type === "submit")[0].props.disabled, true);
+  await h.tree.props.onSubmit({ preventDefault() {}, currentTarget: data({ content: "draft" }) });
+  assert.equal(writes, 1);
+});
+test("client validation failure permits correction without marking a write uncertain", async () => {
+  const h = mount(shared.FieldForm, { guarded: true, submit: async () => { throw new (load("src/fields/formErrors.ts").FormValidationError)("fix input"); }, onDone() {} });
+  await h.tree.props.onSubmit({ preventDefault() {}, currentTarget: data({}) }); h.render();
+  assert.ok(!text(h.tree).includes("尚未確認是否"));
+});
+test("own DM code is read-only until copy, with manual clipboard fallback", async () => {
+  fixture("/agents/mine", { dm_code: "RK-AB12-CD34" }); const h = mount(MyDMCode);
+  assert.equal(calls.length, 0); await button(h, "複製私訊碼").props.onClick(); h.render();
+  expectCall("copy", "RK-AB12-CD34");
+  navigatorStub.clipboard = undefined; await button(h, "複製私訊碼").props.onClick(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "input")[0].props.readOnly, true);
+  assert.match(text(h.tree), /長按/);
+});
+test("public chats exclude age-restricted spaces and do not load until expanded", () => {
+  assert.deepEqual(social.PUBLIC_CHAT_SPACES, ["plaza", "library", "park", "workshop", "museum", "weilan", "history"]);
+  for (const id of ["adult", "health", "mail", "ai-chat"]) assert.equal(components(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").length, 0);
+  const h = mount(SpaceChat, { space: "plaza" }); assert.equal(components(h, "SpaceChatContent").length, 0); assert.equal(reads.length, 0);
+  click(h, "展開聊天"); assert.equal(one(h, "SpaceChatContent").props.space, "plaza");
+});
+test("space chat expires only from backend timestamps and keeps literal text", () => {
+  const now = Date.parse("2026-09-09T00:00:00Z");
+  const rows = [{ id: "old", expires_at: "2026-09-08T23:59:59Z" }, { id: "new", expires_at: "2026-09-09T01:00:00Z" }, { id: "bad", expires_at: "bad" }];
+  assert.deepEqual(social.unexpiredMessages(rows, now).map(m => m.id), ["new"]);
+  assert.equal(social.remainingTime(rows[1].expires_at, now), "還剩 1 小時");
+  assert.equal(social.remainingTime(rows[0].expires_at, now), "已到期");
+});
+test("space chat sends selected names, not IDs, and limits content", async () => {
+  fixture("/spaces/plaza/present", { present: [{ id: "agent-a", name: "星A", avatar_emoji: "✦" }] });
+  fixture("/spaces/plaza/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "plaza" });
+  assert.equal(calls.length, 0);
+  await assert.rejects(submit(h, "送出訊息", { content: "hello" }), /在場/);
+  nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  await submit(h, "送出訊息", { content: " hello " });
+  expectCall("post", "/spaces/plaza/chat", { content: "hello", mentions: ["星A"] });
+  await assert.rejects(submit(h, "送出訊息", { content: "a".repeat(1001) }), /1000/);
+});
+test("a stale mention selection does not survive a changed presence list", async () => {
+  fixture("/spaces/park/present", { present: [{ id: "a", name: "星A" }] }); fixture("/spaces/park/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "park" });
+  nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } });
+  fixture("/spaces/park/present", { present: [] }); h.render();
+  await assert.rejects(submit(h, "送出訊息", { content: "hi" }), /在場/); assert.equal(calls.length, 0);
+});
+test("inline @ mention works without inventing an out-of-room recipient", async () => {
+  fixture("/spaces/library/present", { present: [{ id: "a", name: "星A" }] }); fixture("/spaces/library/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "library" });
+  await submit(h, "送出訊息", { content: "@星A 今天讀什麼？" });
+  expectCall("post", "/spaces/library/chat", { content: "@星A 今天讀什麼？", mentions: [] });
+});
+test("space export is an explicit text GET, never sends credentials in a URL", async () => {
+  const h = mount(SpaceChatContent, { space: "park" }); writeResult = "# chat";
+  await button(h, "匯出帶走").props.onClick(); await tick(); h.render();
+  expectCall("get", "/spaces/park/chat/export");
+  assert.equal(calls.at(-1).args[1].responseType, "text");
+  const link = nodes(h.tree, n => n.type === "a" && n.props.download)[0]; assert.equal(link.props.download, "park-chat.md");
+  assert.match(link.props.href, /^blob:/);
+});
+test("non-admin report route never requests privileged data", () => {
+  const h = mount(DMReportsPage); assert.match(text(h.tree), /管理員/); assert.equal(reads.length, 0); assert.equal(components(h, "Reports").length, 0);
+});
+test("admin report review keeps server verdict and only patches after explicit confirmation", async () => {
+  auth.user.role = "admin"; const p = mount(DMReportsPage); const h = mount(one(p, "Reports").type);
+  const report = { id: "r/1", reporter: "甲", reported: "乙", reason: "reason", status: "pending", created_at: "2026-09-09T00:00:00Z" };
+  fixture("/admin/dm-reports?status=pending", { reports: [report] }); h.render(); click(h, "查看內容與審核");
+  fixture("/admin/dm-reports/r%2F1/messages", { report, messages: [] });
+  const review = one(h, "Review"), r = mount(review.type, review.props);
+  assert.equal(calls.length, 0);
+  await submit(r, "確認保存審核", { status: "upheld", admin_note: " 已確認 " });
+  expectCall("patch", "/admin/dm-reports/r%2F1", { status: "upheld", admin_note: "已確認" });
+  await assert.rejects(submit(r, "確認保存審核", { status: "deleted" }), /選擇/);
+});
+test("coordinate model differentiates drifting, partial, zero, and missing data", () => {
+  assert.equal(coordinates.coordinateView({ drifting: true }).longitude, "—");
+  assert.equal(coordinates.coordinateView({ coordinate: { l: 0, b: 0, r: 0 }, partial: true }).latitude, "尚未設定");
+  assert.equal(coordinates.coordinateView({ coordinate: { l: 0, b: 0, r: 0, partial: true } }).label, "定了經度、還在找緯度");
+  assert.equal(coordinates.coordinateView({ coordinate: { l: 0, b: 0, r: 0 } }).latitude, "b +0.00°");
+});
+test("important dates accept leap day but never a year or impossible calendar date", () => {
+  for (const value of ["02-29", "10-15", "01-01", "12-31"]) assert.equal(coordinates.validMonthDay(value), true);
+  for (const value of ["02-30", "04-31", "13-01", "00-10", "2026-01-01", "1-1", ""]) assert.equal(coordinates.validMonthDay(value), false);
+});
+test("unknown anchor data cannot create an editable write path", () => {
+  const h = mount(CoordinateSettings); assert.match(text(h.tree), /尚未完整/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && n.props.type === "submit").length, 0);
+  assert.equal(calls.length, 0);
+});
+test("second anchor is reviewed first, then saved alone; first anchor is never submitted", async () => {
+  auth.user.anchor_date_1 = "09-09"; auth.user.anchor_date_2 = null;
+  const h = mount(CoordinateSettings); const inputs = nodes(h.tree, n => n.type === "input");
+  assert.equal(inputs[0].props.readOnly, true);
+  inputs[1].props.onChange({ target: { value: "02-29" } }); h.render();
+  h.tree.props.onSubmit({ preventDefault() {} }); h.render(); assert.equal(calls.length, 0);
+  await button(h, "確認保存第二個日子").props.onClick(); await tick(); h.render();
+  assert.deepEqual(calls.find(c => c.method === "patch").args, ["/users/me/anchors", { anchor_date_2: "02-29" }]);
+});
+test("anchor network failure requires readback before attempting another write", async () => {
+  auth.user.anchor_date_1 = "09-09"; auth.user.anchor_date_2 = null;
+  answer = async () => { throw Error("offline"); };
+  const h = mount(CoordinateSettings); nodes(h.tree, n => n.type === "input")[1].props.onChange({ target: { value: "10-15" } }); h.render();
+  h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  await button(h, "確認保存第二個日子").props.onClick(); await tick(); h.render();
+  assert.match(text(h.tree), /不會直接重送/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "確認保存第二個日子").length, 0);
+});
+test("saved second anchor is immutable in the interface", () => {
+  auth.user.anchor_date_1 = "09-09"; auth.user.anchor_date_2 = "02-29";
+  const h = mount(CoordinateSettings);
+  assert.ok(nodes(h.tree, n => n.type === "input").every(n => n.props.readOnly));
+  assert.equal(nodes(h.tree, n => n.type === "button" && n.props.type === "submit").length, 0);
+});
+test("external memory choice saves only memory fields and never an OB switch or key", async () => {
+  const agent = { id: "a", memory_mcp: null, memory_recall_tool: null };
+  const h = mount(ExternalMemorySettings, { agent, mcps: [{ name: "vault" }], onSaved() {}, onBusyChange() {} });
+  nodes(h.tree, n => n.type === "input" && n.props.type === "radio")[1].props.onChange(); h.render();
+  await submit(h, "保存記憶來源", { recall: " recall_custom " });
+  expectCall("patch", "/agents/a", { memory_mcp: "vault", memory_recall_tool: "recall_custom" });
+  nodes(h.tree, n => n.type === "input" && n.props.type === "radio")[0].props.onChange(); h.render();
+  await submit(h, "保存記憶來源", {});
+  expectCall("patch", "/agents/a", { memory_mcp: "", memory_recall_tool: "" });
+});
+test("wardrobe change and remove use distinct POST contracts", async () => {
+  fixture("/outfits/", [{ id: "coat", name: "外套" }]); fixture("/outfits/current", { outfit: null });
+  const h = mount(furnitureActions.WardrobeActions, { onBusyChange() {} }); assert.equal(calls.length, 0);
+  await submit(h, "確認換裝", { outfit_id: "coat" }); expectCall("post", "/outfits/change", { outfit_id: "coat" });
+  await submit(h, "確認換裝", { outfit_id: "none" }); expectCall("post", "/outfits/remove");
+  await assert.rejects(submit(h, "確認換裝", { outfit_id: "missing" }), /清單/);
+});
+test("dining invite requires a real image multipart body, not JSON", async () => {
+  fixture("/home/dining/current", { active: false }); const h = mount(furnitureActions.DiningActions, { onBusyChange() {} });
+  const f = form(h, "邀請室友一起吃飯"); const body = new FormData(); body.append("photo", new Blob(["image"], { type: "image/png" }), "meal.png"); body.append("description", " dinner ");
+  await f.props.submit(body); expectCall("post", "/home/dining/invite");
+  assert.ok(calls.at(-1).args[1] instanceof FormData); assert.equal(calls.at(-1).args[1].get("description"), "dinner");
+  await assert.rejects(f.props.submit(data({ photo: "text" })), /5MB/);
+});
+test("active dining offers an explicit end, never a duplicate invite", async () => {
+  fixture("/home/dining/current", { active: true, status: "pending" }); const h = mount(furnitureActions.DiningActions, { onBusyChange() {} });
+  assert.equal(components(h, "FieldForm").length, 1); assert.match(text(h.tree), /等待室友/);
+  await submit(h, "確認結束用餐", {}); expectCall("post", "/home/dining/end");
+});
+test("pet capacity follows server data and interactions use action query params", async () => {
+  fixture("/pets", { pets: [{ id: "cat/1", name: "貓", species: "cat", emoji: "🐈", is_alive: true }], max_pets: 1 });
+  const h = mount(furnitureActions.PetActions, { onBusyChange() {} });
+  assert.equal(components(h, "FieldForm").length, 1);
+  await submit(h, "確認與 貓 互動", { action: "feed" }); expectCall("post", "/pets/cat%2F1/interact");
+  assert.equal(calls.at(-1).args[1], null); assert.deepEqual(calls.at(-1).args[2], { params: { action: "feed" } });
+  await assert.rejects(submit(h, "確認與 貓 互動", { action: "kill" }), /互動方式/);
+});
+test("pet adoption uses exact fields and cannot be auto-triggered from scenery", async () => {
+  fixture("/pets", { pets: [], max_pets: 1 }); const h = mount(furnitureActions.PetActions, { onBusyChange() {} });
+  assert.equal(calls.length, 0); await submit(h, "確認領養小夥伴", { name: " 小貓 ", species: "cat", emoji: "🐈" });
+  expectCall("post", "/pets/adopt", { name: "小貓", species: "cat", emoji: "🐈" });
+});
+test("new protected routes and personal code remain separate from the public directory", () => {
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(app.includes('path="/admin/dm-reports"')); assert.ok(app.includes('path="/resident/:agentId"'));
+  const directory = readFileSync(resolve(root, "src/pages/ResidentDirectory.tsx"), "utf8");
+  assert.ok(!directory.includes("dm_code")); assert.ok(!directory.includes("/agents/mine"));
+  assert.ok(!directory.includes("dangerouslySetInnerHTML")); assert.ok(!directory.includes("iframe"));
+  const legacy = readFileSync(resolve(root, "src/fields/EverydayFields.tsx"), "utf8");
+  assert.ok(!legacy.includes("to_agent_name"));
 });
 test("mail reads a detail only after selecting it; normal/timed/physical payloads differ", async () => {
   fixture("/mail/inbox?limit=100", [{ id: "letter-1", subject: "信", mail_type: "letter" }]);
@@ -445,6 +674,29 @@ test("real React server rendering serializes all eleven fields and registration 
   assert.match(registration, /href="\/login"/);
   assert.match(registration, /入住你的艙室/);
   assert.equal((registration.match(/<input /g) || []).length, 5);
+  fixture("/spaces/plaza/present", { present: [{ id: "a", name: "星A", avatar_emoji: "✦" }] });
+  fixture("/spaces/plaza/chat?limit=200", { messages: [{ id: "m", sender: "人", sender_kind: "human", content: "<script>bad()</script>", mentions: ["星A"], created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60000).toISOString() }] });
+  fixture("/outfits/", [{ id: "coat", name: "外套" }]); fixture("/outfits/current", { outfit: null });
+  fixture("/home/dining/current", { active: false }); fixture("/pets", { pets: [], max_pets: 1 });
+  fixture("/users/residents", { residents: [{ id: "r", display_name: "居民", agent_id: "a", agent_name: "星A", coordinate: { l: 0, b: 0, r: 0 }, partial: true, distance_ly: 0 }] });
+  auth.user.anchor_date_1 = "09-09"; auth.user.anchor_date_2 = null;
+  for (const [file, name, props] of [
+    ["fields/SpaceChat.tsx", "SpaceChatContent", { space: "plaza" }],
+    ["components/CoordinateSettings.tsx", "CoordinateSettings", {}],
+    ["components/TimezoneSettings.tsx", "TimezoneSettings", {}],
+    ["components/FurnitureActions.tsx", "WardrobeActions", { onBusyChange() {} }],
+    ["components/FurnitureActions.tsx", "DiningActions", { onBusyChange() {} }],
+    ["components/FurnitureActions.tsx", "PetActions", { onBusyChange() {} }],
+    ["pages/ResidentDirectory.tsx", "ResidentDirectory", {}],
+    ["pages/DMReportsPage.tsx", "DMReportsPage", {}],
+    ["components/ExternalMemorySettings.tsx", "ExternalMemorySettings", { agent: { id: "a", memory_mcp: "vault" }, mcps: [{ name: "vault" }], onSaved() {}, onBusyChange() {} }],
+  ]) {
+    const component = realLoad(resolve(root, "src", file))[name];
+    const html = renderToString(React.createElement(MemoryRouter, {}, React.createElement(component, props)));
+    assert.ok(html.length > 100, name);
+    assert.ok(!html.includes("<script>bad()</script>"), name);
+    if (name === "SpaceChatContent") assert.ok(html.includes("&lt;script&gt;bad()&lt;/script&gt;"));
+  }
   assert.equal(calls.length, 0);
 });
 

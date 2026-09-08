@@ -4,6 +4,7 @@ import { getMyAgent, updateAgent } from "../api/agents";
 import { McpKeysPanel } from "../components/McpKeysPanel";
 import { McpWebConnection } from "../components/McpWebConnection";
 import { OAuthGrantsPanel } from "../components/OAuthGrantsPanel";
+import { ExternalMemorySettings } from "../components/ExternalMemorySettings";
 import {
   activateSkin,
   createSkin,
@@ -115,7 +116,9 @@ export function AdvancedAgentPage() {
                       const next = extMcps.filter((_, j) => j !== i);
                       setMcpSaving(true);
                       try {
-                        await updateAgent(agent!.id, { external_mcps: next } as any);
+                        const removingMemory = agent.memory_mcp === m.name;
+                        await updateAgent(agent!.id, { external_mcps: next, ...(removingMemory ? { memory_mcp: "", memory_recall_tool: "" } : {}) } as any);
+                        if (removingMemory) setAgent({ ...agent, memory_mcp: null, memory_recall_tool: null });
                         setExtMcps(next);
                       } catch {
                         setError("刪除失敗");
@@ -200,6 +203,7 @@ export function AdvancedAgentPage() {
           </div>
         </div>
 
+        <fieldset disabled={mcpSaving} className="memory-connection-wrapper"><ExternalMemorySettings key={`${agent.id}:${agent.memory_mcp}:${agent.memory_recall_tool}:${extMcps.map(m => m.name).join("|")}`} agent={agent} mcps={extMcps} onSaved={setAgent} onBusyChange={setMcpSaving} /></fieldset>
         {error && (
           <p role="alert" className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
             {error}

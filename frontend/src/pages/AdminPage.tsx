@@ -122,6 +122,7 @@ export function AdminPage() {
       <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>
         系統儀表板
       </h1>
+      <button type="button" className="mb-4" onClick={() => navigate("/admin/dm-reports")}>私訊檢舉審核 →</button>
       <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
         社區營運概覽
       </p>

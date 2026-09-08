@@ -8,28 +8,7 @@ import { ACTIVITY_LABELS, type ParkResponse } from "../api/park";
 import { ConfirmAction, FieldDialog, FieldForm, FieldFrame, FieldInput, FieldPanel, FieldSelect, FieldTabs, FieldText, ResourceState } from "./shared";
 import { fieldTime, formText, useFieldResource } from "./fieldData";
 
-interface AgentBrief { id: string; name: string; avatar_emoji: string }
-interface Conversation { id: string; agent_a: AgentBrief; agent_b: AgentBrief; status: string; turn_count: number; ended_reason: string | null; created_at: string; last_message_at: string | null }
-interface ConversationDetail extends Conversation { messages: { id: string; sender: AgentBrief; content: string; action: string; created_at: string }[] }
-
-export function AIChatField() {
-  const { user } = useAuth();
-  const list = useFieldResource<Conversation[]>("/ai-chat/conversations?limit=50");
-  const residents = useFieldResource<ResidentList>("/users/residents");
-  const [filter, setFilter] = useState(""); const [selected, setSelected] = useState<string | null>(null); const [compose, setCompose] = useState(false); const [message, setMessage] = useState("");
-  const detail = useFieldResource<ConversationDetail>(selected ? `/ai-chat/${encodeURIComponent(selected)}` : null);
-  const refreshDetail = detail.refresh;
-  useEffect(() => { if (detail.data?.status !== "active") return; const timer = window.setInterval(() => { if (!document.hidden) refreshDetail(); }, 15000); return () => clearInterval(timer); }, [detail.data?.status, refreshDetail]);
-  const recipients = Object.fromEntries((residents.data?.residents ?? []).filter(r => r.id !== user?.id && r.agent_id && r.agent_name).map(r => [r.agent_name!, r.agent_name!]));
-  const items = list.data?.filter(c => !filter || c.status === filter);
-  return <FieldFrame id="ai-chat"><FieldTabs value={filter} options={{ "": "全部", active: "進行中", ended: "已結束" }} onChange={setFilter} />{message && <p role="status">{message}</p>}<FieldPanel title="室友之間的對話" action={<button disabled={!list.data || !Object.keys(recipients).length} onClick={() => setCompose(true)}>發起私訊</button>}>
-    <ResourceState resource={list} empty={items?.length === 0} /><ResourceState resource={residents} />
-    {residents.data && !Object.keys(recipients).length && <p>目前沒有其他可私訊的室友。</p>}
-    <div className="field-list">{items?.map(c => <article className="field-item" key={c.id}><div className="field-row"><h3>{c.agent_a.name} ↔ {c.agent_b.name}</h3><span className="field-tag">{c.status === "active" ? "進行中" : "已結束"}</span></div><p>{c.turn_count} / 10 輪 · {c.ended_reason ?? "對話中"}</p><small>{fieldTime(c.last_message_at ?? c.created_at)}</small><button onClick={() => setSelected(c.id)}>閱讀對話</button></article>)}</div>
-  </FieldPanel>{compose && <FieldDialog title="發起 AI 私訊" onClose={() => setCompose(false)}><FieldForm label="確認發起私訊" submit={async data => { const result = await api.post<{ conversation: Conversation }>("/ai-chat/initiate", { to_agent_name: formText(data, "to_agent_name"), message: formText(data, "message") }); setSelected(result.data.conversation.id); }} onDone={() => { setCompose(false); setMessage("私訊已發起，以下內容來自實際對話。"); list.refresh(); }}><FieldSelect name="to_agent_name" label="對方室友" options={recipients} /><FieldText name="message" label="想說的第一句話" /><label className="field-check"><input type="checkbox" required />我確認讓兩位 AI 實際交流，可能使用所設定供應商的額度。</label></FieldForm></FieldDialog>}
-    {selected && !compose && <FieldDialog title="AI 私訊紀錄" onClose={() => setSelected(null)}><ResourceState resource={detail} />{detail.data && <div className="field-stack"><div className="field-row"><p>{detail.data.turn_count} / 10 輪 · {detail.data.ended_reason ?? detail.data.status}</p><button onClick={detail.refresh}>更新對話</button></div><div className="field-chat">{detail.data.messages.map(m => <article className="field-bubble" key={m.id}><small>{m.sender.avatar_emoji} {m.sender.name} · {fieldTime(m.created_at)}</small><p>{m.content}</p></article>)}</div></div>}</FieldDialog>}
-  </FieldFrame>;
-}
+export { AIChatField } from "./AIChatField";
 
 export function MailField() {
   const { user } = useAuth(); const [tab, setTab] = useState("inbox"); const [compose, setCompose] = useState(false); const [kind, setKind] = useState("letter"); const [selected, setSelected] = useState<string | null>(null); const [message, setMessage] = useState("");

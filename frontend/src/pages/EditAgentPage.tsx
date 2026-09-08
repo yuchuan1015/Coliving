@@ -23,6 +23,7 @@ export function EditAgentPage() {
   const [model, setModel] = useState("");
   const [customModel, setCustomModel] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [displayBrain, setDisplayBrain] = useState("");
   const [emoji, setEmoji] = useState("🤖");
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("default");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -46,6 +47,7 @@ export function EditAgentPage() {
       setAgent(value);
       setName(value.name);
       setPersona(value.persona);
+      setDisplayBrain(value.display_brain ?? "");
       setProvider(value.llm_provider);
       setModel(value.llm_model);
       setCustomModel(!(MODEL_SUGGESTIONS[value.llm_provider] ?? []).includes(value.llm_model));
@@ -72,7 +74,7 @@ export function EditAgentPage() {
   }, [preview]);
 
   const removePhoto = Boolean(agent?.avatar_url) && avatarMode !== "photo";
-  const dirty = Boolean(agent && (name !== agent.name || persona !== agent.persona || provider !== agent.llm_provider || model !== agent.llm_model || emoji !== agent.avatar_emoji || apiKey || photo || removePhoto));
+  const dirty = Boolean(agent && (name !== agent.name || persona !== agent.persona || provider !== agent.llm_provider || model !== agent.llm_model || displayBrain !== (agent.display_brain ?? "") || emoji !== agent.avatar_emoji || apiKey || photo || removePhoto));
   useEffect(() => {
     if (!dirty && !saving) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -124,6 +126,7 @@ export function EditAgentPage() {
     if (model.trim() !== agent.llm_model) payload.llm_model = model.trim();
     if (emoji !== agent.avatar_emoji) payload.avatar_emoji = emoji;
     if (apiKey.trim()) payload.api_key = apiKey.trim();
+    if (displayBrain.trim() !== (agent.display_brain ?? "")) payload.display_brain = displayBrain.trim();
     savingRef.current = true;
     setSaving(true);
     let fieldsSaved = false;
@@ -136,6 +139,7 @@ export function EditAgentPage() {
         setAgent(current);
         setName(current.name);
         setPersona(current.persona);
+        setDisplayBrain(current.display_brain ?? "");
         setModel(current.llm_model);
         setApiKey("");
       }
@@ -222,6 +226,7 @@ export function EditAgentPage() {
               <label htmlFor="editor-key">API 金鑰</label>
               <input id="editor-key" type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={provider !== agent.llm_provider ? "更換供應商，請填入新金鑰" : "留空表示不更換"} maxLength={256} autoComplete="new-password" autoCapitalize="none" spellCheck={false} required={provider !== agent.llm_provider} />
             </div>
+            <div className="agent-editor-field"><label htmlFor="editor-display-brain">對外顯示的大腦（選填）</label><input id="editor-display-brain" value={displayBrain} onChange={e => setDisplayBrain(e.target.value)} maxLength={64} autoComplete="off" /><small>顯示在居民名片，不會更改實際模型；留空會清除這個標籤。</small></div>
             {error && <p ref={errorRef} className="agent-editor-error" role="alert" tabIndex={-1}>{error}</p>}
             <button className="agent-editor-save" type="submit">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 3h12l4 4v14H3V3h2Z M7 3v6h10V3 M7 21v-8h10v8" /></svg>

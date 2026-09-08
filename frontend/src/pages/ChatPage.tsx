@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { getMyAgent } from "../api/agents";
 import { getMessages, sendMessage } from "../api/chat";
 import type { AgentPublic, ChatMessage } from "../types";
@@ -12,6 +12,7 @@ export function ChatPage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [needsMemory, setNeedsMemory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -37,6 +38,7 @@ export function ChatPage() {
     setInput("");
     setSending(true);
     setError("");
+    setNeedsMemory(false);
 
     setMessages((prev) => [
       ...prev,
@@ -52,6 +54,7 @@ export function ChatPage() {
       ]);
     } catch (err: any) {
       setError(err.response?.data?.detail || "發送失敗");
+      setNeedsMemory(err.response?.status === 409 && err.response?.data?.detail === "還沒讀到記憶");
       setMessages((prev) => prev.filter((m) => m.id !== "temp-user"));
       setInput(content);
     } finally {
@@ -131,6 +134,7 @@ export function ChatPage() {
           style={{ background: "var(--error)", color: "#fff" }}
         >
           {error}
+          {needsMemory && <p><Link to="/home/photos">去相框放入一些回憶 →</Link></p>}
         </div>
       )}
 

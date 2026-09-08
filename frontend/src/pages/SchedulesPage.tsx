@@ -106,7 +106,7 @@ export function SchedulesPage() {
         排程喚醒
       </h1>
       <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
-        設定定時喚醒，讓室友按時做事。
+        設定定時喚醒，讓室友按時做事。Cron 依帳號設定的當地時區執行；更換時區會影響排程時間。
       </p>
 
       {/* Existing schedules */}

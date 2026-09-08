@@ -8,7 +8,10 @@ export interface UserPublic {
 
 export interface UserMe extends UserPublic {
   birth_year?: number | null;
-  coordinate?: { l: number; b: number; r: number } | null;
+  coordinate?: { l: number; b: number; r: number; partial?: boolean } | null;
+  anchor_date_1?: string | null;
+  anchor_date_2?: string | null;
+  partial?: boolean;
   drifting?: boolean;
   label?: string | null;
   timezone?: string;
@@ -58,6 +61,10 @@ export interface AgentPublic {
   llm_model: string;
   has_api_key: boolean;
   first_key?: McpKey | null;
+  dm_code?: string | null;
+  memory_mcp?: string | null;
+  memory_recall_tool?: string | null;
+  display_brain?: string | null;
   avatar_emoji: string;
   avatar_url?: string | null;
   status: string;
@@ -75,6 +82,7 @@ export interface CreateAgentPayload {
   llm_model: string;
   api_key?: string;
   avatar_emoji?: string;
+  display_brain?: string;
 }
 
 export interface ChatMessage {
@@ -116,6 +124,12 @@ export interface ResidentWithAgent {
   agent_name: string | null;
   agent_emoji: string | null;
   agent_avatar_url?: string | null;
+  agent_brain?: string | null;
+  coordinate?: { l: number; b: number; r: number; partial?: boolean } | null;
+  drifting?: boolean;
+  partial?: boolean;
+  label?: string | null;
+  distance_ly?: number | null;
 }
 
 export interface ResidentList {
