@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { shelfError } from "../hooks/useBookshelf";
+import "../register.css";
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -35,178 +36,63 @@ export function RegisterPage() {
     }
   }
 
-  const inputClass = "w-full rounded-lg px-3 py-2.5 text-[14px] outline-none transition-colors";
-  const inputStyle = {
-    background: "var(--surface-dim)",
-    border: "1px solid var(--border)",
-    color: "var(--ink)",
-  };
-
-  function focusBorder(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = "var(--accent)";
-  }
-  function blurBorder(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = "var(--border)";
-  }
-
   return (
-    <div
-      className="flex min-h-dvh items-center justify-center px-5"
-      style={{ background: "var(--bg)" }}
-    >
-      <div className="w-full max-w-[340px]">
-        {/* Brand */}
-        <div className="mb-10 text-center">
-          <div
-            className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl select-none"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
-            🪺
-          </div>
-          <h1
-            className="text-[22px] font-semibold tracking-tight"
-            style={{ color: "var(--ink)" }}
-          >
-            搬進來
-          </h1>
-          <p className="mt-1 text-[13px]" style={{ color: "var(--ink-soft)" }}>
-            使用邀請碼入住鴉巢
-          </p>
-        </div>
+    <main className="ya-auth-page ya-register-page">
+      <div className="ya-auth-stars" aria-hidden="true" />
+      <section className="ya-auth-card" aria-labelledby="register-title">
+        <div className="ya-auth-logo"><span aria-hidden="true">✦</span> 鴉巢</div>
+        <span className="ya-kicker">COLIVING NETWORK / 02</span>
+        <h1 id="register-title">入住你的艙室</h1>
+        <p className="ya-auth-lede">使用邀請碼，加入鴉巢。</p>
 
-        {/* Form card */}
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl p-6"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-          }}
-        >
-          {error && (
-            <div
-              className="mb-5 rounded-lg px-3.5 py-2.5 text-[13px]"
-              style={{ background: "var(--surface-dim)", color: "var(--error)" }}
-            >
-              {error}
-            </div>
-          )}
-
-          <div className="mb-4">
-            <label
-              className="mb-1.5 block text-[12px] font-medium"
-              style={{ color: "var(--accent)" }}
-            >
+        <form onSubmit={handleSubmit} aria-busy={loading}>
+          {error && <div className="ya-auth-error" role="alert">{error}</div>}
+          <fieldset className="ya-register-fields" disabled={loading}>
+            <legend className="ya-register-sr-only">入住資料</legend>
+            <label htmlFor="register-invite-code">
               邀請碼
+              <input id="register-invite-code" name="invite_code" type="text"
+                value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                required maxLength={16} autoComplete="off" autoCapitalize="characters"
+                autoCorrect="off" spellCheck={false} placeholder="輸入邀請碼" />
             </label>
-            <input
-              type="text"
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-              required
-              autoFocus
-              placeholder="8 位邀請碼"
-              className={`${inputClass} font-mono tracking-[0.15em]`}
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label
-              className="mb-1.5 block text-[12px] font-medium"
-              style={{ color: "var(--ink-soft)" }}
-            >
+            <label htmlFor="register-username">
               帳號
+              <input id="register-username" name="username" type="text"
+                value={username} onChange={e => setUsername(e.target.value)}
+                required autoComplete="username" autoCapitalize="none" autoCorrect="off"
+                spellCheck={false} minLength={2} maxLength={32} placeholder="2–32 個字元" />
             </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-              minLength={2}
-              maxLength={32}
-              className={inputClass}
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label
-              className="mb-1.5 block text-[12px] font-medium"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              暱稱
-              <span className="ml-1 opacity-50">（選填）</span>
+            <label htmlFor="register-display-name">
+              暱稱 <span className="ya-register-optional">（選填）</span>
+              <input id="register-display-name" name="display_name" type="text"
+                value={displayName} onChange={e => setDisplayName(e.target.value)}
+                maxLength={64} autoComplete="nickname" placeholder="留空則同帳號" />
             </label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={64}
-              placeholder="留空則同帳號"
-              className={inputClass}
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </div>
-
-          <div className="mb-6">
-            <label
-              className="mb-1.5 block text-[12px] font-medium"
-              style={{ color: "var(--ink-soft)" }}
-            >
+            <label htmlFor="register-password">
               密碼
+              <input id="register-password" name="password" type="password"
+                value={password} onChange={e => setPassword(e.target.value)}
+                required autoComplete="new-password" minLength={6} maxLength={128}
+                placeholder="至少 6 個字元" />
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              minLength={6}
-              className={inputClass}
-              style={inputStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="register-birth-year" className="block mb-2">出生年</label>
-            <input id="register-birth-year" type="number" inputMode="numeric" autoComplete="bday-year" min={1900} max={new Date().getFullYear()} required value={birthYear} onChange={e => setBirthYear(e.target.value)} className={inputClass} style={inputStyle} />
-            <p className="text-[13px] mt-2">用於年齡分級；註冊後不能更改，請確認再送出。</p>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg py-2.5 text-[14px] font-medium transition-opacity disabled:opacity-50"
-            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-          >
-            {loading ? "註冊中⋯" : "入住鴉巢"}
-          </button>
+            <label htmlFor="register-birth-year">
+              出生年
+              <input id="register-birth-year" name="birth_year" type="number"
+                inputMode="numeric" autoComplete="bday-year" min={1900} max={new Date().getFullYear()}
+                required value={birthYear} onChange={e => setBirthYear(e.target.value)}
+                placeholder="西元年份" aria-describedby="register-birth-hint" />
+              <span className="ya-register-hint" id="register-birth-hint">
+                用於年齡分級；註冊後不能更改，請確認再送出。
+              </span>
+            </label>
+            <button type="submit" className="ya-auth-submit" disabled={loading}>
+              {loading ? "註冊中⋯" : "入住鴉巢"}<span aria-hidden="true">↗</span>
+            </button>
+          </fieldset>
         </form>
-
-        <p
-          className="mt-5 text-center text-[12px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          已有帳號？{" "}
-          <Link
-            to="/login"
-            className="underline underline-offset-2"
-            style={{ color: "var(--accent)" }}
-          >
-            登入
-          </Link>
-        </p>
-      </div>
-    </div>
+        <p className="ya-auth-register">已有帳號？ <Link to="/login">返回登入</Link></p>
+      </section>
+    </main>
   );
 }

@@ -392,7 +392,7 @@ test("plaza posts and footprints preserve separate actual APIs", async () => {
   await submit(f, "留下足跡", { content: " 足跡 ", mood: "☀️" }); expectCall("post", "/footprints", { space: "plaza", content: "足跡", mood: "☀️" });
 });
 
-test("real React server rendering serializes all eleven field screens safely", () => {
+test("real React server rendering serializes all eleven fields and registration safely", () => {
   // Separate loader uses the installed React renderer, not the callback harness.
   // React effects remain unexecuted: no browser and no network are involved.
   const cache = new Map();
@@ -426,7 +426,87 @@ test("real React server rendering serializes all eleven field screens safely", (
     assert.ok(!html.includes('<script>alert("fixture")</script>'));
     if (id === "plaza") assert.match(html, /&lt;script&gt;/);
   }
+  const { RegisterPage } = realLoad(resolve(root, "src/pages/RegisterPage.tsx"));
+  const registration = renderToString(React.createElement(MemoryRouter, {}, React.createElement(RegisterPage)));
+  assert.match(registration, /ya-auth-page ya-register-page/);
+  assert.match(registration, /href="\/login"/);
+  assert.match(registration, /入住你的艙室/);
+  assert.equal((registration.match(/<input /g) || []).length, 5);
   assert.equal(calls.length, 0);
+});
+
+test("registration retains five labelled fields and the login theme without old beige styles", () => {
+  const { RegisterPage } = load("src/pages/RegisterPage.tsx");
+  const h = mount(RegisterPage);
+  assert.equal(h.tree.props.className, "ya-auth-page ya-register-page");
+  const inputs = nodes(h.tree, n => n.type === "input");
+  assert.deepEqual(inputs.map(n => n.props.name), ["invite_code", "username", "display_name", "password", "birth_year"]);
+  assert.deepEqual(inputs.map(n => !!n.props.required), [true, true, false, true, true]);
+  for (const input of inputs) {
+    assert.equal(nodes(h.tree, n => n.type === "label" && n.props.htmlFor === input.props.id).length, 1);
+    assert.equal(input.props.style, undefined);
+    assert.equal(input.props.autoFocus, undefined);
+  }
+  assert.equal(inputs[0].props.maxLength, 16);
+  assert.equal(inputs[1].props.minLength, 2);
+  assert.equal(inputs[3].props.minLength, 6);
+  assert.equal(inputs[3].props.maxLength, 128);
+  assert.equal(inputs[4].props["aria-describedby"], "register-birth-hint");
+  assert.match(text(h.tree), /註冊後不能更改/);
+  assert.equal(one(h, "Link").props.to, "/login");
+});
+
+function fillRegistration(h, values) {
+  for (const [name, value] of Object.entries(values)) {
+    nodes(h.tree, n => n.type === "input" && n.props.name === name)[0].props.onChange({ target: { value } });
+    h.render();
+  }
+}
+const registrationSubmit = h => nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} });
+
+test("registration uppercases invitations, passes birth year and locks duplicate submissions", async () => {
+  const pending = deferred();
+  auth.register = async (...args) => { calls.push({ method: "register", args }); await pending.promise; };
+  const h = mount(load("src/pages/RegisterPage.tsx").RegisterPage);
+  fillRegistration(h, { invite_code: "testcode", username: "test-user", password: "test-password", birth_year: "1997" });
+  const first = registrationSubmit(h), second = registrationSubmit(h);
+  h.render();
+  assert.deepEqual(calls, [{ method: "register", args: ["test-user", "test-password", "TESTCODE", undefined, 1997] }]);
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
+  assert.equal(nodes(h.tree, n => n.type === "form")[0].props["aria-busy"], true);
+  pending.resolve(); await Promise.all([first, second]); h.render();
+  assert.deepEqual(calls.at(-1), { method: "navigate", args: ["/", { replace: true }] });
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, false);
+});
+
+test("registration rejects invalid birth years before any account request", async () => {
+  auth.register = async () => { throw Error("must not submit"); };
+  for (const year of ["", "99", "1899", String(new Date().getFullYear() + 1), "1997.5"]) {
+    const h = mount(load("src/pages/RegisterPage.tsx").RegisterPage);
+    fillRegistration(h, { birth_year: year });
+    await registrationSubmit(h); h.render();
+    assert.match(text(nodes(h.tree, n => n.props.role === "alert")), /請確認出生年/);
+  }
+  assert.equal(calls.length, 0);
+});
+
+test("registration preserves drafts, reports API failures safely and permits manual retry", async () => {
+  let attempts = 0;
+  auth.register = async (...args) => {
+    calls.push({ method: "register", args }); attempts++;
+    throw { isAxiosError: true, response: { status: attempts === 1 ? 400 : 422,
+      data: { detail: attempts === 1 ? "邀請碼無效" : [{ msg: "validation failed" }] } } };
+  };
+  const h = mount(load("src/pages/RegisterPage.tsx").RegisterPage);
+  fillRegistration(h, { invite_code: "testcode", username: "test-user", display_name: "測試", password: "test-password", birth_year: "1997" });
+  await registrationSubmit(h); h.render();
+  assert.match(text(nodes(h.tree, n => n.props.role === "alert")), /邀請碼無效/);
+  assert.equal(nodes(h.tree, n => n.type === "input" && n.props.name === "password")[0].props.value, "test-password");
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, false);
+  await registrationSubmit(h); h.render();
+  assert.match(text(nodes(h.tree, n => n.props.role === "alert")), /暫時無法完成/);
+  assert.deepEqual(calls.map(c => c.method), ["register", "register"]);
+  assert.equal(calls[0].args[3], "測試");
 });
 
 test("navigation reads actual coordinates including zero and never probes all fields", () => {
