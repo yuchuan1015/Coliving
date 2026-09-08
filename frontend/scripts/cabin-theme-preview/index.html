@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>艙室 × 登入 · 本地配色對照</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #020207; color: #f4f0ff; font: 14px/1.5 -apple-system, "Noto Sans TC", sans-serif; }
+    header { min-height: 60px; display: flex; gap: 16px; align-items: center; justify-content: center; padding: 8px 16px; }
+    header p { margin: 0; color: #a9a1c7; }
+    nav { display: flex; gap: 8px; }
+    button { min-height: 40px; padding: 8px 12px; border: 1px solid #4b3f65; border-radius: 12px; background: transparent; color: #f4f0ff; font: inherit; cursor: pointer; }
+    button[aria-pressed="true"] { border-color: #c9a7ff; background: #20172e; }
+    button:focus-visible { outline: 2px solid #c9a7ff; outline-offset: 2px; }
+    main { display: flex; gap: 24px; justify-content: center; padding: 0 16px 16px; }
+    figure { width: min(420px, 45vw); margin: 0; }
+    figcaption { text-align: center; padding: 0 0 8px; color: #a9a1c7; }
+    iframe { display: block; border: 0; width: 100%; height: max(560px, min(844px, calc(100dvh - 108px))); background: #020207; }
+    @media (min-width: 760px) { nav { display: none; } }
+    @media (max-width: 759px) {
+      header { min-height: 88px; flex-direction: column; gap: 4px; }
+      main { padding: 0; }
+      figure { width: 100%; }
+      figcaption { display: none; }
+      iframe { height: max(560px, calc(100dvh - 88px)); }
+      body[data-screen="cabin"] figure[data-screen="login"],
+      body[data-screen="login"] figure[data-screen="cabin"] { display: none; }
+    }
+  </style>
+</head>
+<body data-screen="cabin">
+  <header>
+    <p>本地預覽 · 示意資料，不連正式帳號</p>
+    <nav aria-label="比較頁面">
+      <button data-screen="login" aria-pressed="false">登入 · 原樣</button>
+      <button data-screen="cabin" aria-pressed="true">艙室 · 調整後</button>
+    </nav>
+  </header>
+  <main>
+    <figure data-screen="login"><figcaption>登入頁 · 原樣基準</figcaption><iframe title="登入頁基準" src="./view.html?screen=login"></iframe></figure>
+    <figure data-screen="cabin"><figcaption>艙室 · 冷紫黑、三區提亮</figcaption><iframe title="調整後的艙室" src="./view.html?screen=cabin"></iframe></figure>
+  </main>
+  <script type="module">
+    for (const button of document.querySelectorAll("nav button")) {
+      button.addEventListener("click", () => {
+        document.body.dataset.screen = button.dataset.screen;
+        for (const item of document.querySelectorAll("nav button")) item.setAttribute("aria-pressed", String(item === button));
+      });
+    }
+  </script>
+</body>
+</html>
