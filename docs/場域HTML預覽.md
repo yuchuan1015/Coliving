@@ -1,6 +1,6 @@
 # 場域 HTML 預覽 · 2026-09-08
 
-狀態：已依使用者「可以！就這個！推送！部署！」推送並部署。這批仍是未接真實 API 的 HTML 原型，正式 React 場域路由與已保存的舊 HTML 未替換。
+狀態：此文件記錄已部署的 HTML 示意原型。2026-09-08 正式 React 十一場域亦已接線部署，請走 `/outside`；`/field-preview/` 仍是保留的 mock 設計對照。正式接線與部署見 `十一場域正式接線.md`。
 
 線上入口：https://therookery.duckdns.org/field-preview/index.html 。程式在 `codex/ui-chrome`，留言與部署文件另同步 `master`，不把前端程式硬合入後端分支。
 
