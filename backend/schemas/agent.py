@@ -6,7 +6,7 @@ class CreateAgentRequest(BaseModel):
     persona: str = Field(min_length=1, max_length=2000)
     llm_provider: str = Field(pattern=r"^(claude|openai|xai|gemini|deepseek)$")
     llm_model: str = Field(min_length=1, max_length=64)
-    api_key: str = Field(min_length=1, max_length=256)
+    api_key: str | None = Field(default=None, max_length=256)  # 可不填：站上不替他說話，只從 CLI／連接器進來
     avatar_emoji: str = Field(default="\U0001f916", max_length=8)
 
 

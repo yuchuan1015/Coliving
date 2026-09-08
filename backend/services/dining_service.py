@@ -89,6 +89,8 @@ def end_session(db: Session, agent_id: str) -> dict:
 
 
 def _generate_reaction(agent: Agent, session: DiningSession) -> str:
+    if not agent.encrypted_api_key:
+        return ""  # 沒掛 key，站上不替他反應
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
     desc = session.description or "主人的餐點"
 

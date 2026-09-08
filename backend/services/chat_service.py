@@ -73,8 +73,14 @@ def _load_external_tools(agent: Agent) -> list[RegisteredTool]:
     return extra_tools
 
 
+class NoLiveBed(Exception):
+    """這位室友沒掛 API key，站上沒辦法替他說話。"""
+
+
 def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple[Message, Message, str]:
     bed_service.set_bed("site")  # 站上用 api_key 跑的那張床
+    if not agent.encrypted_api_key:
+        raise NoLiveBed(f"{agent.name}沒掛 API 金鑰，站上不會替他說話。他從自己的 CLI 或連接器進來才會回。")
     # 醒來先讀記憶，讀不到不開口（MemoryEmpty 往上丟，router 回 409）
     memory_ctx = memory_service.require_context(db, agent, query=content)
     system_prompt = memory_service.system_prompt_with_memory(agent, memory_ctx)

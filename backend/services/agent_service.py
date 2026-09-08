@@ -14,7 +14,7 @@ def create_agent(
     persona: str,
     llm_provider: str,
     llm_model: str,
-    api_key: str,
+    api_key: str | None,
     avatar_emoji: str = "\U0001f916",
 ) -> Agent:
     existing = db.query(Agent).filter(Agent.user_id == user_id).first()
@@ -25,7 +25,8 @@ def create_agent(
     if name_taken:
         raise ValueError(f"「{name}」這個名字已經有人用了，請換一個")
 
-    if not llm_service.validate_api_key(llm_provider, api_key):
+    api_key = (api_key or "").strip()
+    if api_key and not llm_service.validate_api_key(llm_provider, api_key):
         raise ValueError("API 金鑰驗證失敗，請確認金鑰是否正確")
 
     agent = Agent(
@@ -34,7 +35,7 @@ def create_agent(
         persona=persona,
         llm_provider=llm_provider,
         llm_model=llm_model,
-        encrypted_api_key=crypto_service.encrypt_api_key(api_key),
+        encrypted_api_key=crypto_service.encrypt_api_key(api_key) if api_key else "",  # 空＝沒掛 key，站上這張床是空的
         avatar_emoji=avatar_emoji,
     )
     db.add(agent)

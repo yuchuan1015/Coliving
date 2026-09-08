@@ -87,9 +87,77 @@ def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_
     return _parse_decision(raw)
 
 
+def has_live_bed(agent: Agent) -> bool:
+    """有掛 API key ＝ 站上那張床能替他即時回；沒掛的要等他外接的床醒來自己回。"""
+    return bool(agent.encrypted_api_key)
+
+
+def waiting_on(db: Session, conv: AIConversation) -> str | None:
+    """對話還在進行時，輪到誰回：最後一句不是誰說的就輪到誰。結束了回 None。"""
+    if conv.status != "active":
+        return None
+    # 第 1 句永遠是 a 開的，之後嚴格輪流：turn_count 奇數輪到 b，偶數輪到 a
+    return conv.agent_b_id if conv.turn_count % 2 == 1 else conv.agent_a_id
+
+
+def _advance(db: Session, conv: AIConversation) -> None:
+    """輪到的人如果有掛 key，站上那張床馬上替他回，一直推到輪到沒掛 key 的人、有人 wait/end、或滿 10 輪。
+    沒掛 key 的人就停在這裡等他的床醒來用 reply_conversation 回。發訊的人自己也一樣，不代演。"""
+    agents = {a.id: a for a in db.query(Agent).filter(Agent.id.in_([conv.agent_a_id, conv.agent_b_id])).all()}
+    while conv.turn_count < MAX_TURNS and conv.status == "active":
+        responder_id = waiting_on(db, conv)
+        responder = agents.get(responder_id)
+        if not responder or not has_live_bed(responder):
+            break  # 等他的床
+        other = agents[conv.agent_a_id if responder_id == conv.agent_b_id else conv.agent_b_id]
+        decision = _call_agent_decision(db, conv, responder, other)
+        _append(db, conv, responder, decision.get("content") or ("..." if decision["action"] == "reply" else ""), decision["action"])
+        if decision["action"] != "reply":
+            break
+
+    if conv.turn_count >= MAX_TURNS and conv.status == "active":
+        conv.status = "ended"
+        conv.ended_reason = "max_turns"
+    conv.last_message_at = datetime.now(timezone.utc)
+
+
+def _append(db: Session, conv: AIConversation, sender: Agent, content: str, action: str) -> AIMessage:
+    msg = AIMessage(ai_conversation_id=conv.id, sender_agent_id=sender.id, content=content, action=action)
+    db.add(msg)
+    conv.turn_count += 1
+    conv.last_message_at = datetime.now(timezone.utc)
+    if action == "wait":
+        conv.status = "ended"
+        conv.ended_reason = "wait"
+    elif action == "end":
+        conv.status = "ended"
+        conv.ended_reason = f"{sender.name}_end"
+    db.flush()
+    return msg
+
+
+def reply_conversation(db: Session, conv: AIConversation, agent: Agent, content: str, action: str = "reply") -> AIConversation:
+    """外接的床（MCP）自己回一句。要輪到他才行；回完如果對方有掛 key，站上馬上替對方接下去。"""
+    if action not in ("reply", "end", "wait"):
+        raise ValueError("action 只能是 reply、end、wait")
+    if agent.id not in (conv.agent_a_id, conv.agent_b_id):
+        raise ValueError("你不是這個對話的參與者")
+    if conv.status != "active":
+        raise ValueError("這個對話已經結束了")
+    if waiting_on(db, conv) != agent.id:
+        raise ValueError("現在不是輪到你，對方還沒回")
+    if action == "reply" and not content.strip():
+        raise ValueError("訊息不能為空")
+    _append(db, conv, agent, content.strip(), action)
+    if action == "reply":
+        _advance(db, conv)
+    db.commit()
+    return conv
+
+
 def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initial_message: str) -> AIConversation:
     bed_service.set_bed("site")  # 對方是站上那張床在回
-    if memory_service.init_context(db, to_agent, query=initial_message)["count"] == 0:
+    if has_live_bed(to_agent) and memory_service.init_context(db, to_agent, query=initial_message)["count"] == 0:
         raise ValueError(f"{to_agent.name}{memory_service.EMPTY_MESSAGE}，這次不接")
     from sqlalchemy import or_
     existing = (
@@ -111,67 +179,8 @@ def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initi
     db.add(conv)
     db.flush()
 
-    first_msg = AIMessage(
-        ai_conversation_id=conv.id,
-        sender_agent_id=from_agent.id,
-        content=initial_message,
-        action="reply",
-    )
-    db.add(first_msg)
-    conv.turn_count = 1
-    db.flush()
-
-    current_responder = to_agent
-    current_sender = from_agent
-
-    while conv.turn_count < MAX_TURNS and conv.status == "active":
-        decision = _call_agent_decision(db, conv, current_responder, current_sender)
-
-        if decision["action"] == "reply":
-            content = decision["content"] or "..."
-            reply_msg = AIMessage(
-                ai_conversation_id=conv.id,
-                sender_agent_id=current_responder.id,
-                content=content,
-                action="reply",
-            )
-            db.add(reply_msg)
-            conv.turn_count += 1
-            db.flush()
-            current_sender, current_responder = current_responder, current_sender
-
-        elif decision["action"] == "wait":
-            wait_msg = AIMessage(
-                ai_conversation_id=conv.id,
-                sender_agent_id=current_responder.id,
-                content=decision.get("content", ""),
-                action="wait",
-            )
-            db.add(wait_msg)
-            conv.turn_count += 1
-            conv.status = "ended"
-            conv.ended_reason = "wait"
-            break
-
-        elif decision["action"] == "end":
-            end_content = decision.get("content", "")
-            end_msg = AIMessage(
-                ai_conversation_id=conv.id,
-                sender_agent_id=current_responder.id,
-                content=end_content,
-                action="end",
-            )
-            db.add(end_msg)
-            conv.turn_count += 1
-            conv.status = "ended"
-            conv.ended_reason = f"{current_responder.name}_end"
-            break
-
-    if conv.turn_count >= MAX_TURNS and conv.status == "active":
-        conv.status = "ended"
-        conv.ended_reason = "max_turns"
-
-    conv.last_message_at = datetime.now(timezone.utc)
+    _append(db, conv, from_agent, initial_message, "reply")
+    _advance(db, conv)
     db.commit()
     return conv
 
@@ -198,3 +207,15 @@ def list_conversations(db: Session, agent_id: str, limit: int = 20) -> list[AICo
         .limit(limit)
         .all()
     )
+
+
+def waiting_for_agent(db: Session, agent_id: str) -> list[AIConversation]:
+    """輪到這個 agent 回、還沒回的對話（給「有事嗎」和 dm_list 用）。"""
+    from sqlalchemy import or_
+    convs = (
+        db.query(AIConversation)
+        .filter(AIConversation.status == "active", or_(AIConversation.agent_a_id == agent_id, AIConversation.agent_b_id == agent_id))
+        .order_by(AIConversation.last_message_at.desc())
+        .all()
+    )
+    return [c for c in convs if waiting_on(db, c) == agent_id]

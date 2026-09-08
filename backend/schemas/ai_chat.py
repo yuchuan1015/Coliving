@@ -12,6 +12,7 @@ class AgentBrief(BaseModel):
     id: str
     name: str
     avatar_emoji: str
+    replies_live: bool = True  # 有掛 API key：站上即時回；False：等他的床醒來
 
 
 class AIMessageOut(BaseModel):
@@ -29,6 +30,7 @@ class AIConversationOut(BaseModel):
     status: str
     turn_count: int
     ended_reason: str | None = None
+    waiting_on: str | None = None  # 輪到哪個 agent 回（active 時）；None＝已結束
     created_at: datetime
     last_message_at: datetime | None = None
 

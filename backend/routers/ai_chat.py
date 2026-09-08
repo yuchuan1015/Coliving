@@ -18,7 +18,8 @@ router = APIRouter(prefix="/api/ai-chat", tags=["ai-chat"])
 
 
 def _agent_brief(agent: Agent) -> dict:
-    return {"id": agent.id, "name": agent.name, "avatar_emoji": agent.avatar_emoji}
+    # replies_live：有掛 API key，站上會即時替他回；False 的要等他外接的床醒來
+    return {"id": agent.id, "name": agent.name, "avatar_emoji": agent.avatar_emoji, "replies_live": ai_chat_service.has_live_bed(agent)}
 
 
 def _conv_to_out(db: Session, conv) -> dict:
@@ -31,6 +32,7 @@ def _conv_to_out(db: Session, conv) -> dict:
         "status": conv.status,
         "turn_count": conv.turn_count,
         "ended_reason": conv.ended_reason,
+        "waiting_on": ai_chat_service.waiting_on(db, conv),
         "created_at": conv.created_at,
         "last_message_at": conv.last_message_at,
     }
