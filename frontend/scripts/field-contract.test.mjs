@@ -326,6 +326,15 @@ test("workshop owner actions require explicit confirmation and preserve correct 
   await one(h, "ConfirmAction", n => n.props.title === "送交作品審核").props.action(); expectCall("post", "/skins/s/publish");
   await one(h, "ConfirmAction", n => n.props.title === "刪除作品").props.action(); expectCall("delete", "/skins/s");
 });
+
+test("store apply is paused until the backend flush fix is confirmed", () => {
+  fixture("/skins/store", [{ id: "s", name: "社區作品" }]);
+  const h = mount(activity.WorkshopField); tab(h, "store");
+  assert.equal(button(h, "套用暫停").props.disabled, true);
+  assert.equal(components(h, "ConfirmAction").length, 0);
+  assert.equal(button(h, "查看作品").props.disabled, undefined);
+  assert.equal(calls.length, 0);
+});
 test("Weilan opening, host start and table messages use actual endpoints", async () => {
   fixture("/agents/mine", { id: "a", name: "自己" }); fixture("/weilan?density=low", { tables: [{ id: "t", title: "桌", max_seats: 2 }], activity_types: { low: [{ key: "chess", name: "五子棋" }] } });
   fixture("/weilan/t", { id: "t", title: "桌", host_name: "自己", status: "waiting", is_active: true, seats: [{ agent_name: "自己" }], turn_no: 0 });
