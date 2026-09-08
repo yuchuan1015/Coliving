@@ -1,4 +1,4 @@
-// Dev-only composition of the real pages. Never imported by src/main.tsx.
+// Isolated composition of the real pages. Never imported by src/main.tsx.
 // The in-memory adapter cannot reach the API; writes reject without storing data.
 import { createRoot } from "react-dom/client";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
@@ -9,7 +9,7 @@ import api from "../../src/api/client";
 import type { UserMe } from "../../src/types";
 import "../../src/index.css";
 
-if (!import.meta.env.DEV) throw new Error("This preview is local-only.");
+if (!import.meta.env.DEV && import.meta.env.MODE !== "cabin-preview") throw new Error("This entry is only for isolated previews.");
 
 const stamp = "2026-09-08T15:52:00Z";
 const user: UserMe = {

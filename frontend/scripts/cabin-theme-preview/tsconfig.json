@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.app.json",
-  "compilerOptions": { "tsBuildInfoFile": "../../node_modules/.tmp/cabin-theme-preview.tsbuildinfo" },
-  "include": ["./view.tsx"]
+  "compilerOptions": { "tsBuildInfoFile": "../../node_modules/.tmp/cabin-theme-preview.tsbuildinfo", "types": ["vite/client", "node"] },
+  "include": ["./*.tsx", "./*.ts"]
 }

@@ -65,7 +65,7 @@ test("glass does not create a card stacking context that traps the FAB below dis
 
 test("mock preview is separate from the production entry and cannot save data", () => {
   const preview = read("scripts/cabin-theme-preview/view.tsx");
-  assert.match(preview, /if \(!import\.meta\.env\.DEV\) throw/);
+  assert.match(preview, /if \(!import\.meta\.env\.DEV && import\.meta\.env\.MODE !== "cabin-preview"\) throw/);
   assert.match(preview, /api\.defaults\.adapter = async config/);
   assert.match(preview, /!== "get"\) return readOnly\(\)/);
   assert.match(preview, /login: readOnly, register: readOnly/);
