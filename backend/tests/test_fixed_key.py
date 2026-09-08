@@ -100,7 +100,7 @@ class FixedKeyTest(unittest.TestCase):
         r = json.loads(M.community("pending", ctx=_Ctx()))
         self.assertFalse(r["success"])
         # 有填就用填的
-        r = json.loads(M.mail("dm_code", token=tok, ctx=_Ctx()))
+        r = json.loads(M.mail("dm_code", ctx=_Ctx(headers={"authorization": f"Bearer {tok}"})))
         self.assertTrue(r["success"], r)
 
 

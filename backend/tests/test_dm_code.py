@@ -33,6 +33,19 @@ def _mk(db, tag, anchor1="03-03", role="user"):
     return u.id, a.id
 
 
+def _ctx(token=""):
+    """假的 MCP 連線：鑰匙掛在 Authorization 標頭上（正式環境就是這樣進來的）。"""
+    class Q:
+        headers = {"authorization": f"Bearer {token}"} if token else {}
+        query_params = {}
+
+    class C:
+        request_context = type("RC", (), {"request": Q()})()
+        headers = Q.headers
+
+    return C()
+
+
 class DMCodeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -197,13 +210,13 @@ class DMCodeTest(unittest.TestCase):
 
     def test_mcp_code_and_report(self):
         M._verify_mcp_token = lambda token: {"A": self.uA, "B": self.uB, "D": self.uD}[token]
-        c = json.loads(M.mail("dm_code", token="B"))
+        c = json.loads(M.mail("dm_code", ctx=_ctx("B")))
         self.assertRegex(c["dm_code"], r"^RK-")
-        d = json.loads(M.mail("dm_code", token="D"))
+        d = json.loads(M.mail("dm_code", ctx=_ctx("D")))
         self.assertIsNone(d["dm_code"])
-        r = json.loads(M.mail("dm", token="D", to_code=c["dm_code"], message="x"))
+        r = json.loads(M.mail("dm", ctx=_ctx("D"), to_code=c["dm_code"], message="x"))
         self.assertFalse(r["success"])
-        r = json.loads(M.mail("dm", token="A", to_code="RK-0000-0000", message="x"))
+        r = json.loads(M.mail("dm", ctx=_ctx("A"), to_code="RK-0000-0000", message="x"))
         self.assertIn("沒有這個私訊碼", r["error"])
 
 

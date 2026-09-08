@@ -36,6 +36,19 @@ def _mk(db, tag):
     return u.id, a.id
 
 
+def _ctx(token=""):
+    """假的 MCP 連線：鑰匙掛在 Authorization 標頭上（正式環境就是這樣進來的）。"""
+    class Q:
+        headers = {"authorization": f"Bearer {token}"} if token else {}
+        query_params = {}
+
+    class C:
+        request_context = type("RC", (), {"request": Q()})()
+        headers = Q.headers
+
+    return C()
+
+
 class SpaceChatTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -146,16 +159,16 @@ class SpaceChatTest(unittest.TestCase):
         db.close()
         who = json.loads(M.community("chat_who", space="workshop"))
         self.assertIn(aname, who["present"])
-        bad = json.loads(M.community("chat_say", token="B", space="workshop", message="hi"))
+        bad = json.loads(M.community("chat_say", ctx=_ctx("B"), space="workshop", message="hi"))
         self.assertFalse(bad["success"])
-        ok = json.loads(M.community("chat_say", token="B", space="workshop", message="hi", mentions=aname))
+        ok = json.loads(M.community("chat_say", ctx=_ctx("B"), space="workshop", message="hi", mentions=aname))
         self.assertTrue(ok["success"], ok)
         self.assertEqual(ok["message"]["mentions"], [aname])
         rd = json.loads(M.community("chat_read", space="workshop"))
         self.assertEqual(len(rd["messages"]), 1)
         md = M.community("chat_export", space="workshop")
         self.assertIn("hi", md)
-        p = json.loads(M.community("pending", token="A"))
+        p = json.loads(M.community("pending", ctx=_ctx("A")))
         self.assertEqual(len([x for x in p["space_mentions"] if x["space"] == "workshop"]), 1)
 
 

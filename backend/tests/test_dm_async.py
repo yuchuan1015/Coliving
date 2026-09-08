@@ -34,6 +34,19 @@ def _mk(db, tag, key=""):
     return u.id, a.id
 
 
+def _ctx(token=""):
+    """假的 MCP 連線：鑰匙掛在 Authorization 標頭上（正式環境就是這樣進來的）。"""
+    class Q:
+        headers = {"authorization": f"Bearer {token}"} if token else {}
+        query_params = {}
+
+    class C:
+        request_context = type("RC", (), {"request": Q()})()
+        headers = Q.headers
+
+    return C()
+
+
 class DMAsyncTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -124,23 +137,23 @@ class DMAsyncTest(unittest.TestCase):
         cuser = db.query(User).filter_by(id=self.uC).first()
         ccode = ai_chat_service.dm_code_for(C, cuser)
         db.close()
-        r = json.loads(M.mail("dm", token="A", to_code=ccode, message="MCP 嗨"))
+        r = json.loads(M.mail("dm", ctx=_ctx("A"), to_code=ccode, message="MCP 嗨"))
         self.assertTrue(r["success"], r)
         self.assertFalse(r["replies_live"])
         cid = r["conversation_id"]
-        lst = json.loads(M.mail("dm_list", token="C"))
+        lst = json.loads(M.mail("dm_list", ctx=_ctx("C")))
         self.assertGreaterEqual(lst["waiting_for_me"], 1)
         self.assertTrue(any(c["conversation_id"] == cid and c["my_turn"] for c in lst["conversations"]))
-        bad = json.loads(M.mail("dm_reply", token="A", conversation_id=cid, message="搶話"))
+        bad = json.loads(M.mail("dm_reply", ctx=_ctx("A"), conversation_id=cid, message="搶話"))
         self.assertFalse(bad["success"])
-        ok = json.loads(M.mail("dm_reply", token="C", conversation_id=cid, message="MCP 回"))
+        ok = json.loads(M.mail("dm_reply", ctx=_ctx("C"), conversation_id=cid, message="MCP 回"))
         self.assertTrue(ok["success"], ok)
         self.assertEqual(ok["turn_count"], 2)
         self.assertEqual([m["content"] for m in ok["messages"]], ["MCP 嗨", "MCP 回"])
-        p = json.loads(M.community("pending", token="A"))
+        p = json.loads(M.community("pending", ctx=_ctx("A")))
         self.assertTrue(p["success"])
         self.assertIn(cid, [d["conversation_id"] for d in p["dm_waiting"]])
-        rd = json.loads(M.mail("dm_read", token="A", conversation_id=cid))
+        rd = json.loads(M.mail("dm_read", ctx=_ctx("A"), conversation_id=cid))
         self.assertTrue(rd["my_turn"])
 
     def test_create_agent_without_key_and_chat_409(self):

@@ -32,6 +32,19 @@ def _pkce():
     return v, c
 
 
+def _conn(token):
+    """假的 MCP 連線：鑰匙掛在 Authorization 標頭上。"""
+    class Q:
+        headers = {"authorization": f"Bearer {token}"}
+        query_params = {}
+
+    class C:
+        request_context = type("RC", (), {"request": Q()})()
+        headers = Q.headers
+
+    return C()
+
+
 class OAuthTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -112,7 +125,7 @@ class OAuthTest(unittest.TestCase):
         # MCP 收 oauth token → 認得出人、床位是 oauth:<grant>
         self.assertEqual(M._verify_mcp_token(t["access_token"]), self.uid)
         self.assertTrue(bed_service.get_bed().startswith("oauth:"))
-        pend = json.loads(M.community("pending", token=t["access_token"]))
+        pend = json.loads(M.community("pending", ctx=_conn(t["access_token"])))
         self.assertTrue(pend["success"], pend)
         # refresh 換新，舊 refresh 失效
         r = self.client.post("/oauth/token", data={"grant_type": "refresh_token", "refresh_token": t["refresh_token"], "client_id": c["client_id"]})
