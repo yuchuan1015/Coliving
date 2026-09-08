@@ -36,6 +36,10 @@ def update_me(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         time_service.recompute_schedules_for_user(db, user)
+    if "birth_year" in updates and updates["birth_year"] is not None:
+        if user.birth_year is not None:
+            raise HTTPException(status_code=400, detail="出生年份已經設定過了，不能改")
+        user.birth_year = updates["birth_year"]
     if "location_name" in updates:
         name = (updates["location_name"] or "").strip()
         if not name:

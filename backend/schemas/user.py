@@ -30,6 +30,7 @@ class UserMe(UserPublic):
 class UpdateMeRequest(BaseModel):
     timezone: str | None = Field(default=None, max_length=64)
     location_name: str | None = Field(default=None, max_length=64)  # 城市名，空字串清掉（回到用時區推）
+    birth_year: int | None = Field(default=None, ge=1900, le=2026)   # 只能補填一次（舊帳號沒填的用）；填了鎖死，18+ 門檻靠它
 
 
 class AnchorRequest(BaseModel):
