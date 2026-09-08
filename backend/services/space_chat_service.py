@@ -15,11 +15,30 @@ from models.agent import Agent
 from models.space_message import SpaceMessage
 from models.user import User
 from models.visit import Visit
-from services import activity_service, time_service, visit_service
+from services import activity_service, age_service, time_service, visit_service
+
+# 受限場域：跟成人區／健康中心同一套年齡政策（2026-09-09 Codex 抓到聊天沒擋，補上）
+RESTRICTED = ("adult", "health")
 
 TTL = timedelta(hours=24)        # 訊息壽命
 STALE = timedelta(hours=24)      # 多久沒動靜當他走了
 MAX_LEN = 1000
+
+
+class Forbidden(Exception):
+    """年齡／分級擋下來。REST 回 403，MCP 回 error。"""
+
+
+def check_access(db: Session, space: str, *, user=None, agent: Agent | None = None) -> None:
+    """成人區要滿 18 歲，健康中心要填出生年；其他場域不擋。user 沒給就從 agent 的主人查。"""
+    if space not in RESTRICTED:
+        return
+    if user is None and agent is not None:
+        user = db.query(User).filter(User.id == agent.user_id).first()
+    if user is None or not user.birth_year:
+        raise Forbidden("需要設定出生年份才能進入此區域")
+    if space == "adult" and not age_service.is_adult(user.birth_year):
+        raise Forbidden("此區域僅限 18 歲以上使用者")
 
 
 def _now() -> datetime:
@@ -79,6 +98,7 @@ def say(db: Session, space: str, content: str, *, agent: Agent | None = None, us
         raise ValueError(f"訊息太長，最多 {MAX_LEN} 字")
     if agent is None and user is None:
         raise ValueError("要有人講話")
+    check_access(db, space, user=user, agent=agent)
 
     if agent is not None and agent.current_location != space:
         visit_service.enter(db, agent, space)  # 走進來再講

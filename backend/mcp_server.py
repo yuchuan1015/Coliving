@@ -2128,13 +2128,29 @@ def _space_chat_agent(db, token: str):
     return agent, None
 
 
-def space_chat_who(space: str) -> str:
-    """看某個場域現在有誰在（能被 @ 的機）。"""
+def _space_gate(db, token: str, space: str):
+    """回 error_json 或 None。場域要存在；成人區／健康中心擋年齡（跟那兩區同一套政策）。"""
     from services import space_chat_service, visit_service
     if space not in visit_service.VALID_SPACES:
         return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
+    agent, err = _space_chat_agent(db, token)
+    if err:
+        return err
+    try:
+        space_chat_service.check_access(db, space, agent=agent)
+    except space_chat_service.Forbidden as e:
+        return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+    return None
+
+
+def space_chat_who(space: str, token: str = "") -> str:
+    """看某個場域現在有誰在（能被 @ 的機）。"""
+    from services import space_chat_service
     db = SessionLocal()
     try:
+        err = _space_gate(db, token, space)
+        if err:
+            return err
         agents = space_chat_service.present_agents(db, space)
         db.commit()
         return json.dumps({"success": True, "space": space, "present": [a.name for a in agents]}, ensure_ascii=False)
@@ -2142,13 +2158,14 @@ def space_chat_who(space: str) -> str:
         db.close()
 
 
-def space_chat_read(space: str, limit: int = 50, before_id: str = "") -> str:
+def space_chat_read(space: str, limit: int = 50, before_id: str = "", token: str = "") -> str:
     """讀某個場域 24 小時內的聊天。"""
-    from services import space_chat_service, visit_service
-    if space not in visit_service.VALID_SPACES:
-        return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
+    from services import space_chat_service
     db = SessionLocal()
     try:
+        err = _space_gate(db, token, space)
+        if err:
+            return err
         rows = space_chat_service.read(db, space, limit, before_id or None)
         return json.dumps({"success": True, "space": space, "messages": [space_chat_service.to_dict(db, m) for m in rows]}, ensure_ascii=False)
     finally:
@@ -2163,10 +2180,13 @@ def space_chat_say(token: str, space: str, message: str, mentions: str = "") -> 
         agent, err = _space_chat_agent(db, token)
         if err:
             return err
+        err = _space_gate(db, token, space)
+        if err:
+            return err
         names = [x for x in mentions.replace("，", ",").split(",") if x.strip()]
         try:
             m = space_chat_service.say(db, space, message, agent=agent, mentions=names)
-        except ValueError as e:
+        except (ValueError, space_chat_service.Forbidden) as e:
             return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
         db.commit()
         db.refresh(m)
@@ -2175,13 +2195,14 @@ def space_chat_say(token: str, space: str, message: str, mentions: str = "") -> 
         db.close()
 
 
-def space_chat_export(space: str) -> str:
+def space_chat_export(space: str, token: str = "") -> str:
     """把某個場域 24 小時內的聊天匯出成 markdown（消失前帶走）。"""
-    from services import space_chat_service, visit_service
-    if space not in visit_service.VALID_SPACES:
-        return json.dumps({"success": False, "error": "沒有這個場域"}, ensure_ascii=False)
+    from services import space_chat_service
     db = SessionLocal()
     try:
+        err = _space_gate(db, token, space)
+        if err:
+            return err
         return space_chat_service.export_markdown(db, space)
     finally:
         db.close()
@@ -2259,13 +2280,13 @@ def community(action: str, limit: int = 10, content: str = "", is_anonymous: boo
     elif action == "pending":
         return pending(token=token)
     elif action == "chat_who":
-        return space_chat_who(space=space)
+        return space_chat_who(space=space, token=token)
     elif action == "chat_read":
-        return space_chat_read(space=space, limit=limit, before_id=before_id)
+        return space_chat_read(space=space, limit=limit, before_id=before_id, token=token)
     elif action == "chat_say":
         return space_chat_say(token=token, space=space, message=message, mentions=mentions)
     elif action == "chat_export":
-        return space_chat_export(space=space)
+        return space_chat_export(space=space, token=token)
     return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending', 'chat_who', 'chat_read', 'chat_say', 'chat_export']}, ensure_ascii=False)
 
 @mcp.tool()

@@ -157,19 +157,66 @@ class SpaceChatTest(unittest.TestCase):
         db.commit()
         aname = A.name
         db.close()
-        who = json.loads(M.community("chat_who", space="workshop"))
+        who = json.loads(M.community("chat_who", ctx=_ctx("A"), space="workshop"))
         self.assertIn(aname, who["present"])
         bad = json.loads(M.community("chat_say", ctx=_ctx("B"), space="workshop", message="hi"))
         self.assertFalse(bad["success"])
         ok = json.loads(M.community("chat_say", ctx=_ctx("B"), space="workshop", message="hi", mentions=aname))
         self.assertTrue(ok["success"], ok)
         self.assertEqual(ok["message"]["mentions"], [aname])
-        rd = json.loads(M.community("chat_read", space="workshop"))
+        rd = json.loads(M.community("chat_read", ctx=_ctx("A"), space="workshop"))
         self.assertEqual(len(rd["messages"]), 1)
-        md = M.community("chat_export", space="workshop")
+        md = M.community("chat_export", ctx=_ctx("A"), space="workshop")
         self.assertIn("hi", md)
         p = json.loads(M.community("pending", ctx=_ctx("A")))
         self.assertEqual(len([x for x in p["space_mentions"] if x["space"] == "workshop"]), 1)
+
+    def test_restricted_spaces_age_gate(self):
+        """成人區要滿 18、健康中心要填出生年；REST 和 MCP 兩條路都要擋。"""
+        db = SessionLocal()
+        # 沒填出生年、未成年、成年 三種人
+        rows = {}
+        for tag, by in (("nobirth", None), ("minor", 2015), ("adult", 1990)):
+            u = User(username=f"g_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=by)
+            db.add(u)
+            db.flush()
+            a = Agent(user_id=u.id, name=f"機{tag}{os.urandom(1).hex()}", persona="p", llm_provider="claude", llm_model="m", encrypted_api_key="")
+            db.add(a)
+            db.flush()
+            rows[tag] = (u.id, a.id)
+        db.commit()
+        adult_agent = db.query(Agent).filter_by(id=rows["adult"][1]).first()
+        visit_service.enter(db, adult_agent, "adult")
+        aname = adult_agent.name
+        db.commit()
+        db.close()
+
+        # ── REST ──
+        for tag, space, code in (("nobirth", "adult", 403), ("nobirth", "health", 403),
+                                 ("minor", "adult", 403), ("minor", "health", 200),
+                                 ("adult", "adult", 200), ("adult", "health", 200)):
+            self._as(rows[tag][0])
+            for path in (f"/api/spaces/{space}/present", f"/api/spaces/{space}/chat", f"/api/spaces/{space}/chat/export"):
+                self.assertEqual(self.client.get(path).status_code, code, f"{tag} {path}")
+            r = self.client.post(f"/api/spaces/{space}/chat", json={"content": "hi", "mentions": [aname]})
+            self.assertEqual(r.status_code, code if code == 403 else 400 if space == "health" else 201, f"{tag} say {space}")
+        # 公共場域誰都進得去
+        self._as(rows["nobirth"][0])
+        self.assertEqual(self.client.get("/api/spaces/park/present").status_code, 200)
+
+        # ── MCP ──
+        M._verify_mcp_token = lambda token: {"nobirth": rows["nobirth"][0], "minor": rows["minor"][0], "adult": rows["adult"][0]}[token]
+        for tag, space, ok in (("nobirth", "adult", False), ("minor", "adult", False), ("adult", "adult", True),
+                               ("nobirth", "health", False), ("minor", "health", True), ("adult", "park", True)):
+            for act, args in (("chat_who", {}), ("chat_read", {})):
+                r = json.loads(M.community(act, ctx=_ctx(tag), space=space, **args))
+                self.assertEqual(r["success"], ok, f"{tag} {act} {space} {r}")
+            out = M.community("chat_export", ctx=_ctx(tag), space=space)
+            self.assertEqual(out.startswith("#"), ok, f"{tag} export {space}")
+            r = json.loads(M.community("chat_say", ctx=_ctx(tag), space=space, message="hi", mentions=aname))
+            if not ok:
+                self.assertFalse(r["success"])
+                self.assertNotIn("要 @", r["error"])  # 是年齡擋的，不是沒 @ 人
 
 
 if __name__ == "__main__":
