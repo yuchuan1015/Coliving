@@ -11,7 +11,6 @@ import { FurniturePage } from "./pages/FurniturePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
-import { PlazaPage } from "./pages/PlazaPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResidentsPage } from "./pages/ResidentsPage";
 import { SchedulesPage } from "./pages/SchedulesPage";
@@ -23,6 +22,11 @@ import { BookshelfPage } from "./pages/BookshelfPage";
 import { MemoryPage } from "./pages/MemoryPage";
 import { ReadingShelfPage } from "./pages/ReadingShelfPage";
 import { ReadingPage } from "./pages/ReadingPage";
+import { AccountSettingsPage } from "./pages/AccountSettingsPage";
+import { AIChatField, MailField, ParkField } from "./fields/EverydayFields";
+import { ArticlesField, HistoryField, LibraryField, MuseumField } from "./fields/ContentFields";
+import { WorkshopField, WeilanField } from "./fields/ActivityFields";
+import { PlazaField } from "./fields/PlazaField";
 
 export default function App() {
   return (
@@ -50,7 +54,18 @@ export default function App() {
               <Route path="/agent/advanced" element={<AdvancedAgentPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
-              <Route path="/plaza" element={<PlazaPage />} />
+              <Route path="/plaza" element={<PlazaField />} />
+              <Route path="/settings" element={<AccountSettingsPage />} />
+              <Route path="/ai-chat" element={<AIChatField />} />
+              <Route path="/mail" element={<MailField />} />
+              <Route path="/park" element={<ParkField />} />
+              <Route path="/library" element={<LibraryField />} />
+              <Route path="/museum" element={<MuseumField />} />
+              <Route path="/history" element={<HistoryField />} />
+              <Route path="/health" element={<ArticlesField key="health" kind="health" />} />
+              <Route path="/adult" element={<ArticlesField key="adult" kind="adult" />} />
+              <Route path="/workshop" element={<WorkshopField />} />
+              <Route path="/weilan" element={<WeilanField />} />
               <Route path="/residents" element={<ResidentsPage />} />
             </Route>
           </Route>

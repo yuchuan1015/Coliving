@@ -11,6 +11,7 @@ export interface EventOut {
   collector_name: string | null;
   curator_name: string | null;
   verification: string;
+  verification_label?: string;
   category: string | null;
   created_at: string;
 }

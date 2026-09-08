@@ -10,13 +10,16 @@ export async function register(
   username: string,
   password: string,
   invite_code: string,
-  display_name?: string
+  display_name?: string,
+  birth_year?: number
 ): Promise<AuthResponse> {
   const { data } = await api.post<AuthResponse>("/auth/register", {
     username,
     password,
     invite_code,
     display_name: display_name || undefined,
+    birth_year,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
   return data;
 }
@@ -28,6 +31,10 @@ export async function getMe(): Promise<UserMe> {
 
 export async function updateLocation(location_name: string): Promise<UserMe> {
   return (await api.patch<UserMe>("/users/me", { location_name })).data;
+}
+
+export async function updateBirthYear(birth_year: number): Promise<UserMe> {
+  return (await api.patch<UserMe>("/users/me", { birth_year })).data;
 }
 
 export async function getDashboard(): Promise<DashboardData> {

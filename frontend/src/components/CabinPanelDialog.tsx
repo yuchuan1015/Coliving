@@ -6,6 +6,7 @@ import type { FurnitureSummary } from "../api/furniture";
 import type { CabinPanel } from "../data/cabin";
 import { useAuth } from "../hooks/useAuth";
 import { CitySettings } from "./CitySettings";
+import { BirthYearSettings } from "./BirthYearSettings";
 
 const titles: Record<CabinPanel, string> = { settings: "設定", window: "窗外天氣", clock: "時鐘", wardrobe: "衣櫃", dining: "餐桌", pet: "寵物" };
 type SummaryRow = { title: string; detail: string };
@@ -59,7 +60,7 @@ export function CabinPanelDialog({ panel, summary, now, onClose, onRefreshWeathe
   const format = (timeZone?: string) => new Intl.DateTimeFormat("zh-TW", { hour: "2-digit", minute: "2-digit", timeZone }).format(now);
   return <dialog ref={dialog} className="cabin-panel" aria-labelledby="cabin-panel-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close(); } }}>
     <header><h2 id="cabin-panel-title">{titles[panel]}</h2><button disabled={cityBusy} onClick={close} aria-label="關閉彈窗">×</button></header>
-    {panel === "settings" && <><CitySettings onRefreshWeather={onRefreshWeather} onBusyChange={setCityBusy} /><fieldset disabled={cityBusy} className="cabin-panel-actions">
+    {panel === "settings" && <><fieldset disabled={cityBusy} style={{ border: 0, padding: 0, margin: 0 }}><CitySettings onRefreshWeather={onRefreshWeather} onBusyChange={setCityBusy} /><BirthYearSettings onBusyChange={setCityBusy} /></fieldset><fieldset disabled={cityBusy} className="cabin-panel-actions">
       <button onClick={() => go("/agent/edit")}>Agent 設定</button>
       <button onClick={() => go("/agent/advanced")}>進階連線與房間設定</button>
       <button onClick={() => go("/schedules")}>排程管理</button>

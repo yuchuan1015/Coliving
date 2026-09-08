@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { shelfError } from "../hooks/useBookshelf";
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -9,19 +10,27 @@ export function RegisterPage() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [birthYear, setBirthYear] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const lock = useRef(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (lock.current) return;
+    if (!/^\d{4}$/.test(birthYear) || Number(birthYear) < 1900 || Number(birthYear) > new Date().getFullYear()) {
+      setError("請確認出生年，再送出註冊。"); return;
+    }
+    lock.current = true;
     setError("");
     setLoading(true);
     try {
-      await register(username, password, inviteCode, displayName || undefined);
+      await register(username, password, inviteCode, displayName || undefined, Number(birthYear));
       navigate("/", { replace: true });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "註冊失敗");
+    } catch (err) {
+      setError(shelfError(err).message);
     } finally {
+      lock.current = false;
       setLoading(false);
     }
   }
@@ -169,6 +178,11 @@ export function RegisterPage() {
             />
           </div>
 
+          <div className="mb-6">
+            <label htmlFor="register-birth-year" className="block mb-2">出生年</label>
+            <input id="register-birth-year" type="number" inputMode="numeric" autoComplete="bday-year" min={1900} max={new Date().getFullYear()} required value={birthYear} onChange={e => setBirthYear(e.target.value)} className={inputClass} style={inputStyle} />
+            <p className="text-[13px] mt-2">用於年齡分級；註冊後不能更改，請確認再送出。</p>
+          </div>
           <button
             type="submit"
             disabled={loading}

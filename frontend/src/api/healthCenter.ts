@@ -13,6 +13,8 @@ export interface ArticleOut {
 }
 
 export interface HealthResponse {
+  user_tier?: string | null;
+  allowed_tiers?: string[];
   articles: ArticleOut[];
   category_counts: Record<string, number>;
 }

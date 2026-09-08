@@ -7,6 +7,10 @@ export interface UserPublic {
 }
 
 export interface UserMe extends UserPublic {
+  birth_year?: number | null;
+  coordinate?: { l: number; b: number; r: number } | null;
+  drifting?: boolean;
+  label?: string | null;
   timezone?: string;
   location_name?: string | null;
   is_active: boolean;
