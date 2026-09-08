@@ -20,6 +20,7 @@ import models  # noqa: E402,F401
 from main import app  # noqa: E402
 from models.agent import Agent  # noqa: E402
 from models.user import User  # noqa: E402
+from config import settings  # noqa: E402
 from services import auth_service, bed_service  # noqa: E402
 from utils.deps import get_current_user  # noqa: E402
 import mcp_server as M  # noqa: E402
@@ -55,6 +56,10 @@ class OAuthTest(unittest.TestCase):
                 db.close()
         app.dependency_overrides[get_current_user] = override
 
+    @classmethod
+    def tearDownClass(cls):
+        app.dependency_overrides.clear()
+
     def _register(self, method="none"):
         r = self.client.post("/oauth/register", json={"client_name": "Claude", "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"], "token_endpoint_auth_method": method})
         self.assertEqual(r.status_code, 201, r.text)
@@ -65,7 +70,8 @@ class OAuthTest(unittest.TestCase):
                                                         "code_challenge": challenge, "code_challenge_method": "S256", "state": state, "scope": "mcp", "resource": "https://therookery.space/mcp"})
         self.assertEqual(r.status_code, 302, r.text)
         loc = r.headers["location"]
-        self.assertTrue(loc.startswith("https://therookery.space/oauth/consent?request_id="), loc)
+        expected = (settings.oauth_consent_url.strip() or "https://therookery.space/oauth/consent") + "?request_id="
+        self.assertTrue(loc.startswith(expected), loc)
         rid = parse_qs(urlparse(loc).query)["request_id"][0]
         v = self.client.get(f"/api/oauth/requests/{rid}").json()
         self.assertEqual(v["client_name"], "Claude")
@@ -157,8 +163,13 @@ class OAuthTest(unittest.TestCase):
         # DCR 壞 redirect
         r = self.client.post("/oauth/register", json={"redirect_uris": ["http://evil.example/cb"]})
         self.assertEqual(r.status_code, 400)
-        # 同意頁有出來
-        self.assertEqual(self.client.get("/oauth/consent?request_id=x").status_code, 200)
+        # 備援同意頁還在，而且不准被嵌 iframe
+        r = self.client.get("/oauth/consent?request_id=x")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers["x-frame-options"], "DENY")
+        self.assertIn("frame-ancestors 'none'", r.headers["content-security-policy"])
+        self.assertEqual(r.headers["referrer-policy"], "no-referrer")
+        self.assertEqual(r.headers["cache-control"], "no-store")
 
     def test_mcp_401_middleware(self):
         async def ok_app(scope, receive, send):

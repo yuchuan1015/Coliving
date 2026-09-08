@@ -56,6 +56,10 @@ class FixedKeyTest(unittest.TestCase):
                 db.close()
         app.dependency_overrides[get_current_user] = override
 
+    @classmethod
+    def tearDownClass(cls):
+        app.dependency_overrides.clear()
+
     def test_adopt_issues_first_key_and_list_shows_same_key(self):
         r = self.client.post("/api/agents", json={"name": "fk_" + os.urandom(2).hex(), "persona": "p", "llm_provider": "claude", "llm_model": "m"})
         self.assertEqual(r.status_code, 201, r.text)

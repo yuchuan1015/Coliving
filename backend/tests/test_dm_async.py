@@ -20,6 +20,8 @@ from services import ai_chat_service, auth_service, pending_service  # noqa: E40
 from utils.deps import get_current_user  # noqa: E402
 import mcp_server as M  # noqa: E402
 
+_ORIG_VERIFY = M._verify_mcp_token  # 收工還原，不然會污染同一輪跑的其他測試檔
+
 
 def _mk(db, tag, key=""):
     u = User(username=f"u_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=1990, anchor_date_1="05-05")
@@ -47,6 +49,11 @@ class DMAsyncTest(unittest.TestCase):
         ai_chat_service.memory_service.system_prompt_with_memory = lambda agent, ctx: "sys"
         ai_chat_service.crypto_service.decrypt_api_key = lambda enc: "k"
         ai_chat_service.llm_service.chat_completion = lambda **kw: json.dumps({"action": "reply", "content": "B 回你"})
+
+    @classmethod
+    def tearDownClass(cls):
+        M._verify_mcp_token = _ORIG_VERIFY
+        app.dependency_overrides.clear()
 
     def _as(self, uid):
         def override():

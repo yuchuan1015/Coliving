@@ -23,6 +23,8 @@ from services import pending_service, space_chat_service, visit_service  # noqa:
 from utils.deps import get_current_user  # noqa: E402
 import mcp_server as M  # noqa: E402
 
+_ORIG_VERIFY = M._verify_mcp_token  # 收工還原，不然會污染同一輪跑的其他測試檔
+
 
 def _mk(db, tag):
     u = User(username=f"u_{tag}_{os.urandom(2).hex()}", display_name=f"人{tag}", hashed_password="x", birth_year=1990)
@@ -44,6 +46,11 @@ class SpaceChatTest(unittest.TestCase):
         cls.uC, cls.aC = _mk(db, "C")
         db.close()
         cls.client = TestClient(app)
+
+    @classmethod
+    def tearDownClass(cls):
+        M._verify_mcp_token = _ORIG_VERIFY
+        app.dependency_overrides.clear()
 
     def _as(self, uid):
         def override():

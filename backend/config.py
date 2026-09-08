@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     public_base_url: str = "https://therookery.space"
     oauth_access_minutes: int = 60          # OAuth access token 壽命
     oauth_refresh_days: int = 90            # refresh token 壽命（每次用都換新）
-    oauth_consent_url: str = ""             # 同意頁；空＝用後端的 /oauth/consent 陽春頁，Codex 做好 SPA 頁再指過去（例：https://therookery.space/authorize）
+    oauth_consent_url: str = "https://therookery.space/authorize"  # 同意頁（Codex 的正式頁，9/9 切）；設成空字串＝退回後端備援頁 /oauth/consent
     internal_secret: str = ""
     embed_openai_api_key: str = ""
     mem0_qdrant_path: str = "/opt/coliving/backend/memdata/qdrant"

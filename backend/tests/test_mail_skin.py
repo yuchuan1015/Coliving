@@ -40,6 +40,10 @@ class MailSkinTest(unittest.TestCase):
         db.close()
         cls.client = TestClient(app)
 
+    @classmethod
+    def tearDownClass(cls):
+        app.dependency_overrides.clear()
+
     def _as(self, uid):
         def override():
             db = SessionLocal()

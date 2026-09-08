@@ -21,7 +21,14 @@ from utils.deps import get_current_user, get_db
 router = APIRouter(tags=["oauth"])
 api = APIRouter(prefix="/api/oauth", tags=["oauth"])
 
-_NO_STORE = {"Cache-Control": "no-store", "Pragma": "no-cache"}
+_NO_STORE = {"Cache-Control": "no-store", "Pragma": "no-cache", "Referrer-Policy": "no-referrer"}
+# 同意頁不准被任何網站嵌進 iframe（點擊劫持），也不外洩 referrer
+_PAGE_HEADERS = {
+    **_NO_STORE,
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "X-Content-Type-Options": "nosniff",
+}
 
 
 def _err(e: OAuthError) -> JSONResponse:
@@ -80,7 +87,7 @@ def authorize(request: Request, db: Session = Depends(get_db)):
                 q["state"] = params["state"]
             sep = "&" if "?" in redirect_uri else "?"
             return RedirectResponse(f"{redirect_uri}{sep}{urlencode(q)}", status_code=302, headers=_NO_STORE)
-        return HTMLResponse(_page("連不上", f"<p>這個 app 的授權請求有問題：{html.escape(e.description or e.error)}</p><p>請回到 app 重新連線。</p>"), status_code=400)
+        return HTMLResponse(_page("連不上", f"<p>這個 app 的授權請求有問題：{html.escape(e.description or e.error)}</p><p>請回到 app 重新連線。</p>"), status_code=400, headers=_PAGE_HEADERS)
     db.commit()
     return RedirectResponse(oauth_service.consent_url(req), status_code=302, headers=_NO_STORE)
 
@@ -229,4 +236,4 @@ function esc(s){{return String(s).replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;
 $('yes').onclick=()=>decide(true);$('no').onclick=()=>decide(false);
 $('app').textContent='登入後會顯示是哪個 app、要連哪位室友。';
 </script>"""
-    return HTMLResponse(_page("授權", body), headers=_NO_STORE)
+    return HTMLResponse(_page("授權", body), headers=_PAGE_HEADERS)

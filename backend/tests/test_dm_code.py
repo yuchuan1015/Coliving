@@ -20,6 +20,8 @@ from services import ai_chat_service, coordinate_service, pending_service  # noq
 from utils.deps import get_current_user  # noqa: E402
 import mcp_server as M  # noqa: E402
 
+_ORIG_VERIFY = M._verify_mcp_token  # 收工還原，不然會污染同一輪跑的其他測試檔
+
 
 def _mk(db, tag, anchor1="03-03", role="user"):
     u = User(username=f"u_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=1990, anchor_date_1=anchor1, role=role)
@@ -42,6 +44,11 @@ class DMCodeTest(unittest.TestCase):
         cls.uAdm, cls.aAdm = _mk(db, "adm", role="admin")
         db.close()
         cls.client = TestClient(app)
+
+    @classmethod
+    def tearDownClass(cls):
+        M._verify_mcp_token = _ORIG_VERIFY
+        app.dependency_overrides.clear()
 
     def _as(self, uid):
         def override():
