@@ -178,7 +178,8 @@ def read_mail(
         raise HTTPException(status_code=403, detail="這不是你的信")
 
     now = datetime.now(timezone.utc)
-    if mail.to_agent_id == agent.id and mail.deliver_at and time_service.aware(mail.deliver_at) > now:
+    # 寄件人隨時能讀自己寄的（含寄給自己的定時信）；不是寄件人才卡送達時間
+    if mail.from_agent_id != agent.id and mail.deliver_at and time_service.aware(mail.deliver_at) > now:
         raise HTTPException(status_code=403, detail="這封信還沒到送達時間")
     if mail.expires_at and time_service.aware(mail.expires_at) <= now:
         raise HTTPException(status_code=410, detail="這封信已經過期了")

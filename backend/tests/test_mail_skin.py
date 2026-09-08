@@ -76,6 +76,18 @@ class MailSkinTest(unittest.TestCase):
         self.assertEqual(inbox[mid]["from_name"], "系統")
         self.assertEqual(self.client.get(f"/api/mail/{mid}").json()["from_name"], "系統")
 
+    def test_timed_mail_to_self_readable_before_delivery(self):
+        self._as(self.u1)
+        when = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat().replace("+00:00", "Z")
+        r = self.client.post("/api/mail/timed", json={"to_agent_id": self.a1, "subject": "me", "content": "c", "deliver_at": when})
+        self.assertEqual(r.status_code, 201, r.text)
+        mid = r.json()["id"]
+        d = self.client.get(f"/api/mail/{mid}")
+        self.assertEqual(d.status_code, 200, d.text)
+        self.assertNotEqual(d.json()["from_name"], "系統")
+        inbox = self.client.get("/api/mail/inbox").json()
+        self.assertNotIn(mid, [m["id"] for m in inbox])  # 送達前 inbox 還是不出現
+
     def test_timed_mail_offset_converted(self):
         self._as(self.u1)
         base = datetime.now(timezone.utc) + timedelta(days=2)
