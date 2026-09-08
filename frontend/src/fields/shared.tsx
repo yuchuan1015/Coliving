@@ -4,14 +4,14 @@ import { shelfError, type ShelfError } from "../hooks/useBookshelf";
 import { FIELDS, type FieldId } from "./fieldData";
 import "./fields.css";
 import { SpaceChat } from "./SpaceChat";
-import { PUBLIC_CHAT_SPACES, type ChatSpace } from "./socialData";
+import { CHAT_SPACES, type ChatSpace } from "./socialData";
 import { FormValidationError } from "./formErrors";
-export function FieldFrame({ id, children }: { id: FieldId; children: ReactNode }) {
+export function FieldFrame({ id, children, chatEnabled = true }: { id: FieldId; children: ReactNode; chatEnabled?: boolean }) {
   const field = FIELDS.find(f => f[0] === id)!;
   return <main className="field-app"><div className="field-shell">
     <header className="field-topbar"><Link className="field-button" to="/outside">← 出艙導航</Link><small>THE ROOKERY / {String(FIELDS.indexOf(field) + 1).padStart(2, "0")}</small></header>
     <section className="field-hero"><img src={`/field-preview/assets/${field[6]}`} alt={`${field[2]}的太空場景`} /><div><small>{field[2]}</small><h1>{field[1]}</h1><p>l {field[3]}° · b {field[4] >= 0 ? "+" : ""}{field[4]}° · {field[5]} ly</p></div></section>
-    {children}{(PUBLIC_CHAT_SPACES as readonly string[]).includes(id) && <SpaceChat key={id} space={id as ChatSpace} />}<footer><Link to="/outside">← 選擇其他目的地</Link><span>社區時間 · Asia/Taipei</span></footer>
+    {children}{chatEnabled && (CHAT_SPACES as readonly string[]).includes(id) && <SpaceChat key={id} space={id as ChatSpace} />}<footer><Link to="/outside">← 選擇其他目的地</Link><span>社區時間 · Asia/Taipei</span></footer>
   </div></main>;
 }
 export function FieldPanel({ title, action, children }: { title?: string; action?: ReactNode; children: ReactNode }) { return <section className="field-panel">{(title || action) && <div className="field-row field-section-top"><h2>{title}</h2>{action}</div>}{children}</section>; }

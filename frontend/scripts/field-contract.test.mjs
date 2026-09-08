@@ -330,11 +330,88 @@ test("own DM code is read-only until copy, with manual clipboard fallback", asyn
   assert.equal(nodes(h.tree, n => n.type === "input")[0].props.readOnly, true);
   assert.match(text(h.tree), /長按/);
 });
-test("public chats exclude age-restricted spaces and do not load until expanded", () => {
-  assert.deepEqual(social.PUBLIC_CHAT_SPACES, ["plaza", "library", "park", "workshop", "museum", "weilan", "history"]);
-  for (const id of ["adult", "health", "mail", "ai-chat"]) assert.equal(components(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").length, 0);
-  const h = mount(SpaceChat, { space: "plaza" }); assert.equal(components(h, "SpaceChatContent").length, 0); assert.equal(reads.length, 0);
-  click(h, "展開聊天"); assert.equal(one(h, "SpaceChatContent").props.space, "plaza");
+test("nine chat spaces are lazy and disabled frames do not mount chat", () => {
+  assert.deepEqual(social.CHAT_SPACES, ["plaza", "library", "park", "workshop", "museum", "weilan", "history", "adult", "health"]);
+  for (const id of social.CHAT_SPACES) {
+    assert.equal(one(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").props.space, id);
+    assert.equal(components(mount(shared.FieldFrame, { id, children: null, chatEnabled: false }), "SpaceChat").length, 0);
+    const h = mount(SpaceChat, { space: id }); assert.equal(components(h, "SpaceChatContent").length, 0); assert.equal(reads.length, 0);
+    click(h, "展開聊天"); assert.equal(one(h, "SpaceChatContent").props.space, id);
+  }
+  for (const id of ["mail", "ai-chat"]) assert.equal(components(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").length, 0);
+});
+test("adult chat follows explicit entry and exit; health does not infer age from the profile", () => {
+  const h = mount(content.ArticlesField, { kind: "adult" });
+  assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
+  assert.equal(reads.length, 0);
+  nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  click(h, "確認進入"); assert.equal(one(h, "FieldFrame").props.chatEnabled, true);
+  click(h, "離開成人區"); assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
+  auth.user.birth_year = null;
+  const health = mount(content.ArticlesField, { kind: "health" });
+  assert.equal(one(health, "FieldFrame").props.chatEnabled, true);
+});
+test("restricted chat waits for both reads before enabling send and export", () => {
+  fixture("/spaces/adult/present", { present: [] });
+  const h = mount(SpaceChatContent, { space: "adult" });
+  assert.equal(components(h, "FieldForm").length, 0); assert.equal(button(h, "匯出帶走").props.disabled, true);
+  assert.deepEqual(reads, ["/spaces/adult/present", "/spaces/adult/chat?limit=200"]);
+  assert.equal(calls.length, 0);
+});
+test("403 from either restricted read hides content, people, send and export with exact server detail", () => {
+  for (const space of ["adult", "health"]) for (const denied of ["present", "chat?limit=200"]) {
+    fixture(`/spaces/${space}/present`, { present: [{ id: "a", name: "不可顯示的名字" }] });
+    fixture(`/spaces/${space}/chat?limit=200`, { messages: [{ id: "m", sender: "人", content: "不可顯示的內容", mentions: [], expires_at: "2099-01-01T00:00:00Z" }] });
+    const error = { status: 403, message: "需要設定出生年份才能進入此區域" };
+    fixtures.set(`/spaces/${space}/${denied}`, { error });
+    const h = mount(SpaceChatContent, { space });
+    assert.deepEqual(one(h, "FieldError").props.error, error);
+    assert.ok(!text(h.tree).includes("不可顯示"));
+    assert.equal(components(h, "FieldForm").length, 0);
+    assert.equal(nodes(h.tree, n => n.type === "button" || n.props?.download).length, 0);
+    one(h, "FieldError").props.retry(); assert.ok(reads.includes(`refresh:/spaces/${space}/present`));
+  }
+  assert.equal(calls.length, 0);
+});
+test("health chat sends independently of article tiers and frontend birth year", async () => {
+  auth.user.birth_year = null;
+  fixture("/health-center", { allowed_tiers: [], articles: [] });
+  fixture("/spaces/health/present", { present: [{ id: "a", name: "星A" }] });
+  fixture("/spaces/health/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "health" });
+  await submit(h, "送出訊息", { content: "@星A 你好" });
+  expectCall("post", "/spaces/health/chat", { content: "@星A 你好", mentions: [] });
+});
+test("a denied send clears restricted chat and rechecks only when the user asks", async () => {
+  fixture("/spaces/adult/present", { present: [{ id: "a", name: "星A" }] });
+  fixture("/spaces/adult/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "adult" });
+  const detail = "此區域僅限 18 歲以上使用者";
+  answer = async () => { throw { isAxiosError: true, response: { status: 403, data: { detail } } }; };
+  await assert.rejects(submit(h, "送出訊息", { content: "@星A 你好" })); h.render();
+  assert.equal(one(h, "FieldError").props.error.message, detail);
+  assert.equal(components(h, "FieldForm").length, 0); assert.equal(calls.length, 1);
+  one(h, "FieldError").props.retry(); h.render();
+  assert.equal(components(h, "FieldForm").length, 1); assert.equal(calls.length, 1);
+});
+test("Markdown export shows text-encoded JSON 403 detail without creating a download", async () => {
+  fixture("/spaces/health/present", { present: [] }); fixture("/spaces/health/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "health" });
+  const detail = "需要設定出生年份才能進入此區域";
+  answer = async () => { throw { isAxiosError: true, response: { status: 403, data: JSON.stringify({ detail }) } }; };
+  click(h, "匯出帶走"); await tick(); h.render();
+  assert.equal(one(h, "FieldError").props.error.message, detail);
+  assert.equal(nodes(h.tree, n => n.props?.download || n.type === "textarea").length, 0);
+  assert.equal(components(h, "FieldForm").length, 0);
+  assert.equal(calls.length, 1); expectCall("get", "/spaces/health/chat/export");
+});
+test("a normal send error retains the draft form and does not become an age denial", async () => {
+  fixture("/spaces/adult/present", { present: [{ id: "a", name: "星A" }] }); fixture("/spaces/adult/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "adult" });
+  answer = async () => { throw { isAxiosError: true, response: { status: 400, data: { detail: "星A 已經離開" } } }; };
+  await assert.rejects(submit(h, "送出訊息", { content: "@星A 草稿" })); h.render();
+  assert.equal(components(h, "FieldForm").length, 1); assert.equal(components(h, "FieldError").length, 0);
+  assert.equal(calls.length, 1);
 });
 test("space chat expires only from backend timestamps and keeps literal text", () => {
   const now = Date.parse("2026-09-09T00:00:00Z");
@@ -368,6 +445,7 @@ test("inline @ mention works without inventing an out-of-room recipient", async 
   expectCall("post", "/spaces/library/chat", { content: "@星A 今天讀什麼？", mentions: [] });
 });
 test("space export is an explicit text GET, never sends credentials in a URL", async () => {
+  fixture("/spaces/park/present", { present: [] }); fixture("/spaces/park/chat?limit=200", { messages: [] });
   const h = mount(SpaceChatContent, { space: "park" }); writeResult = "# chat";
   await button(h, "匯出帶走").props.onClick(); await tick(); h.render();
   expectCall("get", "/spaces/park/chat/export");
@@ -667,6 +745,8 @@ test("real React server rendering serializes all eleven fields and registration 
     assert.match(html, /class="field-app"/); assert.match(html, /href="\/outside"/);
     assert.ok(!html.includes('<script>alert("fixture")</script>'));
     if (id === "plaza") assert.match(html, /&lt;script&gt;/);
+    if (id === "adult") assert.ok(!html.includes("在這裡聊聊"));
+    if (id === "health") assert.ok(html.includes("在這裡聊聊"));
   }
   const { RegisterPage } = realLoad(resolve(root, "src/pages/RegisterPage.tsx"));
   const registration = renderToString(React.createElement(MemoryRouter, {}, React.createElement(RegisterPage)));

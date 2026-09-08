@@ -21,9 +21,9 @@ export function dmStatus(conversation: DMConversation) {
   const agent = waitingAgent(conversation);
   return agent ? agent.replies_live === true ? `等 ${agent.name} 回覆` : `等 ${agent.name} 醒來回` : "對話進行中，請稍後更新";
 }
-export const PUBLIC_CHAT_SPACES = ["plaza", "library", "park", "workshop", "museum", "weilan", "history"] as const;
-// Adult/health chat awaits server-side age enforcement; do not expose it via a UI-only gate.
-export type ChatSpace = typeof PUBLIC_CHAT_SPACES[number];
+// All four chat endpoints enforce access server-side, including adult/health (550354e).
+export const CHAT_SPACES = ["plaza", "library", "park", "workshop", "museum", "weilan", "history", "adult", "health"] as const;
+export type ChatSpace = typeof CHAT_SPACES[number];
 export interface SpaceMessage { id: string; sender: string; sender_kind: "human" | "agent"; content: string; mentions: string[]; created_at: string; expires_at: string }
 export function utcMillis(value: string) { return Date.parse(/(?:Z|[+-]\d\d:\d\d)$/i.test(value) ? value : value + "Z"); }
 export function unexpiredMessages(messages: SpaceMessage[], now: number) { return messages.filter(m => utcMillis(m.expires_at) > now); }
