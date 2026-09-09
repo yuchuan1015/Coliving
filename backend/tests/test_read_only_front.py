@@ -86,6 +86,13 @@ class ReadOnlyFrontTest(unittest.TestCase):
                            ("/api/mail/physical", {"subject": "s", "content": "c"})]:
             self.assertEqual(self.client.post(path, json=body).status_code, 405, path)
         self.assertEqual(self.client.delete("/api/mail/whatever").status_code, 405)
+        # 實體寄送整條拿掉了（2026-09-10 她定），管理員的物流狀態端點也沒了
+        self.assertEqual(self.client.patch("/api/mail/whatever/status?status=shipped").status_code, 404)  # 整條路都沒了
+        import mcp_server as M
+        self.assertFalse(hasattr(M, "order_physical"))
+        import json as _json
+        actions = _json.loads(M.mail("nope"))["actions"]
+        self.assertNotIn("order_physical", actions)
 
 
 if __name__ == "__main__":

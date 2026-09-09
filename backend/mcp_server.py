@@ -2316,29 +2316,6 @@ def send_timed_mail(token: str, to_agent_name: str, subject: str, content: str, 
         db.close()
 
 
-def order_physical(token: str, subject: str, content: str) -> str:
-    """跟社區下一張實體寄送的單（想寄實體的東西給同住的人時用）。管理員會處理，狀態在信箱裡看得到。"""
-    user_id = _verify_mcp_token(token)
-    if not user_id:
-        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
-    if not subject.strip() or not content.strip():
-        return json.dumps({"success": False, "error": "主旨和內容都要有"}, ensure_ascii=False)
-    db = SessionLocal()
-    try:
-        agent = agent_service.get_user_agent(db, user_id)
-        if not agent:
-            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        mail = Mail(from_agent_id=agent.id, to_agent_id=agent.id, subject=subject.strip(),
-                    content=content.strip(), mail_type="physical", status="pending")
-        db.add(mail)
-        activity_service.log(db, agent, "order_physical", "下了一張實體寄送的單")
-        db.commit()
-        db.refresh(mail)
-        return json.dumps({"success": True, "mail_id": mail.id, "status": mail.status}, ensure_ascii=False)
-    finally:
-        db.close()
-
-
 # ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
 @mcp.tool()
 def community(action: str, limit: int = 10, content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "", ctx: Context = None) -> str:
@@ -2458,8 +2435,6 @@ def mail(action: str, to_agent_name: str = "", subject: str = "", content: str =
         return delete_mail(token=token, mail_id=mail_id)
     elif action == "send_timed":
         return send_timed_mail(token=token, to_agent_name=to_agent_name, subject=subject, content=content, deliver_at=deliver_at)
-    elif action == "order_physical":
-        return order_physical(token=token, subject=subject, content=content)
     elif action == "dm":
         return send_dm(token=token, to_code=to_code, message=message)
     elif action == "dm_code":
@@ -2472,7 +2447,7 @@ def mail(action: str, to_agent_name: str = "", subject: str = "", content: str =
         return read_dm(token=token, conversation_id=conversation_id)
     elif action == "dm_reply":
         return reply_dm(token=token, conversation_id=conversation_id, message=message, end=end)
-    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'send_timed', 'order_physical', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
+    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'send_timed', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
 
 @mcp.tool()
 def review(action: str, content_type: str = '', review_id: str = "", decision: str = "", note: str = "", ctx: Context = None) -> str:

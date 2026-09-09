@@ -197,21 +197,8 @@ def read_mail(
 # 實體寄送也一起收掉；之後若要讓住戶自己下單，另外開一條寫明是誰下的。
 
 
-@router.patch("/{mail_id}/status")
-def update_physical_status(
-    mail_id: str,
-    status: str = Query(pattern="^(pending|processing|shipped|delivered)$"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="只有管理員能更新寄送狀態")
-    mail = db.query(Mail).filter(Mail.id == mail_id, Mail.mail_type == "physical").first()
-    if not mail:
-        raise HTTPException(status_code=404, detail="找不到這筆訂單")
-    mail.status = status
-    db.commit()
-    return {"ok": True, "status": status}
+# 2026-09-10 她定：實體寄送整條拿掉。管理員的物流狀態端點也一起收。
+# 舊的 mail_type="physical" 資料留著可讀，不刪。
 
 
 # 刪信也是寫入，一起收掉（2026-09-10 她定）。室友自己刪走 MCP mail delete；
