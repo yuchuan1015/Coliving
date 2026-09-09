@@ -548,14 +548,119 @@ test("pet adoption uses exact fields and cannot be auto-triggered from scenery",
   assert.equal(calls.length, 0); await submit(h, "確認領養小夥伴", { name: " 小貓 ", species: "cat", emoji: "🐈" });
   expectCall("post", "/pets/adopt", { name: "小貓", species: "cat", emoji: "🐈" });
 });
-test("new protected routes and personal code remain separate from the public directory", () => {
+test("directory uses only the server-provided public code, never private endpoints", () => {
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
   assert.ok(app.includes('path="/admin/dm-reports"')); assert.ok(app.includes('path="/resident/:agentId"'));
   const directory = readFileSync(resolve(root, "src/pages/ResidentDirectory.tsx"), "utf8");
-  assert.ok(!directory.includes("dm_code")); assert.ok(!directory.includes("/agents/mine"));
+  assert.ok(directory.includes("agent_dm_code")); assert.ok(!directory.includes("/agents/mine"));
+  assert.ok(!directory.includes("索取")); assert.ok(!directory.includes("dm_code_for"));
   assert.ok(!directory.includes("dangerouslySetInnerHTML")); assert.ok(!directory.includes("iframe"));
   const legacy = readFileSync(resolve(root, "src/fields/EverydayFields.tsx"), "utf8");
   assert.ok(!legacy.includes("to_agent_name"));
+});
+const { ResidentDirectory, ResidentIdentity, PublicDMCode } = load("src/pages/ResidentDirectory.tsx");
+const { EditAgentPage } = load("src/pages/EditAgentPage.tsx");
+const editorAgent = { id: "test-agent", name: "範例室友", persona: "本地測試", llm_provider: "claude", llm_model: "test-model", avatar_emoji: "✦", avatar_url: null, display_brain: "", dm_code_public: true };
+async function openDMEditor(value = true) {
+  answer = async (method, url, payload) => ({ data: url === "/agents/providers" ? { providers: [{ key: "claude", name: "Claude" }], disclaimer: "本地測試" } : { ...editorAgent, dm_code_public: value, ...(method === "patch" ? payload : {}) } });
+  const h = mount(EditAgentPage); h.effects(); await tick(); h.render();
+  return h;
+}
+const dmSwitch = h => nodes(h.tree, n => n.props?.id === "editor-dm-code-public")[0];
+function setDMVisibility(h, checked) { dmSwitch(h).props.onChange({ target: { checked } }); h.render(); }
+const saveEditor = h => nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} });
+
+test("directory and card identities expose only nonempty public codes on existing agents", () => {
+  for (const code of [null, undefined, "", " ", "RK-TEST-1234"]) {
+    const r = { id: "r", display_name: "居民", agent_id: "a", agent_name: "室友", agent_dm_code: code };
+    fixture("/users/residents", { residents: [r] });
+    const directory = mount(ResidentDirectory);
+    const identity = mount(ResidentIdentity, one(directory, "ResidentIdentity").props);
+    const visible = components(identity, "PublicDMCode");
+    assert.equal(visible.length, code === "RK-TEST-1234" ? 1 : 0);
+    if (visible.length) { assert.equal(visible[0].props.code, code); assert.equal(visible[0].key, code); }
+    assert.ok(!reads.some(path => path.includes("/agents/"))); assert.equal(calls.length, 0);
+  }
+  assert.equal(components(mount(ResidentIdentity, { resident: { agent_id: null, agent_dm_code: "RK-HIDDEN", display_name: "居民" } }), "PublicDMCode").length, 0);
+});
+test("public code copy waits for success and blocks double clicks", async () => {
+  const pending = deferred();
+  navigatorStub.clipboard = { writeText: code => { calls.push({ method: "copy", args: [code] }); return pending.promise; } };
+  const h = mount(PublicDMCode, { code: "RK-TEST-1234", name: "室友" });
+  const copy = button(h, "複製私訊碼").props.onClick;
+  const first = copy(), second = copy(); h.render();
+  assert.equal(calls.length, 1); assert.ok(!text(h.tree).includes("已複製"));
+  assert.equal(button(h, "正在複製…").props.disabled, true);
+  pending.resolve(); await Promise.all([first, second]); h.render();
+  expectCall("copy", "RK-TEST-1234"); assert.match(text(h.tree), /已複製/);
+});
+test("public code provides a readonly fallback for unsupported or denied clipboard", async () => {
+  for (const clipboard of [undefined, { writeText: async () => { throw Error("denied"); } }]) {
+    navigatorStub.clipboard = clipboard;
+    const h = mount(PublicDMCode, { code: "RK-TEST-1234", name: "室友" });
+    await button(h, "複製私訊碼").props.onClick(); h.render();
+    const input = nodes(h.tree, n => n.type === "input")[0];
+    assert.equal(input.props.value, "RK-TEST-1234"); assert.equal(input.props.readOnly, true);
+    assert.match(text(h.tree), /長按/); assert.ok(!text(h.tree).includes("已複製"));
+  }
+});
+test("own code accurately describes public, private, and unavailable visibility", () => {
+  for (const [visibility, expected] of [[true, "目前已公開"], [false, "目前未公開"], [undefined, "設定是否"]]) {
+    fixture("/agents/mine", { dm_code: "RK-TEST-1234", dm_code_public: visibility });
+    const h = mount(MyDMCode);
+    assert.match(text(h.tree), new RegExp(expected)); assert.ok(!text(h.tree).includes("名錄不會公開"));
+  }
+  assert.equal(calls.length, 0);
+});
+test("mirror loads the real visibility, never assumes the default or writes on open", async () => {
+  for (const value of [true, false, null]) {
+    const h = await openDMEditor(value);
+    assert.equal(dmSwitch(h).props.checked, value === true);
+    assert.equal(dmSwitch(h).props.disabled, value === null);
+    assert.equal(dmSwitch(h).props.role, "switch");
+    assert.match(text(h.tree), /已拿到碼的人仍能私訊/);
+    assert.ok(!calls.some(c => c.method === "patch")); h.dispose();
+  }
+  const h = await openDMEditor(null);
+  nodes(h.tree, n => n.props?.id === "editor-name")[0].props.onChange({ target: { value: "新名字" } }); h.render();
+  await saveEditor(h);
+  assert.deepEqual(calls.find(c => c.method === "patch").args[1], { name: "新名字" });
+});
+test("mirror saves only explicitly changed visibility, in both directions", async () => {
+  for (const value of [true, false]) {
+    const h = await openDMEditor(value); calls.length = 0;
+    setDMVisibility(h, !value); assert.equal(calls.length, 0); assert.match(text(h.tree), /尚未保存/);
+    await saveEditor(h); h.render();
+    assert.deepEqual(calls.filter(c => c.method === "patch"), [{ method: "patch", args: ["/agents/test-agent", { dm_code_public: !value }] }]);
+    expectCall("navigate", "/"); assert.equal(dmSwitch(h).props.checked, !value); h.dispose();
+  }
+});
+test("unchanged or toggled-back visibility is omitted, avoiding overwriting an agent-side change", async () => {
+  const h = await openDMEditor(false); calls.length = 0;
+  setDMVisibility(h, true); setDMVisibility(h, false);
+  nodes(h.tree, n => n.props?.id === "editor-display-brain")[0].props.onChange({ target: { value: "外部大腦" } }); h.render();
+  await saveEditor(h);
+  assert.deepEqual(calls.find(c => c.method === "patch").args[1], { display_brain: "外部大腦" });
+});
+test("visibility alone marks editor dirty and returning can cancel discard", async () => {
+  const h = await openDMEditor(true); calls.length = 0;
+  setDMVisibility(h, false);
+  windowStub.confirm = () => false;
+  button(h, "← 返回艙室").props.onClick();
+  assert.equal(calls.length, 0); assert.equal(dmSwitch(h).props.checked, false);
+  windowStub.confirm = () => true;
+  button(h, "← 返回艙室").props.onClick(); expectCall("navigate", "/");
+  delete windowStub.confirm;
+});
+test("failed visibility save retains draft and backend message; duplicate save is blocked", async () => {
+  const h = await openDMEditor(true); calls.length = 0; setDMVisibility(h, false);
+  const pending = deferred(); answer = () => pending.promise;
+  const first = saveEditor(h), second = saveEditor(h); h.render();
+  assert.equal(calls.length, 1); assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
+  pending.reject({ isAxiosError: true, response: { data: { detail: "設定暫時無法保存" } } });
+  await Promise.all([first, second]); h.render();
+  assert.match(text(h.tree), /設定暫時無法保存/); assert.match(text(h.tree), /尚未保存/);
+  assert.equal(dmSwitch(h).props.checked, false); assert.equal(calls.length, 1);
 });
 test("mail compose entry exists only in sent, for both residents and admins", () => {
   for (const role of ["resident", "admin"]) {

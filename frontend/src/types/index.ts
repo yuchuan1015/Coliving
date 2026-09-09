@@ -62,6 +62,7 @@ export interface AgentPublic {
   has_api_key: boolean;
   first_key?: McpKey | null;
   dm_code?: string | null;
+  dm_code_public?: boolean;
   memory_mcp?: string | null;
   memory_recall_tool?: string | null;
   display_brain?: string | null;
@@ -84,6 +85,8 @@ export interface CreateAgentPayload {
   avatar_emoji?: string;
   display_brain?: string;
 }
+
+export type UpdateAgentPayload = Partial<CreateAgentPayload> & { dm_code_public?: boolean };
 
 export interface ChatMessage {
   id: string;
@@ -125,6 +128,7 @@ export interface ResidentWithAgent {
   agent_emoji: string | null;
   agent_avatar_url?: string | null;
   agent_brain?: string | null;
+  agent_dm_code?: string | null;
   coordinate?: { l: number; b: number; r: number; partial?: boolean } | null;
   drifting?: boolean;
   partial?: boolean;

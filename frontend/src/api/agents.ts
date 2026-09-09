@@ -1,5 +1,5 @@
 import client from "./client";
-import type { AgentPublic, CreateAgentPayload, LlmProvider, McpKey } from "../types";
+import type { AgentPublic, CreateAgentPayload, LlmProvider, McpKey, UpdateAgentPayload } from "../types";
 
 export interface ProviderSettings {
   providers: { key: LlmProvider; name: string }[];
@@ -50,7 +50,7 @@ export async function revokeMcpToken(tokenId: string): Promise<void> {
 
 export async function updateAgent(
   id: string,
-  payload: Partial<CreateAgentPayload>,
+  payload: UpdateAgentPayload,
 ): Promise<AgentPublic> {
   const res = await client.patch<AgentPublic>(`/agents/${id}`, payload);
   return res.data;

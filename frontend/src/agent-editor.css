@@ -39,6 +39,13 @@
 .agent-editor input::placeholder, .agent-editor textarea::placeholder { color: #a396b5; opacity: 1; }
 .agent-editor small { font-size: 13px; color: var(--edit-muted); line-height: 1.6; overflow-wrap: anywhere; }
 .agent-editor-count { justify-self: end; margin-bottom: -8px; }
+.agent-dm-visibility { display: grid; gap: 8px; border-top: 1px solid var(--edit-line); padding-top: 24px; }
+.agent-dm-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; cursor: pointer; }
+.agent-editor input.agent-dm-switch { appearance: none; -webkit-appearance: none; flex: 0 0 48px; width: 48px; height: 32px; min-height: 32px; padding: 4px; margin: 0; border-radius: 32px; cursor: pointer; }
+.agent-editor input.agent-dm-switch::before { content: ""; display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--edit-muted); }
+.agent-editor input.agent-dm-switch:checked { background: #c5a7e6; border-color: #c5a7e6; }
+.agent-editor input.agent-dm-switch:checked::before { margin-left: 16px; background: #231432; }
+.agent-editor input.agent-dm-switch:disabled { cursor: not-allowed; opacity: .5; }
 .agent-avatar-field { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; }
 .agent-editor-avatar { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid var(--edit-line); border-radius: 50%; font-size: 28px; background: rgb(12 9 25 / .4); overflow: hidden; }
 .agent-emoji-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
