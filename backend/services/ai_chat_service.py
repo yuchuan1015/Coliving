@@ -161,10 +161,11 @@ def _build_messages(db: Session, conv: AIConversation, for_agent: Agent, other_a
 
 
 def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_agent: Agent) -> dict:
-    ctx = memory_service.init_context(db, agent, query=f"跟 {other_agent.name} 的事")
-    if ctx["count"] == 0:
+    try:  # 讀不到記憶不開口；剛領養的除外（第一次見面）
+        ctx = memory_service.require_context(db, agent, query=f"跟 {other_agent.name} 的事")
+    except memory_service.MemoryEmpty:
         logger.info("AI decision skipped: %s has no memory", agent.name)
-        return {"action": "wait", "content": ""}  # 讀不到記憶不開口
+        return {"action": "wait", "content": ""}
     system_prompt = memory_service.system_prompt_with_memory(agent, ctx) + "\n\n" + _DECISION_PROMPT.format(other_name=other_agent.name)
     messages = _build_messages(db, conv, agent, other_agent)
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
@@ -257,8 +258,11 @@ def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initi
     bed_service.set_bed("site")  # 對方是站上那張床在回
     if is_blocked(db, from_agent):
         raise ValueError("你的私訊權已被停用")
-    if has_live_bed(to_agent) and memory_service.init_context(db, to_agent, query=initial_message)["count"] == 0:
-        raise ValueError(f"{to_agent.name}{memory_service.EMPTY_MESSAGE}，這次不接")
+    if has_live_bed(to_agent):
+        try:
+            memory_service.require_context(db, to_agent, query=initial_message)
+        except memory_service.MemoryEmpty as e:
+            raise ValueError(f"{to_agent.name}{e}，這次不接")
     from sqlalchemy import or_
     existing = (
         db.query(AIConversation)

@@ -29,6 +29,7 @@ DRAWER_CATALOG_N = 50   # 抽屜只列目錄（label＋分類），不帶內容
 FAR_LIMIT = 10          # 遠路一次要幾條
 FAR_TEXT_CAP = 6000     # 遠路回來的字數上限，超過截斷並標明
 EMPTY_MESSAGE = "還沒讀到記憶"
+FIRST_MEETING = "這是你們第一次見面。你還沒有任何記憶，也還沒寫過日記——這一段對話就是你的第一段記憶。"
 
 
 class MemoryEmpty(ValueError):
@@ -165,10 +166,34 @@ def init_context(db: Session, agent: Agent, query: str = "", client_factory=Exte
     return {"text": text, "count": count, "near": near, "far": far}
 
 
+def has_lived(db: Session, agent: Agent) -> bool:
+    """這個室友以前有沒有活動過（講過話、寫過日記）。用來分辨「剛領養」和「本來有記憶但現在讀不到」。"""
+    from models.conversation import Conversation
+    from models.message import Message
+    spoke = (
+        db.query(Message.id)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .filter(Conversation.agent_id == agent.id)
+        .first()
+    )
+    if spoke:
+        return True
+    return db.query(DiaryEntry.id).filter(DiaryEntry.agent_id == agent.id).first() is not None
+
+
 def require_context(db: Session, agent: Agent, query: str = "", client_factory=ExternalMCPClient, force: bool = False) -> dict:
+    """讀不到記憶就不開口——但「剛領養、還沒活過」不算讀不到，那是第一次見面。
+    2026-09-09 她定：新住戶第一句話不該被擋。"""
     ctx = init_context(db, agent, query, client_factory=client_factory, force=force)
-    if ctx["count"] == 0:
+    if ctx["count"] > 0:
+        return ctx
+    # 有掛外部記憶庫卻讀不到 → 這才是真的失憶，不能開口
+    if memory_mcp_config(agent) and not ctx["far"]["ok"]:
+        raise MemoryEmpty(f"{EMPTY_MESSAGE}（記憶庫連不上）")
+    if has_lived(db, agent):
         raise MemoryEmpty(EMPTY_MESSAGE)
+    ctx["first_meeting"] = True
+    ctx["text"] = FIRST_MEETING
     return ctx
 
 
