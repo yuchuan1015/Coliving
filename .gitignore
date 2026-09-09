@@ -20,3 +20,6 @@ backend/uploads/
 # os
 .DS_Store
 backend/private_photos/
+
+# 給我的工作規矩，寫的是她的習慣，不公開
+CLAUDE.md
