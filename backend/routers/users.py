@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.user import User
 from schemas.user import AnchorRequest, ResidentListResponse, ResidentWithAgent, UpdateMeRequest, UserMe
-from services import coordinate_service, time_service, weather_service
+from services import ai_chat_service, coordinate_service, time_service, weather_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -105,6 +105,7 @@ def list_residents(
             agent_emoji=a.avatar_emoji if a else None,
             agent_avatar_url=a.avatar_url if a else None,
             agent_brain=a.display_brain if a else None,
+            agent_dm_code=(ai_chat_service.dm_code_for(a, u) if a and a.dm_code_public else None),
             **coordinate_service.describe(db, u, viewer=current_user),
         )
         for u, a in rows

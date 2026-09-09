@@ -35,6 +35,8 @@ class Agent(Base):
     credit_spent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     shell_balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     current_location: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # 私訊碼公不公開在名錄上，室友自己決定（2026-09-09 她定），預設公開
+    dm_code_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     is_sleeping: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

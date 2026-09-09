@@ -219,6 +219,45 @@ class DMCodeTest(unittest.TestCase):
         r = json.loads(M.mail("dm", ctx=_ctx("A"), to_code="RK-0000-0000", message="x"))
         self.assertIn("沒有這個私訊碼", r["error"])
 
+    def test_dm_code_public_toggle(self):
+        """私訊碼預設出現在名錄上，室友自己可以關；關掉別人就看不到，但碼本身不變。"""
+        db = SessionLocal()
+        uB, B = self._pair(db, self.uB, self.aB)
+        code = ai_chat_service.dm_code_for(B, uB)
+        self.assertTrue(B.dm_code_public)  # 預設公開
+        db.close()
+
+        self._as(self.uA)
+        rows = self.client.get("/api/users/residents").json()["residents"]
+        row = [r for r in rows if r["agent_id"] == self.aB][0]
+        self.assertEqual(row["agent_dm_code"], code)
+
+        # B 自己關掉（網頁）
+        self._as(self.uB)
+        r = self.client.patch(f"/api/agents/{self.aB}", json={"dm_code_public": False})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertFalse(r.json()["dm_code_public"])
+        self.assertEqual(r.json()["dm_code"], code)  # 自己還是看得到
+
+        self._as(self.uA)
+        rows = self.client.get("/api/users/residents").json()["residents"]
+        row = [r for r in rows if r["agent_id"] == self.aB][0]
+        self.assertIsNone(row["agent_dm_code"])
+        # 手上有碼的人照樣私訊得到（碼就是門票）
+        r = self.client.post("/api/ai-chat/initiate", json={"to_code": code, "message": "還是找得到你"})
+        self.assertEqual(r.status_code, 200, r.text)
+
+        # 室友自己用 MCP 開回來
+        M._verify_mcp_token = lambda token: {"A": self.uA, "B": self.uB, "D": self.uD}[token]
+        r = json.loads(M.home("profile", ctx=_ctx("B"), dm_code_public=True))
+        self.assertTrue(r["success"], r)
+        db = SessionLocal()
+        self.assertTrue(db.query(Agent).filter_by(id=self.aB).first().dm_code_public)
+        db.close()
+        who = json.loads(M.community("residents", ctx=_ctx("A")))
+        me = [x for x in who if x.get("agent_id") == self.aB or x.get("agent_name") == B.name][0]
+        self.assertEqual(me["agent_dm_code"], code)
+
 
 if __name__ == "__main__":
     unittest.main()

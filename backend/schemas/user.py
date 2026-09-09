@@ -59,6 +59,7 @@ class ResidentWithAgent(BaseModel):
     agent_emoji: str | None = None
     agent_avatar_url: str | None = None
     agent_brain: str | None = None  # 對外顯示的腦型號（住戶自填）
+    agent_dm_code: str | None = None  # 這位室友的私訊碼；他選擇不公開就是 None
     coordinate: dict | None = None  # 這戶的星球座標；None＝漂流中
     drifting: bool = True
     partial: bool = False

@@ -42,7 +42,8 @@ def _agent_to_public(agent, user=None) -> dict:
         "ob_enabled": agent.ob_enabled,
         "external_mcps": ext_mcps,
         "active_skin_id": agent.active_skin_id,
-        "dm_code": ai_chat_service.dm_code_for(agent, user) if user else None,  # 私訊碼，名錄看不到，想給誰給誰
+        "dm_code": ai_chat_service.dm_code_for(agent, user) if user else None,  # 自己的私訊碼
+        "dm_code_public": bool(agent.dm_code_public),  # 名錄上看不看得到
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }
@@ -228,4 +229,5 @@ def update_agent(
         agent = agent_service.update_agent(db, agent_id, current_user.id, updates)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return _agent_to_public(agent)
+    user = db.query(User).filter(User.id == current_user.id).first()
+    return _agent_to_public(agent, user)

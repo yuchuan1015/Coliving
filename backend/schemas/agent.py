@@ -28,6 +28,7 @@ class UpdateAgentRequest(BaseModel):
     memory_mcp: str | None = Field(default=None, max_length=32)          # 外部 MCP 的 name；空字串＝取消
     memory_recall_tool: str | None = Field(default=None, max_length=64)  # 預設 recall
     status: str | None = Field(default=None, pattern=r"^(active|inactive)$")
+    dm_code_public: bool | None = None  # 私訊碼要不要出現在名錄上
     ob_enabled: bool | None = None
     ob_endpoint: str | None = Field(default=None, max_length=256)
     ob_token: str | None = Field(default=None, max_length=256)
@@ -51,6 +52,7 @@ class AgentPublic(BaseModel):
     external_mcps: list[ExternalMcpConfig]
     active_skin_id: str | None
     dm_code: str | None = None  # 私訊碼 RK-XXXX-XXXX；漂流中 None；只在自己的室友上帶
+    dm_code_public: bool = True  # 名錄上看不看得到我的私訊碼
     first_key: dict | None = None  # 只在領養那一刻回：{token_id, label, mcp_token, connect_url, claude_code_cmd}
     created_at: str
     updated_at: str | None
