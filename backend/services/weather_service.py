@@ -50,20 +50,99 @@ def _wmo(code: int, wind_kmh: float) -> tuple[str, str, str]:
     return "cloudy", "⛅", "多雲"
 
 
+# 台灣的城市自己查表（2026-09-09）：Open-Meteo 的中文索引對台灣很差——「台北」「花蓮」查不到，
+# 「高雄」「新北」會查到大陸同名的地方，差上千公里。這張表先比，比不到才問 API。
+TW_PLACES: dict[str, tuple[float, float, str]] = {
+    # 六都與縣市
+    "台北": (25.0330, 121.5654, "台北市"),
+    "新北": (25.0169, 121.4628, "新北市"),
+    "基隆": (25.1276, 121.7392, "基隆市"),
+    "桃園": (24.9937, 121.3009, "桃園市"),
+    "新竹": (24.8138, 120.9675, "新竹市"),
+    "竹北": (24.8387, 121.0177, "竹北市"),
+    "苗栗": (24.5602, 120.8214, "苗栗市"),
+    "台中": (24.1477, 120.6736, "台中市"),
+    "彰化": (24.0518, 120.5161, "彰化市"),
+    "南投": (23.9609, 120.9719, "南投市"),
+    "雲林": (23.7075, 120.5439, "雲林縣"),
+    "斗六": (23.7075, 120.5439, "斗六市"),
+    "嘉義": (23.4801, 120.4491, "嘉義市"),
+    "台南": (22.9999, 120.2270, "台南市"),
+    "高雄": (22.6273, 120.3014, "高雄市"),
+    "屏東": (22.6813, 120.4880, "屏東市"),
+    "宜蘭": (24.7021, 121.7378, "宜蘭市"),
+    "羅東": (24.6772, 121.7666, "羅東鎮"),
+    "花蓮": (23.9871, 121.6015, "花蓮市"),
+    "台東": (22.7583, 121.1444, "台東市"),
+    "澎湖": (23.5654, 119.5665, "澎湖縣"),
+    "馬公": (23.5654, 119.5665, "馬公市"),
+    "金門": (24.4321, 118.3171, "金門縣"),
+    "連江": (26.1608, 119.9500, "連江縣"),
+    "馬祖": (26.1608, 119.9500, "馬祖"),
+    # 常講的區鎮
+    "板橋": (25.0143, 121.4672, "新北市板橋"),
+    "中和": (24.9993, 121.4989, "新北市中和"),
+    "永和": (25.0107, 121.5152, "新北市永和"),
+    "新莊": (25.0359, 121.4503, "新北市新莊"),
+    "三重": (25.0616, 121.4869, "新北市三重"),
+    "新店": (24.9678, 121.5417, "新北市新店"),
+    "汐止": (25.0629, 121.6586, "新北市汐止"),
+    "淡水": (25.1697, 121.4406, "新北市淡水"),
+    "中壢": (24.9537, 121.2251, "桃園市中壢"),
+    "豐原": (24.2530, 120.7180, "台中市豐原"),
+    "鹿港": (24.0576, 120.4347, "彰化縣鹿港"),
+    "埔里": (23.9650, 120.9677, "南投縣埔里"),
+    "恆春": (22.0028, 120.7455, "屏東縣恆春"),
+    "墾丁": (21.9483, 120.7997, "屏東縣墾丁"),
+    "蘇澳": (24.5951, 121.8425, "宜蘭縣蘇澳"),
+    "小琉球": (22.3428, 120.3706, "屏東縣小琉球"),
+    "綠島": (22.6597, 121.4870, "台東縣綠島"),
+    "蘭嶼": (22.0400, 121.5580, "台東縣蘭嶼"),
+}
+# 英文也吃
+TW_PLACES.update({
+    "taipei": TW_PLACES["台北"], "new taipei": TW_PLACES["新北"], "keelung": TW_PLACES["基隆"],
+    "taoyuan": TW_PLACES["桃園"], "hsinchu": TW_PLACES["新竹"], "miaoli": TW_PLACES["苗栗"],
+    "taichung": TW_PLACES["台中"], "changhua": TW_PLACES["彰化"], "nantou": TW_PLACES["南投"],
+    "yunlin": TW_PLACES["雲林"], "chiayi": TW_PLACES["嘉義"], "tainan": TW_PLACES["台南"],
+    "kaohsiung": TW_PLACES["高雄"], "pingtung": TW_PLACES["屏東"], "yilan": TW_PLACES["宜蘭"],
+    "hualien": TW_PLACES["花蓮"], "taitung": TW_PLACES["台東"], "penghu": TW_PLACES["澎湖"],
+    "kinmen": TW_PLACES["金門"], "matsu": TW_PLACES["馬祖"],
+})
+
+_SUFFIXES = ("市", "縣", "區", "鎮", "鄉", "村", "city", "county")
+
+
+def _tw_lookup(city: str) -> tuple[float, float, str] | None:
+    """台灣的地名先自己查：臺＝台，市／縣／區可有可無。"""
+    key = city.strip().replace("臺", "台").lower()
+    if key in TW_PLACES:
+        return TW_PLACES[key]
+    for suf in _SUFFIXES:
+        if key.endswith(suf) and key[: -len(suf)].strip() in TW_PLACES:
+            return TW_PLACES[key[: -len(suf)].strip()]
+    return None
+
+
 def geocode(city: str) -> tuple[float, float, str] | None:
-    """城市名 → (lat, lon, 顯示名)。Open-Meteo geocoding，中英文都吃。"""
+    """城市名 → (lat, lon, 顯示名)。台灣的地名先查自己的表（Open-Meteo 中文索引對台灣很差，會查到大陸同名的地方），其他地方問 Open-Meteo，中文查不到再用英文。"""
     city = city.strip()
     if not city:
         return None
     if city in _geo_cache:
         return _geo_cache[city]
-    try:
-        r = httpx.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": city, "count": 1, "language": "zh"}, timeout=8.0)
-        res = (r.json() or {}).get("results") or []
-        out = (res[0]["latitude"], res[0]["longitude"], res[0].get("name", city)) if res else None
-    except Exception as e:  # noqa: BLE001
-        logger.warning("geocode failed for %s: %s", city, e)
-        out = None
+    out = _tw_lookup(city)
+    if out is None:
+        for lang in ("zh", "en"):
+            try:
+                r = httpx.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": city, "count": 1, "language": lang}, timeout=8.0)
+                res = (r.json() or {}).get("results") or []
+            except Exception as e:  # noqa: BLE001
+                logger.warning("geocode failed for %s (%s): %s", city, lang, e)
+                res = []
+            if res:
+                out = (res[0]["latitude"], res[0]["longitude"], res[0].get("name", city))
+                break
     _geo_cache[city] = out
     return out
 
