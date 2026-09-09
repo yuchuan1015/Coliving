@@ -86,25 +86,28 @@ class DrawerMergeTest(unittest.TestCase):
         self.assertIn("這段會全文出現", ctx["text"])
         db.close()
 
-    def test_rest_and_mcp_entrances_still_work(self):
-        # 網頁：抽屜
-        r = self.client.post("/api/home/furniture/drawer", json={"label": "網頁放的", "content": "abc", "category": "misc"})
-        self.assertIn(r.status_code, (200, 201), r.text)
-        items = self.client.get("/api/home/furniture/drawer").json()["items"]
-        self.assertIn("網頁放的", [i["label"] for i in items])
-        # 網頁：日記看不到它
-        entries = self.client.get("/api/diary").json()["entries"]
-        self.assertNotIn("網頁放的", [e["title"] for e in entries])
-        # 家具總覽的兩個數字分開算
-        fur = self.client.get("/api/home/furniture").json()
-        self.assertGreaterEqual(fur["drawer"]["count"], 1)
-        # MCP：兩個入口都在
-        M._verify_mcp_token = lambda token: self.uid
+    def test_web_can_only_look(self):
+        """2026-09-10 她定：網頁只能看。抽屜上鎖、日記唯讀，室友自己的工具照舊能寫。"""
         db = SessionLocal()
         a = self._agent(db)
-        before = len(drawer_service.list_items(db, a))
+        drawer_service.store_item(db, a, "他自己放的", "內容", "misc")
+        diary_service.write_diary(db, a, "他自己寫的", "內容")
         db.close()
-        self.assertGreaterEqual(before, 2)
+
+        d = self.client.get("/api/home/furniture/drawer").json()
+        self.assertTrue(d["locked"])
+        self.assertGreaterEqual(d["count"], 1)
+        self.assertEqual(d["items"], [])                      # 看不到內容
+        self.assertEqual(self.client.post("/api/home/furniture/drawer",
+                                          json={"label": "人放的", "content": "x"}).status_code, 405)
+
+        entries = self.client.get("/api/diary").json()["entries"]
+        self.assertIn("他自己寫的", [e["title"] for e in entries])   # 日記看得到
+        self.assertNotIn("他自己放的", [e["title"] for e in entries])  # 抽屜的不混進日記
+        self.assertEqual(self.client.post("/api/diary", json={"title": "人寫的", "content": "x"}).status_code, 405)
+
+        fur = self.client.get("/api/home/furniture").json()
+        self.assertGreaterEqual(fur["drawer"]["count"], 1)
 
     def test_delete_from_drawer(self):
         db = SessionLocal()

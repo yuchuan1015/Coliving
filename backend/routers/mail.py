@@ -193,89 +193,8 @@ def read_mail(
     return _mail_to_detail(mail, from_a, to_a, _sender_view(mail, agent.id))
 
 
-@router.post("/letter", response_model=MailOut, status_code=201)
-def send_letter(
-    body: SendLetterRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent_or_403(db, current_user)
-    to_agent = db.query(Agent).filter(Agent.id == body.to_agent_id).first()
-    if not to_agent:
-        raise HTTPException(status_code=404, detail="找不到收件人")
-    if to_agent.id == agent.id:
-        raise HTTPException(status_code=400, detail="不能寄信給自己")
-
-    delay_hours = random.uniform(12, 48)
-    deliver_at = datetime.now(timezone.utc) + timedelta(hours=delay_hours)
-
-    mail = Mail(
-        from_agent_id=agent.id,
-        to_agent_id=to_agent.id,
-        subject=body.subject,
-        content=body.content,
-        mail_type="letter",
-        is_anonymous=body.is_anonymous,
-        deliver_at=deliver_at,
-    )
-    db.add(mail)
-    credit_service.award_credit(db, agent, "send_mail")
-    activity_service.log(db, agent, "send_mail", f"寄了一封信給{to_agent.name}")
-    db.commit()
-    db.refresh(mail)
-    return _mail_to_out(mail, agent, to_agent, False)
-
-
-@router.post("/timed", response_model=MailOut, status_code=201)
-def create_timed_delivery(
-    body: TimedDeliveryRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent_or_403(db, current_user)
-    to_agent = db.query(Agent).filter(Agent.id == body.to_agent_id).first()
-    if not to_agent:
-        raise HTTPException(status_code=404, detail="找不到收件人")
-
-    deliver_time = _parse_deliver_at(body.deliver_at)
-
-    if deliver_time <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="送達時間必須是未來")
-
-    mail = Mail(
-        from_agent_id=agent.id,
-        to_agent_id=to_agent.id,
-        subject=body.subject,
-        content=body.content,
-        mail_type="timed",
-        deliver_at=deliver_time,
-    )
-    db.add(mail)
-    db.commit()
-    db.refresh(mail)
-    return _mail_to_out(mail, agent, to_agent, None)
-
-
-@router.post("/physical", response_model=MailOut, status_code=201)
-def create_physical_order(
-    body: PhysicalOrderRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent_or_403(db, current_user)
-
-    mail = Mail(
-        from_agent_id=agent.id,
-        to_agent_id=agent.id,
-        subject=body.subject,
-        content=body.content,
-        mail_type="physical",
-        status="pending",
-    )
-    db.add(mail)
-    db.commit()
-    db.refresh(mail)
-    return _mail_to_out(mail, agent, agent, False)
+# 2026-09-10 她定：寄信是室友的事，網頁只能看。人要寄信走室友（MCP mail send / dm）。
+# 實體寄送也一起收掉；之後若要讓住戶自己下單，另外開一條寫明是誰下的。
 
 
 @router.patch("/{mail_id}/status")
@@ -295,17 +214,5 @@ def update_physical_status(
     return {"ok": True, "status": status}
 
 
-@router.delete("/{mail_id}", status_code=204)
-def delete_mail(
-    mail_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent_or_403(db, current_user)
-    mail = db.query(Mail).filter(Mail.id == mail_id).first()
-    if not mail:
-        raise HTTPException(status_code=404, detail="找不到這封信")
-    if mail.to_agent_id != agent.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="只能刪除自己的信")
-    db.delete(mail)
-    db.commit()
+# 刪信也是寫入，一起收掉（2026-09-10 她定）。室友自己刪走 MCP mail delete；
+# 管理員要刪的話目前沒有入口，需要再開。
