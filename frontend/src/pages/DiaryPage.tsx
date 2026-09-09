@@ -1,5 +1,5 @@
+import { CabinUtilityShell, CabinUtilityEmpty } from "../components/CabinUtilityShell";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   createDiaryEntry,
   deleteDiaryEntry,
@@ -8,7 +8,6 @@ import {
 } from "../api/furniture";
 
 export function DiaryPage() {
-  const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -60,184 +59,39 @@ export function DiaryPage() {
     load(keyword.trim() || undefined);
   }
 
-  return (
-    <main className="mx-auto max-w-lg px-5 py-6 pb-20">
-      {/* Header */}
-      <div className="mb-5 flex items-center gap-3">
-        <button
-          onClick={() => navigate("/")}
-          className="text-[13px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          ← 回家
-        </button>
-        <h1
-          className="text-[18px] font-semibold tracking-tight"
-          style={{ color: "var(--ink)" }}
-        >
-          📔 日記本
-        </h1>
+
+  return <CabinUtilityShell title="日記本" code="DIARY">
+    <section className="photo-panel" aria-label="搜尋日記">
+      <div className="utility-toolbar"><h2>我的日記</h2>{!composing && <button className="photo-primary" onClick={() => setComposing(true)}>＋ 寫日記</button>}</div>
+      <div className="utility-search">
+        <input type="search" aria-label="搜尋日記" value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSearch()} placeholder="搜尋日記…" />
+        <button onClick={handleSearch}>搜尋</button>
       </div>
-
-      {/* Search */}
-      <div className="mb-4 flex gap-2">
-        <input
-          type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="搜尋日記⋯"
-          className="flex-1 rounded-lg px-3 py-2 text-[13px] outline-none"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            color: "var(--ink)",
-          }}
-        />
-        <button
-          onClick={handleSearch}
-          className="rounded-lg px-3 py-2 text-[13px] font-medium"
-          style={{ background: "var(--surface-dim)", color: "var(--ink-soft)" }}
-        >
-          搜尋
-        </button>
+    </section>
+    {composing && <section className="photo-panel" aria-label="撰寫日記">
+      <h2>寫一則日記</h2>
+      <div className="utility-form">
+        <label>標題<input value={title} onChange={e => setTitle(e.target.value)} placeholder="替這一刻取個名字" autoFocus /></label>
+        <label>內容<textarea value={content} onChange={e => setContent(e.target.value)} placeholder="寫點什麼…" rows={6} /></label>
+        <div className="utility-actions">
+          <button className="photo-primary" onClick={handleSave} disabled={saving || !title.trim() || !content.trim()}>{saving ? "儲存中…" : "儲存"}</button>
+          <button onClick={() => { setComposing(false); setTitle(""); setContent(""); }}>取消</button>
+        </div>
       </div>
-
-      {/* New entry button / form */}
-      {composing ? (
-        <div
-          className="mb-5 rounded-xl p-4"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="標題"
-            autoFocus
-            className="mb-3 w-full rounded-lg px-3 py-2 text-[14px] font-medium outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="寫點什麼⋯"
-            rows={5}
-            className="mb-3 w-full resize-none rounded-lg px-3 py-2 text-[13px] outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={saving || !title.trim() || !content.trim()}
-              className="rounded-lg px-4 py-1.5 text-[13px] font-medium disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-            >
-              {saving ? "儲存中⋯" : "儲存"}
-            </button>
-            <button
-              onClick={() => {
-                setComposing(false);
-                setTitle("");
-                setContent("");
-              }}
-              className="rounded-lg px-4 py-1.5 text-[13px]"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setComposing(true)}
-          className="mb-5 w-full rounded-lg py-2.5 text-[13px] font-medium"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            color: "var(--ink-soft)",
-          }}
-        >
-          + 寫日記
-        </button>
-      )}
-
-      {/* Entries */}
-      {loading ? (
-        <p className="text-center text-[13px]" style={{ color: "var(--ink-soft)" }}>
-          載入中⋯
-        </p>
-      ) : entries.length === 0 ? (
-        <p className="text-center text-[13px]" style={{ color: "var(--ink-soft)" }}>
-          {keyword ? "沒有找到符合的日記" : "還沒有日記"}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {entries.map((entry) => (
-            <div
-              key={entry.id}
-              className="rounded-xl px-4 py-3"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <button
-                onClick={() =>
-                  setExpanded(expanded === entry.id ? null : entry.id)
-                }
-                className="flex w-full items-center justify-between text-left"
-              >
-                <div>
-                  <h3
-                    className="text-[14px] font-medium"
-                    style={{ color: "var(--ink)" }}
-                  >
-                    {entry.title}
-                  </h3>
-                  <span className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
-                    {new Date(entry.created_at).toLocaleDateString("zh-TW")}
-                    {entry.source !== "manual" && ` · ${entry.source}`}
-                  </span>
-                </div>
-                <span
-                  className="text-[11px]"
-                  style={{ color: "var(--ink-muted)" }}
-                >
-                  {expanded === entry.id ? "▾" : "▸"}
-                </span>
-              </button>
-              {expanded === entry.id && (
-                <div className="mt-3">
-                  <p
-                    className="whitespace-pre-wrap text-[13px] leading-relaxed"
-                    style={{ color: "var(--ink-soft)" }}
-                  >
-                    {entry.content}
-                  </p>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      className="text-[12px]"
-                      style={{ color: "var(--error)" }}
-                    >
-                      刪除
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </main>
-  );
+    </section>}
+    {loading ? <CabinUtilityEmpty title="正在讀取日記…" loading /> : entries.length === 0 ?
+      <CabinUtilityEmpty title={keyword ? "沒有找到符合的日記" : "還沒有日記"}>{keyword ? "換個關鍵字再找找。" : "從上方寫下一則日記，留住這一刻。"}</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label="日記列表">{entries.map(entry =>
+        <article className="photo-panel utility-entry" key={entry.id}>
+          <button className="utility-entry-toggle" aria-expanded={expanded === entry.id} onClick={() => setExpanded(expanded === entry.id ? null : entry.id)}>
+            <span className="utility-entry-copy"><span className="utility-entry-title">{entry.title}</span><span className="utility-meta">{new Date(entry.created_at).toLocaleDateString("zh-TW")}{entry.source !== "manual" && ` · ${entry.source}`}</span></span>
+            <span className="utility-chevron" aria-hidden="true">{expanded === entry.id ? "−" : "＋"}</span>
+          </button>
+          {expanded === entry.id && <div className="utility-entry-detail">
+            <p className="utility-body">{entry.content}</p>
+            <div className="utility-actions"><button className="utility-danger" onClick={() => handleDelete(entry.id)}>刪除</button></div>
+          </div>}
+        </article>
+      )}</section>}
+  </CabinUtilityShell>;
 }

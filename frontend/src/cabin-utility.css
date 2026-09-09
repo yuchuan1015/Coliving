@@ -1,0 +1,64 @@
+/* Furniture pages reuse the approved photo-album palette, backdrop and panels.
+   Everything is scoped: no changes to the cabin, mirror or public /mail field. */
+.cabin-utility { font-size: 16px; line-height: 1.7; }
+.cabin-utility .photo-album-stack { gap: 24px; }
+.cabin-utility .photo-eyebrow { font-size: 12px; }
+.cabin-utility .photo-album-header h1 { font-size: 28px; }
+.cabin-utility button { font-size: 14px; padding: 8px 16px; }
+.cabin-utility .photo-panel { padding: 24px; gap: 16px; }
+.utility-toolbar, .utility-actions, .utility-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.utility-toolbar { justify-content: space-between; gap: 16px; }
+.utility-toolbar > h2 { flex: 1; }
+.utility-search { display: flex; gap: 8px; min-width: 0; }
+.utility-search input { flex: 1; }
+.utility-search button { flex: none; }
+.cabin-utility input:not([type="checkbox"]), .cabin-utility select, .cabin-utility textarea {
+  width: 100%; min-width: 0; min-height: 48px; padding: 12px 16px;
+  border: 1px solid var(--album-line); border-radius: 12px; background: #120d20;
+  color: var(--album-ink); font: inherit; font-size: 16px; line-height: 1.5;
+}
+.cabin-utility input::placeholder, .cabin-utility textarea::placeholder { color: #9f93b2; }
+.cabin-utility textarea { min-height: 160px; resize: vertical; max-height: none; }
+.cabin-utility label { display: grid; gap: 8px; min-width: 0; font-size: 14px; color: var(--album-muted); }
+.cabin-utility input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--album-accent); flex: none; }
+.cabin-utility .utility-check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.utility-form { display: grid; gap: 16px; min-width: 0; }
+.utility-list { display: grid; gap: 12px; min-width: 0; }
+.utility-meta { color: var(--album-muted); font-size: 13px; }
+.utility-body { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--album-ink); line-height: 1.8; }
+.cabin-utility .utility-entry { padding: 0; overflow: hidden; gap: 0; }
+.cabin-utility .utility-entry-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 24px; text-align: left; background: none; border: 0; border-radius: 24px; }
+.utility-entry-copy { display: grid; gap: 8px; min-width: 0; flex: 1; }
+.utility-entry-title { font-size: 18px; color: var(--album-ink); overflow-wrap: anywhere; }
+.utility-chevron { flex: none; color: var(--album-accent); }
+.utility-entry-detail { display: grid; gap: 16px; margin: 0 24px; padding: 16px 0 24px; border-top: 1px solid var(--album-line); }
+.utility-entry-detail .utility-actions { justify-content: flex-end; }
+.cabin-utility .utility-danger { background: transparent; color: #e0b9d0; border-color: rgb(224 185 208 / .3); }
+.cabin-utility .utility-empty { min-height: 240px; justify-content: center; align-content: center; text-align: center; color: var(--album-muted); }
+.utility-empty-mark { display: block; font-size: 32px; color: var(--album-accent); }
+.utility-empty p { max-width: 32ch; margin-inline: auto; font-size: 14px; }
+.utility-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--album-line); border-radius: 20px; background: rgb(194 165 233 / .04); }
+.cabin-utility .utility-tabs button { padding: 8px 4px; border-color: transparent; background: transparent; }
+.cabin-utility .utility-tabs button[aria-pressed="true"] { color: #ead9ff; border-color: var(--album-line); background: rgb(197 167 230 / .14); }
+.cabin-utility .utility-mail { text-align: left; width: 100%; display: grid; padding: 24px; gap: 12px; font-size: 16px; border-radius: 26px; }
+.cabin-utility .utility-mail:not(button), .cabin-utility button.utility-mail { background: linear-gradient(135deg, rgb(43 30 65 / .95), rgb(16 12 30 / .97)); }
+.cabin-utility .utility-mail.is-unread { border-color: #b89ad8; }
+.utility-mail-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.utility-mail-name { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--album-muted); font-size: 14px; }
+.utility-mail-title { font-size: 18px; font-weight: 400; overflow-wrap: anywhere; }
+.utility-read-badge { font-size: 12px; color: var(--album-accent); }
+.cabin-utility .photo-badge { font-size: 12px; max-width: 100%; white-space: normal; }
+.utility-letter { display: grid; gap: 24px; }
+.utility-letter > header { display: grid; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--album-line); }
+.cabin-utility .utility-letter h2 { font-size: 24px; overflow-wrap: anywhere; }
+.utility-letter .utility-body { min-height: 160px; }
+.cabin-utility .utility-back { justify-self: start; }
+.cabin-utility .photo-status { margin: 0; }
+.cabin-utility .photo-status p { font-size: 14px; }
+@media (max-width: 380px) {
+  .cabin-utility .photo-panel, .cabin-utility .utility-mail, .cabin-utility .utility-entry-toggle { padding: 16px; }
+  .cabin-utility .utility-entry { padding: 0; }
+  .utility-entry-detail { margin-inline: 16px; padding-bottom: 16px; }
+  .cabin-utility .photo-album-header { flex-wrap: wrap; align-items: flex-start; }
+  .cabin-utility .photo-album-header h1 { font-size: 24px; }
+}

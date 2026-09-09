@@ -1,5 +1,5 @@
+import { CabinUtilityShell, CabinUtilityEmpty } from "../components/CabinUtilityShell";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   deleteMail,
   getInbox,
@@ -22,7 +22,6 @@ interface AgentOption {
 }
 
 export function MailboxPage() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("inbox");
   const [inbox, setInbox] = useState<MailOut[]>([]);
   const [sent, setSent] = useState<MailOut[]>([]);
@@ -136,320 +135,72 @@ export function MailboxPage() {
     if (agents.length === 0) loadAgents();
   }
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>打開信箱...</p>
-      </main>
-    );
-  }
 
-  // Reading a mail
-  if (reading) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8 pb-24">
-        <button
-          onClick={() => setReading(null)}
-          className="mb-6 text-sm"
-          style={{ color: "var(--accent)" }}
-        >
-          &larr; 回信箱
+  const feedback = <div className="photo-status" aria-live="polite">
+    {error && <p role="alert">{error}</p>}
+    {sent_ok && <p role="status">{sent_ok}</p>}
+  </div>;
+
+  if (loading) return <CabinUtilityShell title="星際信箱" code="MAILBOX"><CabinUtilityEmpty title="正在打開信箱…" loading /></CabinUtilityShell>;
+
+  if (reading) return <CabinUtilityShell title="星際信箱" code="MAILBOX">
+    <button className="utility-back" onClick={() => setReading(null)}>← 回信箱</button>
+    {feedback}
+    <article className="photo-panel utility-letter">
+      <header>
+        <div className="utility-mail-top"><span aria-hidden="true">{reading.from_emoji || "📮"}</span><span className="utility-mail-name">{reading.from_name || "系統"}</span><span className="photo-badge">{MAIL_TYPE_LABELS[reading.mail_type] || reading.mail_type}</span></div>
+        <h2>{reading.subject}</h2>
+        <p className="utility-meta">{new Date(reading.created_at).toLocaleDateString("zh-TW")}</p>
+      </header>
+      <div className="utility-body">{reading.content}</div>
+      {reading.status && <p className="utility-meta">寄送狀態：{STATUS_LABELS[reading.status] || reading.status}</p>}
+    </article>
+    <div className="utility-actions"><button className="utility-danger" onClick={() => handleDelete(reading.id)}>刪除這封信</button></div>
+  </CabinUtilityShell>;
+
+  return <CabinUtilityShell title="星際信箱" code="MAILBOX">
+    {feedback}
+    <nav className="utility-tabs" aria-label="信箱分類">
+      {(["inbox", "sent", "compose"] as Tab[]).map(t => <button key={t} aria-pressed={tab === t} onClick={() => t === "compose" ? openCompose() : setTab(t)}>
+        {t === "inbox" ? `收件 (${inbox.filter(m => !m.is_read).length})` : t === "sent" ? "寄件" : "寫信"}
+      </button>)}
+    </nav>
+    {tab === "inbox" && (inbox.length === 0 ? <CabinUtilityEmpty title="信箱空空的">收到的信件會留在這裡。</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label="收件匣">{inbox.map(m =>
+        <button key={m.id} className={`photo-panel utility-mail${m.is_read ? "" : " is-unread"}`} onClick={() => handleRead(m.id)}>
+          <span className="utility-mail-top"><span aria-hidden="true">{m.from_emoji || "📮"}</span><span className="utility-mail-name">{m.from_name || "系統"}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></span>
+          <span className="utility-mail-title">{m.subject}</span>
+          <span className="utility-meta"><span>{new Date(m.created_at).toLocaleDateString("zh-TW")}</span>{!m.is_read && <span className="utility-read-badge">未讀</span>}</span>
         </button>
-
-        <div
-          className="rounded-xl p-5"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <div className="mb-4 flex items-center gap-2">
-            <span className="text-lg">{reading.from_emoji || "📮"}</span>
-            <div>
-              <div className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-                {reading.from_name || "系統"}
-              </div>
-              <div className="text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                {MAIL_TYPE_LABELS[reading.mail_type] || reading.mail_type} ·{" "}
-                {new Date(reading.created_at).toLocaleDateString("zh-TW")}
-              </div>
-            </div>
+      )}</section>)}
+    {tab === "sent" && (sent.length === 0 ? <CabinUtilityEmpty title="還沒寄出過信">寫一封信，把想說的話寄出去。</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label="寄件匣">{sent.map(m =>
+        <article className="photo-panel utility-mail" key={m.id}>
+          <div className="utility-mail-top"><span aria-hidden="true">{m.to_emoji}</span><span className="utility-mail-name">寄給 {m.to_name}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></div>
+          <h2 className="utility-mail-title">{m.subject}</h2>
+          <div className="utility-meta">
+            <span>{new Date(m.created_at).toLocaleDateString("zh-TW")}</span>
+            {m.is_anonymous && <span>· 匿名</span>}
+            {m.status && <span>· {STATUS_LABELS[m.status] || m.status}</span>}
+            {m.deliver_at && new Date(m.deliver_at) > new Date() && <span>· 投遞中，預計 {new Date(m.deliver_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 送達</span>}
+            {m.deliver_at && new Date(m.deliver_at) <= new Date() && <span>· 已送達</span>}
           </div>
-
-          <h2 className="mb-3 text-base font-semibold" style={{ color: "var(--ink)" }}>
-            {reading.subject}
-          </h2>
-
-          <div
-            className="whitespace-pre-wrap text-sm leading-relaxed"
-            style={{ color: "var(--ink)" }}
-          >
-            {reading.content}
-          </div>
-
-          {reading.status && (
-            <div
-              className="mt-4 rounded-lg px-3 py-2 text-xs"
-              style={{ background: "var(--surface-dim)", color: "var(--ink-soft)" }}
-            >
-              寄送狀態：{STATUS_LABELS[reading.status] || reading.status}
-            </div>
-          )}
+        </article>
+      )}</section>)}
+    {tab === "compose" && <section className="photo-panel" aria-label="撰寫信件">
+      <h2>寫一封信</h2>
+      <div className="utility-form">
+        <label>收件人<select value={toId} onChange={e => setToId(e.target.value)}>
+          <option value="">選擇收件人…</option>
+          {agents.map(a => <option key={a.id} value={a.id}>{a.emoji} {a.name}</option>)}
+        </select></label>
+        <label>主旨<input value={subject} onChange={e => setSubject(e.target.value)} placeholder="主旨" maxLength={100} /></label>
+        <label>信件內容<textarea value={content} onChange={e => setContent(e.target.value)} placeholder="寫下你想說的…" rows={7} maxLength={2000} /></label>
+        <div className="utility-toolbar">
+          <label className="utility-check"><input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />匿名寄出</label>
+          <button className="photo-primary" disabled={sending || !toId || !subject.trim() || !content.trim()} onClick={handleSend}>{sending ? "寄出中…" : "寄出"}</button>
         </div>
-
-        <button
-          onClick={() => handleDelete(reading.id)}
-          className="mt-4 text-xs"
-          style={{ color: "var(--error)" }}
-        >
-          刪除這封信
-        </button>
-      </main>
-    );
-  }
-
-  return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-24">
-      <button
-        onClick={() => navigate("/")}
-        className="mb-4 text-sm"
-        style={{ color: "var(--accent)" }}
-      >
-        &larr; 回首頁
-      </button>
-
-      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>
-        郵驛
-      </h1>
-      <p className="mb-5 text-sm" style={{ color: "var(--ink-soft)" }}>
-        社區信件收發站。
-      </p>
-
-      {error && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-sm"
-          style={{ background: "var(--error)", color: "#fff" }}
-        >
-          {error}
-        </p>
-      )}
-      {sent_ok && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-center text-sm"
-          style={{ background: "var(--accent-light)", color: "var(--accent)" }}
-        >
-          {sent_ok}
-        </p>
-      )}
-
-      {/* Tabs */}
-      <div
-        className="mb-5 flex gap-1 rounded-lg p-1"
-        style={{ background: "var(--surface-dim)" }}
-      >
-        {(["inbox", "sent", "compose"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => (t === "compose" ? openCompose() : setTab(t))}
-            className="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-            style={{
-              background: tab === t ? "var(--surface)" : "transparent",
-              color: tab === t ? "var(--accent)" : "var(--ink-soft)",
-              boxShadow: tab === t ? "0 1px 2px rgba(0,0,0,.08)" : "none",
-            }}
-          >
-            {t === "inbox"
-              ? `收件 (${inbox.filter((m) => !m.is_read).length})`
-              : t === "sent"
-                ? "寄件"
-                : "寫信"}
-          </button>
-        ))}
       </div>
-
-      {/* Inbox */}
-      {tab === "inbox" && (
-        <>
-          {inbox.length === 0 ? (
-            <div
-              className="flex items-center justify-center rounded-xl py-16"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
-              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
-                信箱空空的
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {inbox.map((m) => (
-                <div
-                  key={m.id}
-                  onClick={() => handleRead(m.id)}
-                  className="cursor-pointer rounded-xl px-4 py-3 transition-colors"
-                  style={{
-                    background: m.is_read ? "var(--surface)" : "var(--surface-dim)",
-                    border: `1px solid ${m.is_read ? "var(--border)" : "var(--accent)"}`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{m.from_emoji || "📮"}</span>
-                    <span
-                      className="flex-1 text-sm font-medium"
-                      style={{ color: "var(--ink)" }}
-                    >
-                      {m.from_name || "系統"}
-                    </span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px]"
-                      style={{
-                        background: "var(--accent-light)",
-                        color: "var(--accent)",
-                      }}
-                    >
-                      {MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}
-                    </span>
-                  </div>
-                  <div
-                    className="mt-1 text-sm"
-                    style={{
-                      color: "var(--ink)",
-                      fontWeight: m.is_read ? "normal" : "600",
-                    }}
-                  >
-                    {m.subject}
-                  </div>
-                  <div
-                    className="mt-0.5 text-[10px]"
-                    style={{ color: "var(--ink-soft)" }}
-                  >
-                    {new Date(m.created_at).toLocaleDateString("zh-TW")}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Sent */}
-      {tab === "sent" && (
-        <>
-          {sent.length === 0 ? (
-            <div
-              className="flex items-center justify-center rounded-xl py-16"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
-              <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
-                還沒寄出過信
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {sent.map((m) => (
-                <div
-                  key={m.id}
-                  className="rounded-xl px-4 py-3"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{m.to_emoji}</span>
-                    <span className="flex-1 text-sm" style={{ color: "var(--ink)" }}>
-                      寄給 {m.to_name}
-                    </span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px]"
-                      style={{ background: "var(--accent-light)", color: "var(--accent)" }}
-                    >
-                      {MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-sm font-medium" style={{ color: "var(--ink)" }}>
-                    {m.subject}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                    <span>{new Date(m.created_at).toLocaleDateString("zh-TW")}</span>
-                    {m.is_anonymous && <span>· 匿名</span>}
-                    {m.status && <span>· {STATUS_LABELS[m.status] || m.status}</span>}
-                    {m.deliver_at && new Date(m.deliver_at) > new Date() && (
-                      <span>· 投遞中，預計 {new Date(m.deliver_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 送達</span>
-                    )}
-                    {m.deliver_at && new Date(m.deliver_at) <= new Date() && (
-                      <span>· 已送達</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Compose */}
-      {tab === "compose" && (
-        <div
-          className="space-y-3 rounded-xl p-4"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <select
-            value={toId}
-            onChange={(e) => setToId(e.target.value)}
-            className="w-full rounded-lg px-3 py-2 text-sm"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <option value="">選擇收件人...</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.emoji} {a.name}
-              </option>
-            ))}
-          </select>
-          <input
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="主旨"
-            maxLength={100}
-            className="w-full rounded-lg px-3 py-2 text-sm"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          />
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="寫下你想說的..."
-            rows={6}
-            maxLength={2000}
-            className="w-full resize-y rounded-lg px-3 py-2 text-sm"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-              minHeight: "120px",
-            }}
-          />
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs" style={{ color: "var(--ink-soft)" }}>
-              <input
-                type="checkbox"
-                checked={anon}
-                onChange={(e) => setAnon(e.target.checked)}
-              />
-              匿名寄出
-            </label>
-            <button
-              disabled={sending || !toId || !subject.trim() || !content.trim()}
-              onClick={handleSend}
-              className="rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-40"
-              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-            >
-              {sending ? "寄出中..." : "寄出"}
-            </button>
-          </div>
-        </div>
-      )}
-    </main>
-  );
+    </section>}
+  </CabinUtilityShell>;
 }

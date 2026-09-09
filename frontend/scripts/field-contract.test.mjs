@@ -134,6 +134,159 @@ beforeEach(() => {
   };
 });
 
+const { CabinUtilityShell, CabinUtilityEmpty } = load("src/components/CabinUtilityShell.tsx");
+const { DiaryPage } = load("src/pages/DiaryPage.tsx");
+const { DrawerPage } = load("src/pages/DrawerPage.tsx");
+const { MailboxPage } = load("src/pages/MailboxPage.tsx");
+const utilityDiary = { id: "diary-1", agent_id: "me", title: "日記標題", content: "第一行\n第二行", source: "manual", importance: 3, created_at: "2026-09-09T00:00:00Z", updated_at: null };
+const utilityDrawer = { id: "drawer-1", agent_id: "me", label: "小紙條", content: "保留下來的話", category: "紙條", created_at: "2026-09-09T00:00:00Z" };
+const utilityMail = { id: "mail-1", from_name: "鄰居", from_emoji: "✦", to_name: "室友", to_emoji: "☾", subject: "一封測試信", content: "第一行\n第二行", mail_type: "letter", is_anonymous: false, is_read: false, status: null, created_at: "2026-09-09T00:00:00Z", deliver_at: null, expires_at: null };
+const nativeInput = (h, placeholder, value) => { nodes(h.tree, n => n.props.placeholder === placeholder)[0].props.onChange({ target: { value } }); h.render(); };
+async function utilityLoaded(component, response) {
+  answer = async () => ({ data: response });
+  const h = mount(component); h.effects(); await tick(); h.render(); return h;
+}
+test("furniture shell reuses the album theme, one title and an unchanged cabin return destination", () => {
+  for (const [title, code] of [["日記本", "DIARY"], ["抽屜", "DRAWER"], ["星際信箱", "MAILBOX"]]) {
+    const h = mount(CabinUtilityShell, { title, code, children: "內容" });
+    assert.equal(h.tree.props.className, "photo-album cabin-utility");
+    assert.equal(nodes(h.tree, n => n.type === "h1").length, 1);
+    assert.equal(text(nodes(h.tree, n => n.type === "h1")[0]), title);
+    assert.match(text(h.tree), new RegExp(code));
+    click(h, "← 返回艙室"); expectCall("navigate", "/");
+  }
+});
+test("utility empty and loading states have the shared panel, not a bare legacy page", () => {
+  const empty = mount(CabinUtilityEmpty, { title: "抽屜是空的", children: "放入一件物品。" });
+  assert.match(empty.tree.props.className, /photo-panel/); assert.match(text(empty.tree), /放入一件物品/);
+  const loading = mount(CabinUtilityEmpty, { title: "正在讀取日記…", loading: true });
+  assert.equal(loading.tree.props.role, "status");
+  for (const page of [DiaryPage, DrawerPage, MailboxPage]) {
+    const h = mount(page);
+    assert.equal(components(h, "CabinUtilityShell").length, 1);
+    assert.equal(one(h, "CabinUtilityEmpty").props.loading, true);
+  }
+});
+test("diary keeps its existing endpoint, keyword search and expand-only reading", async () => {
+  const h = await utilityLoaded(DiaryPage, [utilityDiary]);
+  expectCall("get", "/diary");
+  assert.ok(!text(h.tree).includes(utilityDiary.content));
+  const entry = nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0];
+  assert.equal(entry.props["aria-expanded"], false);
+  entry.props.onClick(); h.render(); assert.match(text(h.tree), /第一行\n第二行/);
+  assert.equal(nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props["aria-expanded"], true);
+  nativeInput(h, "搜尋日記…", " 星光 "); click(h, "搜尋");
+  await tick(); h.render(); expectCall("get", "/diary");
+  assert.deepEqual(calls.at(-1).args[1], { params: { keyword: "星光" } });
+  assert.ok(calls.every(c => c.method === "get"));
+});
+test("diary restyled editor saves the same trimmed payload, and removes only the selected entry", async () => {
+  const h = await utilityLoaded(DiaryPage, [utilityDiary]);
+  click(h, "＋ 寫日記"); assert.equal(button(h, "儲存").props.disabled, true);
+  nativeInput(h, "替這一刻取個名字", " 新日記 "); nativeInput(h, "寫點什麼…", " 新內容 ");
+  const added = { ...utilityDiary, id: "diary-new", title: "新日記", content: "新內容" };
+  answer = async () => ({ data: added });
+  await button(h, "儲存").props.onClick(); h.render();
+  expectCall("post", "/diary", { title: "新日記", content: "新內容" });
+  assert.equal(nodes(h.tree, n => n.props.placeholder === "替這一刻取個名字").length, 0);
+  nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props.onClick(); h.render();
+  await button(h, "刪除").props.onClick(); h.render(); expectCall("delete", "/diary/diary-new");
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
+  click(h, "＋ 寫日記"); nativeInput(h, "替這一刻取個名字", "放棄"); click(h, "取消");
+  click(h, "＋ 寫日記"); assert.equal(nodes(h.tree, n => n.props.placeholder === "替這一刻取個名字")[0].props.value, "");
+});
+test("drawer remains its own route/API with label, content and optional category", async () => {
+  const h = await utilityLoaded(DrawerPage, [utilityDrawer]);
+  expectCall("get", "/home/furniture/drawer");
+  click(h, "＋ 放東西進去");
+  assert.equal(button(h, "放進抽屜").props.disabled, true);
+  nativeInput(h, "物品名稱", " 一張票 "); nativeInput(h, "內容或描述…", " 首次旅行 "); nativeInput(h, "替物件留個分類", " 紀念 ");
+  answer = async () => ({ data: { ...utilityDrawer, id: "drawer-new", label: "一張票", content: "首次旅行", category: "紀念" } });
+  await button(h, "放進抽屜").props.onClick(); h.render();
+  expectCall("post", "/home/furniture/drawer", { label: "一張票", content: "首次旅行", category: "紀念" });
+  nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props.onClick(); h.render();
+  assert.match(text(h.tree), /首次旅行/);
+  await button(h, "丟掉").props.onClick(); h.render(); expectCall("delete", "/home/furniture/drawer/drawer-new");
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
+  assert.ok(!calls.some(c => c.args[0] === "/diary"));
+});
+test("drawer cancel retains the existing reset and blank category stays optional", async () => {
+  const h = await utilityLoaded(DrawerPage, []);
+  assert.equal(one(h, "CabinUtilityEmpty").props.title, "抽屜是空的");
+  click(h, "＋ 放東西進去");
+  nativeInput(h, "物品名稱", "放棄"); nativeInput(h, "替物件留個分類", "分類"); click(h, "取消");
+  click(h, "＋ 放東西進去");
+  assert.equal(nodes(h.tree, n => n.props.placeholder === "物品名稱")[0].props.value, "");
+  assert.equal(nodes(h.tree, n => n.props.placeholder === "替物件留個分類")[0].props.value, "");
+  nativeInput(h, "物品名稱", "項目"); nativeInput(h, "內容或描述…", "內容");
+  answer = async () => ({ data: utilityDrawer }); await button(h, "放進抽屜").props.onClick();
+  expectCall("post", "/home/furniture/drawer", { label: "項目", content: "內容", category: undefined });
+});
+async function utilityMailbox(inbox = [utilityMail], sent = [utilityMail]) {
+  answer = async (_method, path) => ({ data: path === "/mail/inbox" ? inbox : path === "/mail/sent" ? sent : utilityMail });
+  const h = mount(MailboxPage); h.effects(); await tick(); h.render(); return h;
+}
+test("cabin mailbox keeps inbox/sent/compose tabs and fetches mail content only after activation", async () => {
+  const h = await utilityMailbox();
+  assert.deepEqual(calls.map(c => c.args[0]), ["/mail/inbox", "/mail/sent"]);
+  assert.equal(one(h, "CabinUtilityShell").props.title, "星際信箱");
+  const row = nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0];
+  assert.match(row.props.className, /is-unread/);
+  await row.props.onClick(); h.render(); expectCall("get", "/mail/mail-1");
+  assert.match(text(h.tree), /第一行\n第二行/);
+  click(h, "← 回信箱");
+  assert.equal(button(h, "收件 (0)").props["aria-pressed"], true);
+  click(h, "寄件"); assert.equal(button(h, "寄件").props["aria-pressed"], true);
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
+});
+test("cabin mailbox styles an API error and preserves explicit selected-message deletion", async () => {
+  const h = await utilityMailbox();
+  await nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick(); h.render();
+  answer = async () => { throw { response: { data: { detail: "刪除失敗，請稍後再試" } } }; };
+  await button(h, "刪除這封信").props.onClick(); h.render();
+  assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+  assert.match(text(h.tree), /刪除失敗，請稍後再試/);
+  answer = async () => ({ data: null });
+  await button(h, "刪除這封信").props.onClick(); h.render(); expectCall("delete", "/mail/mail-1");
+  assert.equal(one(h, "CabinUtilityEmpty").props.title, "信箱空空的");
+});
+test("cabin mailbox compose preserves recipients, limits, anonymity and send API", async () => {
+  const h = await utilityMailbox([], []);
+  answer = async () => ({ data: { residents: [{ agent_id: "neighbor", display_name: "住戶", agent_name: "鄰居", agent_emoji: "✦" }, { agent_id: null, display_name: "無室友" }] } });
+  click(h, "寫信"); await tick(); h.render(); expectCall("get", "/users/residents");
+  assert.equal(nodes(h.tree, n => n.type === "option").length, 2);
+  assert.equal(button(h, "寄出").props.disabled, true);
+  nodes(h.tree, n => n.type === "select")[0].props.onChange({ target: { value: "neighbor" } }); h.render();
+  nativeInput(h, "主旨", " 問好 "); nativeInput(h, "寫下你想說的…", " 你好 ");
+  nodes(h.tree, n => n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  assert.equal(nodes(h.tree, n => n.props.placeholder === "主旨")[0].props.maxLength, 100);
+  assert.equal(nodes(h.tree, n => n.type === "textarea")[0].props.maxLength, 2000);
+  answer = async (_method, path) => ({ data: path === "/mail/sent" ? [utilityMail] : { ...utilityMail, deliver_at: "2026-09-10T00:00:00Z" } });
+  await button(h, "寄出").props.onClick(); h.render();
+  const post = calls.find(c => c.method === "post");
+  assert.equal(post.args[0], "/mail/letter");
+  assert.deepEqual(post.args[1], { to_agent_id: "neighbor", subject: "問好", content: "你好", is_anonymous: true });
+  assert.match(text(h.tree), /預計.*送達/);
+  assert.equal(nodes(h.tree, n => n.props.placeholder === "主旨")[0].props.value, "");
+});
+test("cabin furniture theme is local, readable and does not merge mailbox into the public mail route", () => {
+  const css = readFileSync(resolve(root, "src/cabin-utility.css"), "utf8");
+  assert.match(css, /font-size: 16px/); assert.match(css, /min-height: 48px/); assert.match(css, /overflow-wrap: anywhere/);
+  assert.ok(!css.includes(":root")); assert.ok(!css.includes("--surface:"));
+  for (const name of ["DiaryPage", "DrawerPage", "MailboxPage"]) {
+    const source = readFileSync(resolve(root, "src/pages", name + ".tsx"), "utf8");
+    assert.ok(source.includes("CabinUtilityShell"));
+    assert.ok(!source.includes('var(--surface)')); assert.ok(!source.includes('var(--ink)'));
+  }
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(app.includes('path="/mailbox" element={<MailboxPage'));
+  assert.ok(app.includes('path="/mail" element={<MailField'));
+  const cabin = load("src/data/cabin.ts").cabinZones.flatMap(z => z.furniture);
+  assert.equal(cabin.find(f => f.id === "mailbox").path, "/mailbox");
+  assert.equal(cabin.find(f => f.id === "drawer").path, "/home/drawer");
+  assert.equal(cabin.find(f => f.id === "diary").path, "/home/diary");
+});
+
 test("eleven actual destinations remain behind authentication and use existing approved assets", () => {
   assert.equal(fieldData.FIELDS.length, 11);
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");

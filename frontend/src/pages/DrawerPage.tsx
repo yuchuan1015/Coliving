@@ -1,5 +1,5 @@
+import { CabinUtilityShell, CabinUtilityEmpty } from "../components/CabinUtilityShell";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   deleteDrawerItem,
   getDrawerItems,
@@ -8,7 +8,6 @@ import {
 } from "../api/furniture";
 
 export function DrawerPage() {
-  const navigate = useNavigate();
   const [items, setItems] = useState<DrawerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
@@ -56,173 +55,34 @@ export function DrawerPage() {
     }
   }
 
-  return (
-    <main className="mx-auto max-w-lg px-5 py-6 pb-20">
-      {/* Header */}
-      <div className="mb-5 flex items-center gap-3">
-        <button
-          onClick={() => navigate("/")}
-          className="text-[13px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          ← 回家
-        </button>
-        <h1
-          className="text-[18px] font-semibold tracking-tight"
-          style={{ color: "var(--ink)" }}
-        >
-          🗄️ 抽屜
-        </h1>
+
+  return <CabinUtilityShell title="抽屜" code="DRAWER">
+    <div className="utility-toolbar"><h2>抽屜裡的物件</h2>{!composing && <button className="photo-primary" onClick={() => setComposing(true)}>＋ 放東西進去</button>}</div>
+    {composing && <section className="photo-panel" aria-label="存放物件">
+      <h2>放進抽屜</h2>
+      <div className="utility-form">
+        <label>物品名稱<input value={label} onChange={e => setLabel(e.target.value)} placeholder="物品名稱" autoFocus /></label>
+        <label>內容或描述<textarea value={content} onChange={e => setContent(e.target.value)} placeholder="內容或描述…" rows={5} /></label>
+        <label>分類（選填）<input value={category} onChange={e => setCategory(e.target.value)} placeholder="替物件留個分類" /></label>
+        <div className="utility-actions">
+          <button className="photo-primary" onClick={handleStore} disabled={saving || !label.trim() || !content.trim()}>{saving ? "存入中…" : "放進抽屜"}</button>
+          <button onClick={() => { setComposing(false); setLabel(""); setContent(""); setCategory(""); }}>取消</button>
+        </div>
       </div>
-
-      {/* Add item */}
-      {composing ? (
-        <div
-          className="mb-5 rounded-xl p-4"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="物品名稱"
-            autoFocus
-            className="mb-3 w-full rounded-lg px-3 py-2 text-[14px] font-medium outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="內容或描述⋯"
-            rows={3}
-            className="mb-3 w-full resize-none rounded-lg px-3 py-2 text-[13px] outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <input
-            type="text"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="分類（選填）"
-            className="mb-3 w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleStore}
-              disabled={saving || !label.trim() || !content.trim()}
-              className="rounded-lg px-4 py-1.5 text-[13px] font-medium disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-            >
-              {saving ? "存入中⋯" : "放進抽屜"}
-            </button>
-            <button
-              onClick={() => {
-                setComposing(false);
-                setLabel("");
-                setContent("");
-                setCategory("");
-              }}
-              className="rounded-lg px-4 py-1.5 text-[13px]"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => setComposing(true)}
-          className="mb-5 w-full rounded-lg py-2.5 text-[13px] font-medium"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            color: "var(--ink-soft)",
-          }}
-        >
-          + 放東西進去
-        </button>
-      )}
-
-      {/* Items */}
-      {loading ? (
-        <p className="text-center text-[13px]" style={{ color: "var(--ink-soft)" }}>
-          載入中⋯
-        </p>
-      ) : items.length === 0 ? (
-        <p className="text-center text-[13px]" style={{ color: "var(--ink-soft)" }}>
-          抽屜是空的
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl px-4 py-3"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <button
-                onClick={() =>
-                  setExpanded(expanded === item.id ? null : item.id)
-                }
-                className="flex w-full items-center justify-between text-left"
-              >
-                <div>
-                  <h3
-                    className="text-[14px] font-medium"
-                    style={{ color: "var(--ink)" }}
-                  >
-                    {item.label}
-                  </h3>
-                  <span className="text-[11px]" style={{ color: "var(--ink-muted)" }}>
-                    {item.category && `${item.category} · `}
-                    {new Date(item.created_at).toLocaleDateString("zh-TW")}
-                  </span>
-                </div>
-                <span
-                  className="text-[11px]"
-                  style={{ color: "var(--ink-muted)" }}
-                >
-                  {expanded === item.id ? "▾" : "▸"}
-                </span>
-              </button>
-              {expanded === item.id && (
-                <div className="mt-3">
-                  <p
-                    className="whitespace-pre-wrap text-[13px] leading-relaxed"
-                    style={{ color: "var(--ink-soft)" }}
-                  >
-                    {item.content}
-                  </p>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="text-[12px]"
-                      style={{ color: "var(--error)" }}
-                    >
-                      丟掉
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </main>
-  );
+    </section>}
+    {loading ? <CabinUtilityEmpty title="正在打開抽屜…" loading /> : items.length === 0 ?
+      <CabinUtilityEmpty title="抽屜是空的">從上方放入一件想留下的物品。</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label="抽屜物件">{items.map(item =>
+        <article className="photo-panel utility-entry" key={item.id}>
+          <button className="utility-entry-toggle" aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? null : item.id)}>
+            <span className="utility-entry-copy"><span className="utility-entry-title">{item.label}</span><span className="utility-meta">{item.category && `${item.category} · `}{new Date(item.created_at).toLocaleDateString("zh-TW")}</span></span>
+            <span className="utility-chevron" aria-hidden="true">{expanded === item.id ? "−" : "＋"}</span>
+          </button>
+          {expanded === item.id && <div className="utility-entry-detail">
+            <p className="utility-body">{item.content}</p>
+            <div className="utility-actions"><button className="utility-danger" onClick={() => handleDelete(item.id)}>丟掉</button></div>
+          </div>}
+        </article>
+      )}</section>}
+  </CabinUtilityShell>;
 }
