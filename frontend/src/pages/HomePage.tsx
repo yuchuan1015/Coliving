@@ -8,6 +8,7 @@ import { cabinZones, coverPoint, type CabinFurniture, type CabinPanel } from "..
 import { CabinPanelDialog } from "../components/CabinPanelDialog";
 import { AvatarContent } from "../components/AvatarContent";
 import { PhotoImage } from "../components/PhotoImage";
+import { CabinPhotoFrame } from "../components/CabinPhotoFrame";
 import { getMyAgent } from "../api/agents";
 import type { AnnouncementOut, DashboardData } from "../types";
 import "../cabin-home.css";
@@ -53,15 +54,29 @@ export function HomePage() {
       const current = data.agents.length ? await getMyAgent().catch(() => null) : null;
       if (!cancelled) setDashboard(current ? { ...data, agents: [current, ...data.agents.filter(item => item.id !== current.id)] } : data);
     }).catch(() => { if (!cancelled) setError(true); });
-    const request = ++weatherRequest.current;
-    getFurniture().then(data => {
-      if (!cancelled && request === weatherRequest.current) setSummary(data);
-    }).catch(() => {});
+    let pendingSummary: Promise<void> | null = null;
+    const syncSummary = () => {
+      if (cancelled || document.hidden || pendingSummary) return;
+      const request = ++weatherRequest.current;
+      pendingSummary = getFurniture().then(data => {
+        if (!cancelled && request === weatherRequest.current) setSummary(data);
+      }).catch(() => {}).finally(() => { pendingSummary = null; });
+    };
+    syncSummary();
+    // Restore from another tab / Safari page cache without polling the API.
+    document.addEventListener("visibilitychange", syncSummary);
+    window.addEventListener("focus", syncSummary);
+    window.addEventListener("pageshow", syncSummary);
     getAnnouncements().then(items => {
       if (!cancelled) setAnnouncement([...items].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null);
     }).catch(() => {});
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => { cancelled = true; window.clearInterval(timer); };
+    return () => {
+      cancelled = true; window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", syncSummary);
+      window.removeEventListener("focus", syncSummary);
+      window.removeEventListener("pageshow", syncSummary);
+    };
   }, []);
 
   useEffect(() => {
@@ -120,6 +135,9 @@ export function HomePage() {
         {cabinZones.map((item, index) => <img key={item.id} className={`cabin-photo${index === zoneIndex ? " is-current" : ""}`} style={{ objectPosition: `50% ${positionY * 100}%` }} src={item.image} alt={index === zoneIndex ? `${item.label}的寫實太空艙內部` : ""} aria-hidden={index !== zoneIndex} draggable={false}
           onLoad={event => { const img = event.currentTarget; setImageSizes(sizes => ({ ...sizes, [item.id]: { width: img.naturalWidth, height: img.naturalHeight } })); }}
           onError={() => setFailedImages(previous => previous.includes(item.id) ? previous : [...previous, item.id])} />)}
+        <CabinPhotoFrame active={zone.id === "memory" && !failedImages.includes("memory")}
+          photo={summary?.photo_frame?.photo} sceneSize={sceneSize}
+          imageSize={imageSizes.memory ?? { width: 1053, height: 1494 }} positionY={positionY} />
         {failedImages.includes(zone.id) && <p className="cabin-image-error">艙室圖片暫時無法載入，家具入口仍可使用。</p>}
         {zone.furniture.map(item => {
           const position = point(item);

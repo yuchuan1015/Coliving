@@ -71,6 +71,11 @@ body:has(.cabin-home) { background: #020207; }
    Filter the photograph, never the scene wrapper (which also contains interactive UI). */
 .cabin-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 200ms ease; pointer-events: none; filter: brightness(1.32) contrast(.96) saturate(.96); }
 .cabin-photo.is-current { opacity: 1; }
+.cabin-photo-frame { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 200ms ease; }
+.cabin-photo-frame.is-current { opacity: 1; }
+.cabin-frame-surface { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: #121318; backface-visibility: hidden; }
+.cabin-frame-surface > img { display: block; width: 100%; height: 100%; object-fit: contain; filter: brightness(.88) saturate(.9); }
+.cabin-frame-glass { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgb(230 220 208 / .13), transparent 45%, rgb(0 0 0 / .12)); box-shadow: inset 0 0 10px rgb(0 0 0 / .28); }
 .cabin-hotspot { position: absolute; z-index: 2; width: 44px; height: 44px; transform: translate(-50%, -50%); display: grid; place-items: center; background: none; border: 0; border-radius: 50%; padding: 0; }
 .cabin-hotspot > span { display: block; width: 12px; height: 12px; border: 1.5px solid var(--c-moon); border-radius: 50%; background: rgb(8 6 24 / .46); }
 .cabin-hotspot.is-selected > span { background: var(--c-moon); outline: 1px solid var(--c-frost); outline-offset: 3px; }

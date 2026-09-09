@@ -32,10 +32,16 @@ const react = {
   useContext(context) { return context.value; },
 };
 const timers = new Map();
-const windowStub = { location: { origin: "https://example.test", pathname: "/", search: "", replace: value => calls.push({ method: "redirect", args: [value] }) }, setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {}, clearTimeout: id => timers.delete(id), setTimeout: (fn, delay) => { const id = timers.size + 1; timers.set(id, { fn, delay }); return id; }, matchMedia: () => ({ matches: true }) };
+const windowEvents = new Map(), documentEvents = new Map();
+const events = registry => ({
+  addEventListener(name, fn) { if (!registry.has(name)) registry.set(name, new Set()); registry.get(name).add(fn); },
+  removeEventListener(name, fn) { registry.get(name)?.delete(fn); },
+});
+const emit = (registry, name) => { for (const fn of registry.get(name) ?? []) fn(); };
+const windowStub = { location: { origin: "https://example.test", pathname: "/", search: "", replace: value => calls.push({ method: "redirect", args: [value] }) }, setInterval: () => 1, clearInterval() {}, ...events(windowEvents), clearTimeout: id => timers.delete(id), setTimeout: (fn, delay) => { const id = timers.size + 1; timers.set(id, { fn, delay }); return id; }, matchMedia: () => ({ matches: true }) };
 const sessionValues = new Map();
 const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
-const documentStub = { hidden: false, activeElement: null };
+const documentStub = { hidden: false, activeElement: null, ...events(documentEvents) };
 const navigatorStub = { clipboard: { writeText: async value => { calls.push({ method: "copy", args: [value] }); } } };
 class TestFormData extends FormData {
   constructor(source) { super(); if (source) for (const [key, value] of source) this.append(key, value); }
@@ -119,6 +125,7 @@ const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
 beforeEach(() => {
   fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null;
   sessionValues.clear();
+  windowEvents.clear(); documentEvents.clear(); documentStub.hidden = false;
   timers.clear(); windowStub.location.pathname = "/"; windowStub.location.search = ""; delete windowStub.location.href;
   navigatorStub.clipboard = { writeText: async value => { calls.push({ method: "copy", args: [value] }); } };
   auth = { user: { id: "me", role: "resident", birth_year: null },
@@ -656,6 +663,161 @@ const { PhotoFramePage } = load("src/pages/PhotoFramePage.tsx");
 const { PhotoImage } = load("src/components/PhotoImage.tsx");
 const samplePhoto = id => ({ id, caption: "照片" + id, url: "/api/home/furniture/photos/" + id + "/file?exp=test&sig=fixture", is_displayed: id === "a", width: 1600, height: 1200, bytes: 500, created_at: "2026-09-09T00:00:00Z" });
 const albumFixture = (ids = ["a", "b"], displayed = "a") => ({ photos: ids.map(samplePhoto), max: 20, displayed_id: displayed });
+const { CabinPhotoFrame } = load("src/components/CabinPhotoFrame.tsx");
+const { frameMatrix, cabinFrameMatrix, FRAME_SURFACE, CABIN_FRAME_QUAD } = load("src/data/cabin-frame.ts");
+const frameProps = photo => ({ active: true, photo, sceneSize: { width: 390, height: 550 }, imageSize: { width: 1053, height: 1494 }, positionY: .5 });
+const frameSurface = h => nodes(h.tree, n => n.props.className === "cabin-frame-surface")[0];
+const frameImages = h => nodes(h.tree, n => n.type === "img");
+const projectedPoint = (m, x, y) => {
+  const denominator = m[3] * x + m[7] * y + m[15];
+  return { x: (m[0] * x + m[4] * y + m[12]) / denominator, y: (m[1] * x + m[5] * y + m[13]) / denominator };
+};
+test("cabin frame homography lands all four photo corners inside the original aperture", () => {
+  const m = cabinFrameMatrix(1053, 1494, 1053, 1494, .5);
+  const input = [[0, 0], [FRAME_SURFACE.width, 0], [FRAME_SURFACE.width, FRAME_SURFACE.height], [0, FRAME_SURFACE.height]];
+  input.forEach(([x, y], index) => {
+    const p = projectedPoint(m, x, y), q = CABIN_FRAME_QUAD[index];
+    assert.ok(Math.abs(p.x - q.x * 1053) < 1e-7);
+    assert.ok(Math.abs(p.y - q.y * 1494) < 1e-7);
+  });
+});
+test("cabin frame follows object-fit cover at narrow, tall and landscape scene sizes", () => {
+  for (const [w, h] of [[320, 280], [358, 500], [390, 640], [528, 700], [720, 300], [1053, 1494]]) {
+    const positionY = w / h > .9 ? .8 : .5, scale = Math.max(w / 1053, h / 1494);
+    const m = cabinFrameMatrix(w, h, 1053, 1494, positionY);
+    assert.ok(m.every(Number.isFinite));
+    [[0, 0], [120, 0], [120, 184], [0, 184]].forEach(([x, y], i) => {
+      const p = projectedPoint(m, x, y), q = CABIN_FRAME_QUAD[i];
+      assert.ok(Math.abs(p.x - (q.x * 1053 * scale + (w - 1053 * scale) / 2)) < 1e-7);
+      assert.ok(Math.abs(p.y - (q.y * 1494 * scale + (h - 1494 * scale) * positionY)) < 1e-7);
+    });
+  }
+});
+test("frame geometry accepts flat rectangles and rejects invalid or degenerate surfaces", () => {
+  const quad = [{ x: 10, y: 20 }, { x: 130, y: 20 }, { x: 130, y: 204 }, { x: 10, y: 204 }];
+  assert.deepEqual(projectedPoint(frameMatrix(quad), 60, 92), { x: 70, y: 112 });
+  for (const value of [0, -1, Infinity, NaN]) {
+    assert.equal(frameMatrix(quad, value), null);
+    assert.equal(frameMatrix(quad, 120, value), null);
+    assert.equal(cabinFrameMatrix(value, 550, 1053, 1494, .5), null);
+  }
+  assert.equal(frameMatrix(Array(4).fill({ x: 0, y: 0 })), null);
+  assert.equal(cabinFrameMatrix(390, 550, 1053, 1494, NaN), null);
+});
+test("unavailable and empty cabin frames mask the baked-in picture without inventing a photo", () => {
+  for (const [photo, state] of [[undefined, "unavailable"], [null, "empty"]]) {
+    const h = mount(CabinPhotoFrame, frameProps(photo));
+    assert.equal(frameSurface(h).props["data-frame-state"], state);
+    assert.equal(frameImages(h).length, 0);
+    assert.equal(h.tree.props["aria-hidden"], false);
+    assert.match(frameSurface(h).props.style.transform, /^matrix3d\(/);
+  }
+  assert.equal(calls.length, 0);
+});
+test("cabin photo switches signed URLs without flashing old images, and clears to an empty mat", () => {
+  const props = frameProps(samplePhoto("a")), h = mount(CabinPhotoFrame, props);
+  assert.equal(frameSurface(h).props["data-frame-state"], "loading");
+  assert.equal(frameImages(h)[0].props.style.opacity, 0);
+  frameImages(h)[0].props.onLoad(); h.render();
+  assert.equal(frameSurface(h).props["data-frame-state"], "displayed");
+  assert.equal(frameImages(h)[0].props.style.opacity, 1);
+  props.photo = samplePhoto("b"); h.render();
+  assert.equal(frameImages(h)[0].props.src, samplePhoto("b").url);
+  assert.equal(frameImages(h)[0].props.style.opacity, 0);
+  assert.equal(frameImages(h)[0].key, samplePhoto("b").url);
+  assert.equal(frameImages(h)[0].props.referrerPolicy, "no-referrer");
+  frameImages(h)[0].props.onLoad(); h.render();
+  assert.equal(frameSurface(h).props["aria-label"], samplePhoto("b").caption);
+  props.photo = null; h.render();
+  assert.equal(frameSurface(h).props["data-frame-state"], "empty");
+  assert.equal(frameImages(h).length, 0);
+  assert.equal(calls.length, 0);
+});
+test("failed cabin image stays matte with no retry loop; a renewed URL can load", () => {
+  const props = frameProps(samplePhoto("a")), h = mount(CabinPhotoFrame, props);
+  frameImages(h)[0].props.onError(); h.render();
+  assert.equal(frameSurface(h).props["data-frame-state"], "error");
+  assert.match(frameSurface(h).props["aria-label"], /開啟相簿更新/);
+  assert.equal(frameImages(h).length, 0);
+  props.photo = { ...props.photo, url: props.photo.url + "&renewed=1" }; h.render();
+  assert.equal(frameSurface(h).props["data-frame-state"], "loading");
+  frameImages(h)[0].props.onLoad(); h.render();
+  assert.equal(frameSurface(h).props["data-frame-state"], "displayed");
+  props.active = false; h.render();
+  assert.equal(h.tree.props["aria-hidden"], true);
+  assert.ok(!h.tree.props.className.includes("is-current"));
+  props.sceneSize = { width: 0, height: 0 }; h.render();
+  assert.equal(h.tree, null);
+  assert.equal(calls.length, 0);
+});
+test("scene photo overlay does not intercept furniture and keeps the original image and crop", () => {
+  const css = readFileSync(resolve(root, "src/cabin-home.css"), "utf8");
+  const rule = css.match(/\.cabin-photo-frame\s*\{([^}]+)\}/)[1];
+  assert.match(rule, /pointer-events:\s*none/);
+  assert.match(rule, /z-index:\s*1/);
+  assert.match(css, /\.cabin-frame-surface\s*\{[^}]*background:\s*#121318/);
+  assert.match(css, /\.cabin-frame-surface\s*>\s*img\s*\{[^}]*object-fit:\s*contain/);
+  const { cabinZones } = load("src/data/cabin.ts");
+  assert.equal(cabinZones.find(z => z.id === "memory").image, "/ya-chao-assets/cabin-memory-v1.webp");
+});
+test("home frame and hotspot use the same authoritative displayed photo; frame appears only in memory zone", async () => {
+  const summary = { clock: { timezone: "Asia/Taipei" }, photo_frame: { photo: samplePhoto("b"), photo_count: 2 } };
+  answer = async (_method, url) => ({ data: url === "/home/furniture" ? summary : url === "/home/dashboard" ? { agents: [], community_status: { message: "公告" } } : [] });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage);
+  h.effects(); await tick(); h.render();
+  assert.equal(one(h, "CabinPhotoFrame").props.photo, summary.photo_frame.photo);
+  assert.equal(one(h, "CabinPhotoFrame").props.active, false);
+  const slider = () => nodes(h.tree, n => n.type === "input" && n.props.type === "range")[0];
+  slider().props.onChange({ target: { value: "1" } }); h.render();
+  assert.equal(one(h, "CabinPhotoFrame").props.active, true);
+  assert.deepEqual(one(h, "CabinPhotoFrame").props.imageSize, { width: 1053, height: 1494 });
+  nodes(h.tree, n => n.props["aria-label"] === "查看相框")[0].props.onClick(); h.render();
+  assert.equal(one(h, "PhotoImage").props.src, summary.photo_frame.photo.url);
+  click(h, "開啟相簿 ›"); expectCall("navigate", "/home/photos");
+  slider().props.onChange({ target: { value: "2" } }); h.render();
+  assert.equal(one(h, "CabinPhotoFrame").props.active, false);
+  assert.ok(calls.every(c => c.method === "get" || c.method === "navigate"));
+  h.dispose();
+});
+test("returning to the cabin synchronizes the display, coalesces focus events, and skips hidden tabs", async () => {
+  let currentPhoto = samplePhoto("a"), pending = null;
+  answer = async (_method, url) => url === "/home/furniture" ? pending ? pending.promise : { data: { clock: {}, photo_frame: { photo: currentPhoto } } } : { data: url === "/home/dashboard" ? { agents: [], community_status: {} } : [] };
+  const h = mount(load("src/pages/HomePage.tsx").HomePage);
+  const count = () => calls.filter(c => c.args[0] === "/home/furniture").length;
+  h.effects(); await tick(); h.render();
+  assert.equal(count(), 1); assert.equal(one(h, "CabinPhotoFrame").props.photo.id, "a");
+  documentStub.hidden = true; emit(documentEvents, "visibilitychange"); emit(windowEvents, "focus"); emit(windowEvents, "pageshow");
+  assert.equal(count(), 1);
+  documentStub.hidden = false; pending = deferred();
+  emit(documentEvents, "visibilitychange"); emit(windowEvents, "focus"); emit(windowEvents, "pageshow");
+  assert.equal(count(), 2);
+  pending.resolve({ data: { clock: {}, photo_frame: { photo: samplePhoto("b") } } });
+  await tick(); h.render(); assert.equal(one(h, "CabinPhotoFrame").props.photo.id, "b");
+  pending = null; currentPhoto = null; emit(windowEvents, "pageshow");
+  await tick(); h.render(); assert.equal(one(h, "CabinPhotoFrame").props.photo, null);
+  assert.equal(count(), 3);
+  assert.ok(calls.every(c => c.method === "get"));
+  h.dispose();
+  emit(windowEvents, "focus"); emit(windowEvents, "pageshow"); emit(documentEvents, "visibilitychange");
+  assert.equal(count(), 3);
+  assert.equal(windowEvents.get("focus").size, 0);
+  assert.equal(windowEvents.get("pageshow").size, 0);
+  assert.equal(documentEvents.get("visibilitychange").size, 0);
+});
+test("a late cabin summary cannot repaint an unmounted frame, and offline refresh preserves the last known photo", async () => {
+  const pending = deferred();
+  answer = async (_method, url) => url === "/home/furniture" ? pending.promise : { data: url === "/home/dashboard" ? { agents: [], community_status: {} } : [] };
+  const h = mount(load("src/pages/HomePage.tsx").HomePage);
+  h.effects(); h.dispose(); pending.resolve({ data: { clock: {}, photo_frame: { photo: samplePhoto("a") } } });
+  await tick(); h.render(); assert.equal(one(h, "CabinPhotoFrame").props.photo, undefined);
+  answer = async (_method, url) => ({ data: url === "/home/furniture" ? { clock: {}, photo_frame: { photo: samplePhoto("a") } } : url === "/home/dashboard" ? { agents: [], community_status: {} } : [] });
+  const current = mount(load("src/pages/HomePage.tsx").HomePage);
+  current.effects(); await tick(); current.render();
+  answer = async () => { throw Error("offline"); };
+  emit(windowEvents, "focus"); await tick(); current.render();
+  assert.equal(one(current, "CabinPhotoFrame").props.photo.id, "a");
+  current.dispose();
+});
 async function openAlbum(value = albumFixture()) {
   answer = async () => ({ data: value });
   const h = mount(PhotoFramePage); h.effects(); await tick(); h.render(); return h;

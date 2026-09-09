@@ -8,6 +8,7 @@ import { AuthContext } from "../../src/contexts/AuthContext";
 import { PhotoFramePage } from "../../src/pages/PhotoFramePage";
 import { EditAgentPage } from "../../src/pages/EditAgentPage";
 import { HomePage } from "../../src/pages/HomePage";
+import { FrameDetail } from "./FrameDetail";
 import type { AgentPublic, UserMe } from "../../src/types";
 import type { CabinPhoto } from "../../src/api/furniture";
 import "../../src/index.css";
@@ -52,9 +53,10 @@ api.defaults.adapter = async config => {
   return { config, status: method === "post" ? 201 : 200, statusText: "Mock", headers: {}, data };
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
-createRoot(document.getElementById("root")!).render(<StrictMode><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={["/home/photos"]}>
+const initialPage = new URLSearchParams(location.search).get("frame-check") === "1" ? "/frame-detail" : "/home/photos";
+createRoot(document.getElementById("root")!).render(<StrictMode><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 照片為既有艙室素材 · 不會修改正式帳號</aside>
   <nav style={{ display: "flex", justifyContent: "center", gap: 24, padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子预覽</Link><Link to="/">艙室預覽</Link></nav>
-  <Routes><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="*" element={<HomePage />} /></Routes>
-  <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /></details>
+  <Routes><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);
