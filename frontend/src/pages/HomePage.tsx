@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import { cabinZones, coverPoint, type CabinFurniture, type CabinPanel } from "../data/cabin";
 import { CabinPanelDialog } from "../components/CabinPanelDialog";
 import { AvatarContent } from "../components/AvatarContent";
+import { PhotoImage } from "../components/PhotoImage";
 import { getMyAgent } from "../api/agents";
 import type { AnnouncementOut, DashboardData } from "../types";
 import "../cabin-home.css";
@@ -128,7 +129,12 @@ export function HomePage() {
           <svg className="cabin-leader" width="100%" height="100%" aria-hidden="true"><path d={`M ${selectedPoint.x} ${selectedPoint.y} L ${calloutEndX + (calloutEndX === calloutX ? -12 : 12)} ${calloutY + 40} H ${calloutEndX}`} /></svg>
           <div id="cabin-callout" className="cabin-callout" style={{ left: calloutX, top: calloutY, width: calloutWidth }}>
             <button className="cabin-callout-close" aria-label="收起家具卡片" onClick={() => { document.querySelector<HTMLButtonElement>(".cabin-hotspot.is-selected")?.focus(); setSelected(null); }}>×</button>
-            <strong>{selected.label}</strong><p>{selected.detail}</p><button className="cabin-enter" onClick={() => openFurniture(selected)}>進入 ›</button>
+            <strong>{selected.label}</strong>
+            {selected.id === "photos" ? <>
+              {summary?.photo_frame.photo && <div className="cabin-frame-preview"><PhotoImage src={summary.photo_frame.photo.url} alt={summary.photo_frame.photo.caption || "目前擺在相框裡的照片"} /></div>}
+              <p>{typeof summary?.photo_frame.photo_count === "number" ? `已收藏 ${summary.photo_frame.photo_count} 張 · ${summary.photo_frame.photo ? "展示中" : "相框空著"}` : "照片待同步"}</p>
+            </> : <p>{selected.detail}</p>}
+            <button className="cabin-enter" onClick={() => openFurniture(selected)}>{selected.id === "photos" ? "開啟相簿 ›" : "進入 ›"}</button>
           </div>
         </>}
         <div className="cabin-zone-slider">

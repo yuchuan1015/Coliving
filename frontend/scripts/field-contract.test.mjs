@@ -570,6 +570,201 @@ const dmSwitch = h => nodes(h.tree, n => n.props?.id === "editor-dm-code-public"
 function setDMVisibility(h, checked) { dmSwitch(h).props.onChange({ target: { checked } }); h.render(); }
 const saveEditor = h => nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} });
 
+const byId = (h, id) => nodes(h.tree, n => n.props?.id === id)[0];
+const changeValue = (h, id, value) => { byId(h, id).props.onChange({ target: { value } }); h.render(); };
+async function openNoteEditor(note = null) {
+  answer = async (method, url, payload) => ({ data: url === "/users/me" ? { note_to_agent: note, ...(method === "patch" ? payload : {}) } : url === "/agents/providers" ? { providers: [{ key: "claude", name: "Claude" }], disclaimer: "本地測試" } : { ...editorAgent, ...(method === "patch" ? payload : {}) } });
+  const h = mount(EditAgentPage); h.effects(); await tick(); h.render(); return h;
+}
+test("mirror reads a single note, distinguishes empty from missing, and never writes on open", async () => {
+  for (const note of [null, "", "每次醒來記得看看窗外。"]) {
+    const h = await openNoteEditor(note);
+    assert.equal(byId(h, "editor-note").props.value, note ?? "");
+    assert.equal(byId(h, "editor-note").props.disabled, false);
+    assert.ok(!calls.some(c => c.method === "patch")); h.dispose();
+  }
+  const h = await openDMEditor(); // /users/me lacks note field
+  assert.equal(byId(h, "editor-note").props.disabled, true);
+  assert.match(text(h.tree), /不會覆蓋原有留言/);
+  changeValue(h, "editor-name", "新名字"); await saveEditor(h);
+  assert.ok(!calls.some(c => c.method === "patch" && c.args[0] === "/users/me"));
+});
+test("note-only save and clearing send exactly note_to_agent without PATCHing agent", async () => {
+  for (const [initial, draft] of [[null, "你好，星星。"], ["舊的話", ""]]) {
+    const h = await openNoteEditor(initial); calls.length = 0;
+    changeValue(h, "editor-note", draft); assert.match(text(h.tree), /尚未保存/);
+    await saveEditor(h); h.render();
+    assert.deepEqual(calls.filter(c => c.method === "patch"), [{ method: "patch", args: ["/users/me", { note_to_agent: draft }] }]);
+    expectCall("navigate", "/"); h.dispose();
+  }
+});
+test("unchanged and reverted notes do not overwrite server values", async () => {
+  const h = await openNoteEditor("原文"); calls.length = 0;
+  changeValue(h, "editor-note", "草稿"); changeValue(h, "editor-note", "原文");
+  await saveEditor(h); assert.ok(!calls.some(c => c.method === "patch"));
+});
+test("note counts Unicode characters and rejects 1001 without losing draft", async () => {
+  const h = await openNoteEditor(""); calls.length = 0;
+  changeValue(h, "editor-note", "🌌".repeat(1001)); await saveEditor(h); h.render();
+  assert.match(text(h.tree), /上限 1000 字/); assert.equal(calls.length, 0);
+  assert.equal(Array.from(byId(h, "editor-note").props.value).length, 1001);
+  changeValue(h, "editor-note", "🌌".repeat(1000)); await saveEditor(h);
+  assert.equal(calls.find(c => c.method === "patch").args[1].note_to_agent, "🌌".repeat(1000));
+});
+test("failed note after successful metadata keeps draft and retries only the note", async () => {
+  const h = await openNoteEditor("舊留言"); calls.length = 0;
+  changeValue(h, "editor-name", "新名字"); changeValue(h, "editor-note", "新留言");
+  answer = async (_method, url, payload) => {
+    if (url === "/users/me") throw { isAxiosError: true, response: { data: { detail: "留言暫時無法保存" } } };
+    return { data: { ...editorAgent, ...payload } };
+  };
+  await saveEditor(h); h.render();
+  assert.equal(byId(h, "editor-note").props.value, "新留言");
+  assert.match(text(h.tree), /室友資料已保存/); assert.ok(!calls.some(c => c.method === "navigate"));
+  calls.length = 0; answer = async (_m, _u, payload) => ({ data: payload });
+  await saveEditor(h);
+  assert.deepEqual(calls.filter(c => c.method === "patch").map(c => c.args[0]), ["/users/me"]);
+});
+test("successful avatar is not uploaded twice when the following note save fails", async () => {
+  const h = await openNoteEditor(""); calls.length = 0;
+  changeValue(h, "editor-avatar", "photo");
+  byId(h, "editor-photo").props.onChange({ target: { files: [new File(["fixture"], "avatar.png", { type: "image/png" })] } }); h.render();
+  changeValue(h, "editor-note", "留給你");
+  answer = async (method, url) => {
+    if (method === "post") return { data: { avatar_url: "/uploads/local-test.png" } };
+    if (url === "/users/me") throw { isAxiosError: true, response: { data: { detail: "留言失敗" } } };
+    throw Error("Unexpected write");
+  };
+  await saveEditor(h); h.render(); assert.match(text(h.tree), /頭像已保存/);
+  assert.equal(byId(h, "editor-note").props.value, "留給你");
+  answer = async (_method, _url, payload) => ({ data: payload });
+  await saveEditor(h);
+  assert.equal(calls.filter(c => c.method === "post").length, 1);
+  assert.equal(calls.filter(c => c.method === "patch" && c.args[0] === "/users/me").length, 2);
+});
+test("note dirty state protects return and repeated save is single-flight", async () => {
+  const h = await openNoteEditor(""); calls.length = 0; changeValue(h, "editor-note", "留著");
+  windowStub.confirm = () => false; button(h, "← 返回艙室").props.onClick(); assert.equal(calls.length, 0);
+  const pending = deferred(); answer = () => pending.promise;
+  const a = saveEditor(h), b = saveEditor(h); assert.equal(calls.length, 1);
+  pending.resolve({ data: { note_to_agent: "留著" } }); await Promise.all([a, b]);
+  delete windowStub.confirm;
+});
+
+const photoApi = load("src/api/furniture.ts");
+const { PhotoFramePage } = load("src/pages/PhotoFramePage.tsx");
+const { PhotoImage } = load("src/components/PhotoImage.tsx");
+const samplePhoto = id => ({ id, caption: "照片" + id, url: "/api/home/furniture/photos/" + id + "/file?exp=test&sig=fixture", is_displayed: id === "a", width: 1600, height: 1200, bytes: 500, created_at: "2026-09-09T00:00:00Z" });
+const albumFixture = (ids = ["a", "b"], displayed = "a") => ({ photos: ids.map(samplePhoto), max: 20, displayed_id: displayed });
+async function openAlbum(value = albumFixture()) {
+  answer = async () => ({ data: value });
+  const h = mount(PhotoFramePage); h.effects(); await tick(); h.render(); return h;
+}
+const tileButton = (h, index, label) => {
+  const tile = nodes(h.tree, n => n.type === "article")[index];
+  return nodes(tile, n => n.type === "button" && text(n) === label)[0];
+};
+const nativeSubmit = (h, label) => nodes(h.tree, n => n.type === "form" && n.props["aria-label"] === label)[0].props.onSubmit({ preventDefault() {} });
+test("photo API validates size and MIME, including iOS HEIC, before any request", async () => {
+  assert.equal(photoApi.validatePhotoFile(new File(["ok"], "x.heic", { type: "image/heic" })), null);
+  assert.equal(photoApi.validatePhotoFile(new File(["ok"], "x.HEIF")), null);
+  for (const f of [new File([], "x.png", { type: "image/png" }), new File(["bad"], "x.txt", { type: "text/plain" }), new File([new Uint8Array(12 * 1024 * 1024 + 1)], "big.png", { type: "image/png" })]) {
+    assert.ok(photoApi.validatePhotoFile(f)); await assert.rejects(photoApi.uploadPhoto(f, ""));
+  }
+  assert.equal(calls.length, 0);
+});
+test("photo upload sends file and caption as multipart fields, with no caption query", async () => {
+  const f = new File(["fixture"], "phone.heic");
+  await photoApi.uploadPhoto(f, " 一張照片 ");
+  const c = calls.at(-1); assert.equal(c.method, "post"); assert.equal(c.args[0], "/home/furniture/photos"); assert.equal(c.args.length, 2);
+  assert.equal(c.args[1].get("caption"), "一張照片"); assert.equal(c.args[1].get("file").type, "image/heic");
+  assert.deepEqual([...c.args[1].keys()], ["file", "caption"]);
+  await assert.rejects(photoApi.uploadPhoto(f, "字".repeat(201))); await assert.rejects(photoApi.updatePhoto("a", { caption: "字".repeat(201) }));
+  assert.equal(calls.length, 1);
+});
+test("empty album, empty display and failed read are distinct; no old text endpoint", async () => {
+  const empty = await openAlbum(albumFixture([], null)); assert.match(text(empty.tree), /相簿還是空的/); empty.dispose();
+  const h = await openAlbum(albumFixture(["a"], null)); assert.match(text(h.tree), /相框先空著/); assert.ok(!text(h.tree).includes("相簿還是空的"));
+  assert.ok(calls.every(c => c.method === "get" && c.args[0] === "/home/furniture/photos"));
+  answer = async () => { throw Error("read failed"); }; await button(h, "更新相簿").props.onClick(); h.render();
+  assert.match(text(h.tree), /相簿暫時無法讀取/); assert.equal(tileButton(h, 0, "擺上相框").props.disabled, true);
+});
+test("late initial photo reads cannot repopulate an unmounted page", async () => {
+  const pending = deferred(); answer = () => pending.promise;
+  const h = mount(PhotoFramePage); h.effects(); h.dispose();
+  pending.resolve({ data: albumFixture() }); await tick(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 0);
+});
+test("photo display and clear send exact booleans and re-read authoritative selection", async () => {
+  const h = await openAlbum(); calls.length = 0;
+  answer = async method => ({ data: method === "get" ? albumFixture(["a", "b"], "b") : samplePhoto("b") });
+  await tileButton(h, 1, "擺上相框").props.onClick(); h.render();
+  assert.deepEqual(calls.map(c => [c.method, c.args[0]]), [["patch", "/home/furniture/photos/b"], ["get", "/home/furniture/photos"]]);
+  assert.deepEqual(calls[0].args[1], { display: true }); assert.equal(tileButton(h, 1, "已擺上相框").props.disabled, true);
+  calls.length = 0; answer = async method => ({ data: method === "get" ? albumFixture(["a", "b"], null) : samplePhoto("b") });
+  await button(h, "讓相框空著").props.onClick(); h.render(); assert.deepEqual(calls[0].args[1], { display: false });
+  assert.match(text(h.tree), /相框先空著/); assert.equal(nodes(h.tree, n => n.type === "article").length, 2);
+});
+test("deleting displayed photo confirms irreversible action and adopts server replacement", async () => {
+  const h = await openAlbum(); calls.length = 0;
+  windowStub.confirm = () => false; await tileButton(h, 0, "刪除照片").props.onClick(); assert.equal(calls.length, 0);
+  let prompt; windowStub.confirm = value => { prompt = value; return true; };
+  answer = async method => ({ data: method === "get" ? albumFixture(["b"], "b") : null });
+  await tileButton(h, 0, "刪除照片").props.onClick(); h.render();
+  assert.match(prompt, /無法復原/); assert.match(prompt, /最新的一張/);
+  assert.deepEqual(calls.map(c => c.method), ["delete", "get"]); assert.equal(tileButton(h, 0, "已擺上相框").props.disabled, true);
+  delete windowStub.confirm;
+});
+test("caption edit failure retains draft and empty save clears via PATCH", async () => {
+  const h = await openAlbum(); tileButton(h, 0, "編輯說明").props.onClick(); h.render();
+  changeValue(h, "photo-edit-caption", "新說明"); calls.length = 0;
+  answer = async () => { throw { isAxiosError: true, response: { data: { detail: "照片被鎖定" } } }; };
+  await nativeSubmit(h, "編輯照片說明"); h.render(); assert.equal(byId(h, "photo-edit-caption").props.value, "新說明"); assert.match(text(h.tree), /照片被鎖定/);
+  changeValue(h, "photo-edit-caption", ""); calls.length = 0;
+  answer = async method => ({ data: method === "get" ? albumFixture() : samplePhoto("a") });
+  await nativeSubmit(h, "編輯照片說明"); h.render(); assert.deepEqual(calls[0].args[1], { caption: "" }); assert.equal(byId(h, "photo-edit-caption"), undefined);
+});
+test("successful upload followed by failed reload never leaves a duplicate upload staged", async () => {
+  const h = await openAlbum(); const f = new File(["ok"], "photo.png", { type: "image/png" });
+  byId(h, "album-file").props.onChange({ target: { files: [f] } }); h.render();
+  changeValue(h, "album-caption", "上傳草稿"); calls.length = 0;
+  answer = async method => { if (method === "get") throw Error("offline"); return { data: samplePhoto("new") }; };
+  await nativeSubmit(h, "上傳照片"); h.render();
+  assert.match(text(h.tree), /變更已保存/); assert.equal(byId(h, "album-caption").props.value, "");
+  assert.equal(button(h, "收藏照片").props.disabled, true);
+  await nativeSubmit(h, "上傳照片"); assert.equal(calls.filter(c => c.method === "post").length, 1);
+});
+test("rejected upload keeps file and caption; full albums cannot upload", async () => {
+  const h = await openAlbum();
+  byId(h, "album-file").props.onChange({ target: { files: [new File(["ok"], "keep.png", { type: "image/png" })] } }); h.render();
+  changeValue(h, "album-caption", "留著"); calls.length = 0;
+  answer = async () => { throw { isAxiosError: true, response: { data: { detail: "圖片格式不支援" } } }; };
+  await nativeSubmit(h, "上傳照片"); h.render(); assert.match(text(h.tree), /keep.png/); assert.equal(byId(h, "album-caption").props.value, "留著");
+  const full = await openAlbum(albumFixture(Array.from({ length: 20 }, (_, i) => String(i)), "0")); calls.length = 0;
+  assert.equal(nodes(full.tree, n => n.type === "fieldset")[0].props.disabled, true); assert.match(text(full.tree), /相簿已滿/);
+  await nativeSubmit(full, "上傳照片"); assert.equal(calls.length, 0);
+});
+test("ambiguous photo write blocks retry until a read; repeated clicks submit once", async () => {
+  const h = await openAlbum(); calls.length = 0; const pending = deferred(); answer = () => pending.promise;
+  const action = tileButton(h, 1, "擺上相框").props.onClick;
+  const a = action(), b = action(); assert.equal(calls.length, 1);
+  pending.reject({ isAxiosError: true }); await Promise.all([a, b]); h.render();
+  assert.match(text(h.tree), /結果尚未確認/); assert.equal(tileButton(h, 1, "擺上相框").props.disabled, true);
+  await tileButton(h, 1, "擺上相框").props.onClick(); assert.equal(calls.length, 1);
+  answer = async () => ({ data: albumFixture() }); await button(h, "更新相簿").props.onClick(); h.render();
+  assert.equal(tileButton(h, 1, "擺上相框").props.disabled, false);
+});
+test("broken signed image has a manual refresh hint and never persists or auto-requests URLs", () => {
+  const h = mount(PhotoImage, { src: samplePhoto("a").url, alt: "照片" });
+  nodes(h.tree, n => n.type === "img")[0].props.onError(); h.render(); assert.match(text(h.tree), /更新相簿/); assert.equal(calls.length, 0);
+  for (const path of ["src/pages/PhotoFramePage.tsx", "src/components/PhotoImage.tsx"]) {
+    const source = readFileSync(resolve(root, path), "utf8");
+    assert.ok(!source.includes("localStorage")); assert.ok(!source.includes("sessionStorage")); assert.ok(!source.includes("setInterval"));
+    assert.ok(!source.includes("/home/furniture/photo-frame"));
+  }
+  assert.ok(!readFileSync(resolve(root, "src/api/furniture.ts"), "utf8").includes("/home/furniture/photo-frame"));
+});
+
 test("directory and card identities expose only nonempty public codes on existing agents", () => {
   for (const code of [null, undefined, "", " ", "RK-TEST-1234"]) {
     const r = { id: "r", display_name: "居民", agent_id: "a", agent_name: "室友", agent_dm_code: code };

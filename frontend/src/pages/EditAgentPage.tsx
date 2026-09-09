@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { deleteAgentAvatar, getMyAgent, getProviderSettings, updateAgent, uploadAgentAvatar, type ProviderSettings } from "../api/agents";
 import { AvatarContent } from "../components/AvatarContent";
+import { getMe, updateNoteToAgent } from "../api/auth";
 import { EMOJI_OPTIONS, MODEL_SUGGESTIONS } from "../data/agent-editor";
 import type { AgentPublic, LlmProvider, UpdateAgentPayload } from "../types";
 import "../agent-editor.css";
@@ -25,6 +26,10 @@ export function EditAgentPage() {
   const [apiKey, setApiKey] = useState("");
   const [displayBrain, setDisplayBrain] = useState("");
   const [dmCodePublic, setDmCodePublic] = useState<boolean | null>(null);
+  const [note, setNote] = useState("");
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState("");
+  const [noteRetry, setNoteRetry] = useState(0);
   const [emoji, setEmoji] = useState("🤖");
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("default");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -39,6 +44,15 @@ export function EditAgentPage() {
   const savingRef = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMe().then(value => {
+      if (value.note_to_agent !== null && typeof value.note_to_agent !== "string") throw new Error("Note unavailable");
+      if (!cancelled) { setNote(value.note_to_agent ?? ""); setSavedNote(value.note_to_agent ?? ""); }
+    }).catch(() => { if (!cancelled) setNoteError("給室友的話暫時無法讀取。其他資料仍可保存，不會覆蓋原有留言。"); });
+    return () => { cancelled = true; };
+  }, [noteRetry]);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +91,9 @@ export function EditAgentPage() {
 
   const removePhoto = Boolean(agent?.avatar_url) && avatarMode !== "photo";
   const dmCodeChanged = typeof agent?.dm_code_public === "boolean" && dmCodePublic !== null && dmCodePublic !== agent.dm_code_public;
-  const dirty = Boolean(agent && (name !== agent.name || persona !== agent.persona || provider !== agent.llm_provider || model !== agent.llm_model || displayBrain !== (agent.display_brain ?? "") || dmCodeChanged || emoji !== agent.avatar_emoji || apiKey || photo || removePhoto));
+  const noteChanged = savedNote !== null && note !== savedNote;
+  const noteLength = Array.from(note).length;
+  const dirty = noteChanged || Boolean(agent && (name !== agent.name || persona !== agent.persona || provider !== agent.llm_provider || model !== agent.llm_model || displayBrain !== (agent.display_brain ?? "") || dmCodeChanged || emoji !== agent.avatar_emoji || apiKey || photo || removePhoto));
   useEffect(() => {
     if (!dirty && !saving) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -113,6 +129,7 @@ export function EditAgentPage() {
     event.preventDefault();
     if (!agent || savingRef.current) return;
     setError("");
+    if (noteChanged && noteLength > 1000) { setError("給室友的話上限 1000 字，請縮短後再保存。"); return; }
     if (!name.trim() || !persona.trim() || !model.trim()) {
       setError("請填寫名字、個性描述和模型。"); return;
     }
@@ -133,13 +150,13 @@ export function EditAgentPage() {
     if (dmCodeChanged && dmCodePublic !== null) payload.dm_code_public = dmCodePublic;
     savingRef.current = true;
     setSaving(true);
-    let fieldsSaved = false;
+    const savedParts: string[] = [];
     try {
       let current = agent;
       if (Object.keys(payload).length) {
         const updated = await updateAgent(agent.id, payload);
         current = { ...agent, ...updated, avatar_url: updated.avatar_url === undefined ? agent.avatar_url : updated.avatar_url };
-        fieldsSaved = true;
+        savedParts.push("室友資料");
         setAgent(current);
         setName(current.name);
         setPersona(current.persona);
@@ -148,8 +165,8 @@ export function EditAgentPage() {
         setModel(current.llm_model);
         setApiKey("");
       }
-      // Separate endpoints cannot be atomic. Persist text first, then avatar;
-      // on a partial failure retain the staged photo and report what did save.
+      // Each successful stage updates its snapshot before the next request.
+      // A note failure must not upload the same avatar again on retry.
       if (photo) {
         const result = await uploadAgentAvatar(photo);
         current = { ...current, avatar_url: result.avatar_url };
@@ -158,10 +175,18 @@ export function EditAgentPage() {
         current = { ...current, avatar_url: null };
       }
       setAgent(current);
+      if (photo || removePhoto) savedParts.push("頭像");
       setPhoto(null);
+      setPreview(null);
+      if (photoInput.current) photoInput.current.value = "";
+      if (noteChanged) {
+        const result = await updateNoteToAgent(note);
+        const saved = result.note_to_agent === null ? "" : result.note_to_agent ?? note;
+        setSavedNote(saved); setNote(saved);
+      }
       navigate("/", { state: { agentSaved: true } });
     } catch (err) {
-      setError((fieldsSaved ? "文字資料已保存，但頭像未完成。請重試。 " : "") + errorText(err, "保存失敗，修改仍留在這裡，請稍後重試。"));
+      setError((savedParts.length ? `${savedParts.join("、")}已保存，其餘修改尚未完成。 ` : "") + errorText(err, "保存失敗，未保存的修改仍留在這裡，請稍後重試。"));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -204,6 +229,13 @@ export function EditAgentPage() {
               <label htmlFor="editor-persona">個性描述</label>
               <textarea id="editor-persona" value={persona} onChange={event => setPersona(event.target.value)} placeholder="輸入室友的基礎個性，上限2000字" maxLength={2000} rows={2} required aria-describedby="editor-persona-count" />
               <small className="agent-editor-count" id="editor-persona-count">{persona.length} / 2000</small>
+            </div>
+            <div className="agent-editor-field">
+              <label htmlFor="editor-note">給室友的話</label>
+              <textarea id="editor-note" value={note} onChange={event => setNote(event.target.value)} rows={4} disabled={savedNote === null} aria-invalid={noteLength > 1000} aria-describedby="editor-note-help editor-note-count" placeholder={savedNote === null ? "正在讀取留言…" : "想讓他記得的習慣、心情，或一句想說的話。"} />
+              <small id="editor-note-help">他每次醒來都會看到這段話。按下「保存資料」後更新；留空保存可清除。</small>
+              <small id="editor-note-count" className="agent-editor-count">{noteLength} / 1000{noteChanged ? " · 尚未保存" : ""}</small>
+              {noteError && <><small role="alert">{noteError}</small><button type="button" className="agent-note-retry" onClick={() => { setNoteError(""); setNoteRetry(value => value + 1); }}>重新讀取留言</button></>}
             </div>
             <div className="agent-editor-field">
               <label htmlFor="editor-provider">大腦</label>

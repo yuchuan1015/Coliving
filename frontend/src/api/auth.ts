@@ -37,6 +37,10 @@ export async function updateBirthYear(birth_year: number): Promise<UserMe> {
   return (await api.patch<UserMe>("/users/me", { birth_year })).data;
 }
 
+export async function updateNoteToAgent(note_to_agent: string): Promise<UserMe> {
+  return (await api.patch<UserMe>("/users/me", { note_to_agent })).data;
+}
+
 export async function getDashboard(): Promise<DashboardData> {
   const { data } = await api.get<DashboardData>("/home/dashboard");
   return data;

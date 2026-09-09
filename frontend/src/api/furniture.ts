@@ -17,7 +17,7 @@ export interface FurnitureSummary {
   clock: { utc: string; taipei?: string; timezone?: string; local_time?: string; community_timezone?: string; community_time?: string };
   diary: { count: number };
   drawer: { count: number };
-  photo_frame: { count: number };
+  photo_frame: { count?: number; photo?: CabinPhoto | null; photo_count?: number };
   mirror: { agent_name: string | null; avatar_emoji: string | null };
   door: { current_location: string | null };
   bed: { has_agent: boolean; is_sleeping: boolean };
@@ -43,15 +43,26 @@ export interface DrawerItem {
   created_at: string;
 }
 
-export interface PhotoFrame {
+export interface CabinPhoto {
   id: string;
-  agent_id: string;
-  user_id: string;
-  category: "about_me" | "preferences" | "boundaries" | "schedule" | "notes";
-  title: string;
-  content: string;
+  caption: string;
+  is_displayed: boolean;
+  width: number;
+  height: number;
+  bytes: number;
+  url: string;
   created_at: string;
-  updated_at: string | null;
+}
+
+export interface PhotoAlbum { photos: CabinPhoto[]; max: number; displayed_id: string | null }
+export const PHOTO_ACCEPT = "image/jpeg,image/jpg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif";
+export function validatePhotoFile(file: File): string | null {
+  if (!file.size) return "這個檔案是空的，請重新選擇。";
+  if (file.size > 12 * 1024 * 1024) return "照片上限 12MB，請選擇小一點的檔案。";
+  const supported = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"];
+  // Some iOS pickers leave HEIC's MIME empty; the backend still validates bytes.
+  if (!supported.includes(file.type.toLowerCase()) && !(file.type === "" && /\.hei[cf]$/i.test(file.name))) return "請選擇 JPG、PNG、WebP、GIF 或 HEIC／HEIF 照片。";
+  return null;
 }
 
 export function getFurniture() {
@@ -86,20 +97,28 @@ export function deleteDrawerItem(id: string) {
   return api.delete(`/home/furniture/drawer/${id}`);
 }
 
-export function getPhotoFrames() {
-  return api.get<Array<PhotoFrame & { label?: string }> | { frames: Array<PhotoFrame & { label?: string }> }>("/home/furniture/photo-frame").then(({ data }) => (Array.isArray(data) ? data : data.frames).map(frame => ({ ...frame, title: frame.label ?? frame.title })));
+export async function getPhotos(): Promise<PhotoAlbum> {
+  const { data } = await api.get<PhotoAlbum>("/home/furniture/photos");
+  if (!Array.isArray(data.photos) || !Number.isInteger(data.max) || data.max < 1 || !(data.displayed_id === null || typeof data.displayed_id === "string")) throw new Error("Invalid photo album");
+  return data;
 }
 
-export function createPhotoFrame(data: { category: PhotoFrame["category"]; title: string; content: string }) {
-  const { title, ...rest } = data;
-  return api.post<PhotoFrame & { label?: string }>("/home/furniture/photo-frame", { ...rest, label: title }).then(({ data: frame }) => ({ ...frame, title: frame.label ?? frame.title }));
+export async function uploadPhoto(file: File, caption: string) {
+  const error = validatePhotoFile(file);
+  if (error) throw new Error(error);
+  if (Array.from(caption.trim()).length > 200) throw new Error("照片說明上限 200 字。");
+  const form = new FormData();
+  const typedFile = !file.type ? new File([file], file.name, { type: /\.heif$/i.test(file.name) ? "image/heif" : "image/heic" }) : file;
+  form.append("file", typedFile);
+  form.append("caption", caption.trim());
+  return (await api.post<CabinPhoto>("/home/furniture/photos", form)).data;
 }
 
-export function updatePhotoFrame(id: string, data: { title?: string; content?: string }) {
-  const { title, ...rest } = data;
-  return api.put<PhotoFrame & { label?: string }>(`/home/furniture/photo-frame/${id}`, { ...rest, label: title }).then(({ data: frame }) => ({ ...frame, title: frame.label ?? frame.title }));
+export async function updatePhoto(id: string, data: { caption?: string; display?: boolean }) {
+  if (data.caption !== undefined && Array.from(data.caption.trim()).length > 200) throw new Error("照片說明上限 200 字。");
+  return (await api.patch<CabinPhoto>(`/home/furniture/photos/${encodeURIComponent(id)}`, data)).data;
 }
 
-export function deletePhotoFrame(id: string) {
-  return api.delete(`/home/furniture/photo-frame/${id}`);
+export function deletePhoto(id: string) {
+  return api.delete(`/home/furniture/photos/${encodeURIComponent(id)}`);
 }

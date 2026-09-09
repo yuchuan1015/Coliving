@@ -1,316 +1,167 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  createPhotoFrame,
-  deletePhotoFrame,
-  getPhotoFrames,
-  updatePhotoFrame,
-  type PhotoFrame,
-} from "../api/furniture";
+import { isAxiosError } from "axios";
+import { deletePhoto, getPhotos, PHOTO_ACCEPT, updatePhoto, uploadPhoto, validatePhotoFile, type CabinPhoto, type PhotoAlbum } from "../api/furniture";
+import { PhotoImage } from "../components/PhotoImage";
+import "../photo-album.css";
 
-const CATEGORIES = [
-  { value: "about_me" as const, label: "關於我" },
-  { value: "preferences" as const, label: "喜好" },
-  { value: "boundaries" as const, label: "界線" },
-  { value: "schedule" as const, label: "日程" },
-  { value: "notes" as const, label: "備忘" },
-];
+function message(error: unknown, fallback: string) {
+  const detail = isAxiosError(error) ? error.response?.data?.detail : undefined;
+  return typeof detail === "string" ? detail : fallback;
+}
 
 export function PhotoFramePage() {
   const navigate = useNavigate();
-  const [frames, setFrames] = useState<PhotoFrame[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [composing, setComposing] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [cat, setCat] = useState<PhotoFrame["category"]>("about_me");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [album, setAlbum] = useState<PhotoAlbum | null>(null);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState("refresh");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [edit, setEdit] = useState<{ id: string; original: string; draft: string } | null>(null);
+  const lock = useRef(false);
+  const alive = useRef(true);
+  const picker = useRef<HTMLInputElement>(null);
+  const captionEditor = useRef<HTMLTextAreaElement>(null);
+  const dirty = Boolean(file || caption || (edit && edit.draft !== edit.original));
+  const full = Boolean(album && album.photos.length >= Math.min(20, album.max));
+  const displayed = album?.photos.find(photo => photo.id === album.displayed_id);
 
-  useEffect(() => {
-    getPhotoFrames()
-      .then(setFrames)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+  const read = useCallback(async () => {
+    const data = await getPhotos();
+    if (alive.current) { setAlbum(data); setReady(true); }
   }, []);
+  const refresh = useCallback(async () => {
+    if (lock.current) return;
+    lock.current = true; setBusy("refresh"); setError("");
+    try { await read(); }
+    catch (err) { if (alive.current) { setReady(false); setError(message(err, "相簿暫時無法讀取，請重新載入。")); } }
+    finally { lock.current = false; if (alive.current) setBusy(""); }
+  }, [read]);
+  useEffect(() => {
+    alive.current = true;
+    // Initial read is independent of the mutation lock, including StrictMode replay.
+    let cancelled = false;
+    getPhotos().then(data => { if (!cancelled) { setAlbum(data); setReady(true); } })
+      .catch(err => { if (!cancelled) setError(message(err, "相簿暫時無法讀取，請重新載入。")); })
+      .finally(() => { if (!cancelled) setBusy(""); });
+    return () => { alive.current = false; cancelled = true; };
+  }, []);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, busy]);
+  useEffect(() => { captionEditor.current?.focus(); }, [edit?.id]);
 
-  async function handleSave() {
-    if (!title.trim() || !content.trim()) return;
-    setSaving(true);
+  function back() {
+    if (lock.current) return;
+    if (!dirty || window.confirm("還有未保存的照片或說明，要放棄修改並返回艙室嗎？")) navigate("/");
+  }
+  function clearUpload() {
+    setFile(null); setPreview(null); setCaption("");
+    if (picker.current) picker.current.value = "";
+  }
+  function choose(next?: File) {
+    if (!next || lock.current) return;
+    const problem = validatePhotoFile(next);
+    if (problem) { setError(problem); if (picker.current) picker.current.value = ""; return; }
+    setFile(next); setPreview(URL.createObjectURL(next)); setError(""); setNotice("");
+  }
+  async function mutate(key: string, action: () => Promise<unknown>, success: string, onSaved?: () => void) {
+    if (lock.current || !ready) return;
+    lock.current = true; setBusy(key); setError(""); setNotice("");
+    let saved = false;
     try {
-      if (editingId) {
-        const updated = await updatePhotoFrame(editingId, {
-          title: title.trim(),
-          content: content.trim(),
-        });
-        setFrames((prev) =>
-          prev.map((f) => (f.id === editingId ? updated : f)),
-        );
-      } else {
-        const frame = await createPhotoFrame({
-          category: cat,
-          title: title.trim(),
-          content: content.trim(),
-        });
-        setFrames((prev) => [frame, ...prev]);
-      }
-      resetForm();
+      await action(); saved = true;
+      if (!alive.current) return;
+      onSaved?.(); setNotice(success);
+      // Re-read: deleting a displayed photo can select another server-side.
+      await read();
     } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
+      if (!alive.current) return;
+      const uncertain = isAxiosError(err) && !err.response;
+      if (saved || uncertain) setReady(false);
+      setError(saved ? "變更已保存，但清單未能更新。請按「更新相簿」，不要重複提交。" : uncertain ? "連線中斷，結果尚未確認。請先更新相簿檢查是否已完成，再操作；草稿仍保留。" : message(err, "操作未完成，草稿仍保留，請稍後重試。"));
+    } finally { lock.current = false; if (alive.current) setBusy(""); }
   }
-
-  function startEdit(frame: PhotoFrame) {
-    setEditingId(frame.id);
-    setCat(frame.category);
-    setTitle(frame.title);
-    setContent(frame.content);
-    setComposing(true);
+  async function upload(event: FormEvent) {
+    event.preventDefault();
+    if (!file || full || Array.from(caption.trim()).length > 200) return;
+    await mutate("upload", () => uploadPhoto(file, caption), "照片已收藏。", clearUpload);
   }
-
-  function resetForm() {
-    setComposing(false);
-    setEditingId(null);
-    setCat("about_me");
-    setTitle("");
-    setContent("");
+  function startEdit(photo: CabinPhoto) {
+    if (lock.current || (edit && edit.draft !== edit.original && !window.confirm("放棄這張照片尚未保存的說明嗎？"))) return;
+    setEdit({ id: photo.id, original: photo.caption, draft: photo.caption }); setError("");
   }
-
-  async function handleDelete(id: string) {
-    try {
-      await deletePhotoFrame(id);
-      setFrames((prev) => prev.filter((f) => f.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
+  function cancelEdit() {
+    if (lock.current || (edit && edit.draft !== edit.original && !window.confirm("放棄尚未保存的照片說明嗎？"))) return;
+    setEdit(null);
   }
-
-  const filtered = filterCat
-    ? frames.filter((f) => f.category === filterCat)
-    : frames;
-
-  return (
-    <main className="mx-auto max-w-lg px-5 py-6 pb-20">
-      {/* Header */}
-      <div className="mb-5 flex items-center gap-3">
-        <button
-          onClick={() => navigate("/")}
-          className="text-[13px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          ← 回家
-        </button>
-        <h1
-          className="text-[18px] font-semibold tracking-tight"
-          style={{ color: "var(--ink)" }}
-        >
-          🖼️ 相框
-        </h1>
-      </div>
-
-      <p className="mb-4 text-[12px]" style={{ color: "var(--ink-muted)" }}>
-        放在相框裡的東西，你的 AI 室友可以看到。
-      </p>
-
-      {/* Category filter */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        <button
-          onClick={() => setFilterCat(null)}
-          className="rounded-full px-3 py-1 text-[12px] font-medium"
-          style={{
-            background: filterCat === null ? "var(--accent)" : "var(--surface)",
-            color: filterCat === null ? "var(--bg)" : "var(--ink-soft)",
-            border: `1px solid ${filterCat === null ? "var(--accent)" : "var(--border)"}`,
-          }}
-        >
-          全部
-        </button>
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.value}
-            onClick={() => setFilterCat(c.value)}
-            className="rounded-full px-3 py-1 text-[12px] font-medium"
-            style={{
-              background:
-                filterCat === c.value ? "var(--accent)" : "var(--surface)",
-              color:
-                filterCat === c.value ? "var(--bg)" : "var(--ink-soft)",
-              border: `1px solid ${filterCat === c.value ? "var(--accent)" : "var(--border)"}`,
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Add / Edit form */}
-      {composing ? (
-        <div
-          className="mb-5 rounded-xl p-4"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          {!editingId && (
-            <div className="mb-3">
-              <label
-                className="mb-1.5 block text-[12px] font-medium"
-                style={{ color: "var(--ink-soft)" }}
-              >
-                分類
-              </label>
-              <select
-                value={cat}
-                onChange={(e) =>
-                  setCat(e.target.value as PhotoFrame["category"])
-                }
-                className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                style={{
-                  background: "var(--surface-dim)",
-                  border: "1px solid var(--border)",
-                  color: "var(--ink)",
-                }}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="標題"
-            autoFocus
-            className="mb-3 w-full rounded-lg px-3 py-2 text-[14px] font-medium outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="內容⋯"
-            rows={4}
-            className="mb-3 w-full resize-none rounded-lg px-3 py-2 text-[13px] outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              border: "1px solid var(--border)",
-              color: "var(--ink)",
-            }}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={saving || !title.trim() || !content.trim()}
-              className="rounded-lg px-4 py-1.5 text-[13px] font-medium disabled:opacity-50"
-              style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-            >
-              {saving ? "儲存中⋯" : editingId ? "更新" : "掛上去"}
-            </button>
-            <button
-              onClick={resetForm}
-              className="rounded-lg px-4 py-1.5 text-[13px]"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              取消
-            </button>
-          </div>
+  async function saveCaption(event: FormEvent) {
+    event.preventDefault();
+    if (!edit || Array.from(edit.draft.trim()).length > 200) return;
+    await mutate(`caption:${edit.id}`, () => updatePhoto(edit.id, { caption: edit.draft.trim() }), "照片說明已保存。", () => setEdit(null));
+  }
+  async function remove(photo: CabinPhoto) {
+    if (lock.current || !ready) return;
+    const replacement = photo.id === album?.displayed_id ? "若還有其他照片，相框會自動擺上最新的一張。" : "";
+    if (!window.confirm(`確定刪除${photo.caption ? `「${photo.caption}」` : "這張照片"}？刪除後無法復原。${replacement}`)) return;
+    await mutate(`delete:${photo.id}`, () => deletePhoto(photo.id), "照片已刪除。", () => { if (edit?.id === photo.id) setEdit(null); });
+  }
+  const unavailable = Boolean(busy) || !ready;
+  return <main className="photo-album">
+    <div className="photo-album-stack">
+      <header className="photo-album-header">
+        <div><p className="photo-eyebrow">CABIN / PHOTO FRAME</p><h1>相框</h1></div>
+        <button type="button" onClick={back} disabled={Boolean(busy)}>← 返回艙室</button>
+      </header>
+      <div className="photo-status" aria-live="polite">{notice && <p role="status">{notice}</p>}{error && <p role="alert">{error}</p>}</div>
+      <section className="photo-panel photo-display" aria-labelledby="photo-display-title" aria-busy={busy === "refresh"}>
+        <div className="photo-section-heading"><div><p className="photo-eyebrow">ON DISPLAY</p><h2 id="photo-display-title">此刻，擺在相框裡</h2></div><span className="photo-badge">{displayed ? "展示中" : ready ? "尚未擺放" : "待同步"}</span></div>
+        {displayed ? <figure className="photo-main-frame"><PhotoImage src={displayed.url} alt={displayed.caption || "目前展示的照片"} /><figcaption>{displayed.caption || "沒有留下說明的瞬間"}</figcaption></figure> : <div className="photo-empty-frame"><span aria-hidden="true">▧</span><p>{!ready ? busy ? "正在讀取相框…" : "相框尚未同步" : album?.photos.length ? "相框先空著。" : "留一個位置，給想記住的瞬間。"}</p><small>{ready ? album?.photos.length ? "收藏的照片還在，下方選一張就能擺上。" : "上傳第一張照片，它會自動擺上相框。" : "請稍候，或按下方按鈕重新載入。"}</small></div>}
+        <div className="photo-actions"><button type="button" onClick={refresh} disabled={Boolean(busy)}>{busy === "refresh" ? "正在更新…" : "更新相簿"}</button>{displayed && <button type="button" disabled={unavailable} onClick={() => mutate(`clear:${displayed.id}`, () => updatePhoto(displayed.id, { display: false }), "相框已留空，收藏的照片仍在。")}>讓相框空著</button>}</div>
+      </section>
+      <section className="photo-panel" aria-labelledby="photo-upload-title">
+        <div className="photo-section-heading"><h2 id="photo-upload-title">收藏一張照片</h2><span className="photo-count">{album ? `${album.photos.length} / ${Math.min(20, album.max)}` : "— / 20"}</span></div>
+        <p className="photo-muted">最多收藏 20 張，同時只擺一張。不公開在居民名錄；照片網址有時效，請勿轉傳。</p>
+        <form onSubmit={upload} aria-label="上傳照片">
+          <fieldset disabled={unavailable || full}>
+            <label className="photo-picker" htmlFor="album-file"><span aria-hidden="true">＋</span><span>{file ? "重新選擇照片" : "選擇照片"}<small>JPG / PNG / WebP / GIF / HEIC · 每張 12MB 以內</small></span><input ref={picker} id="album-file" type="file" accept={PHOTO_ACCEPT} onChange={event => choose(event.target.files?.[0])} aria-describedby="album-file-help" /></label>
+            <small id="album-file-help" className="photo-muted">{full ? "相簿已滿，刪除一張後才能繼續收藏。" : file ? `待上傳：${file.name}` : "上傳後會移除 EXIF 資訊並轉成 WebP，長邊最多 1600px。"}</small>
+            {preview && <div className="photo-upload-preview"><PhotoImage src={preview} alt="待上傳的照片預覽" preview /></div>}
+            <label htmlFor="album-caption">照片說明（選填）</label>
+            <textarea id="album-caption" value={caption} onChange={event => setCaption(event.target.value)} rows={2} placeholder="為這一刻留一句話。" aria-describedby="album-caption-count" aria-invalid={Array.from(caption.trim()).length > 200} />
+            <small id="album-caption-count" className="photo-count">{Array.from(caption.trim()).length} / 200</small>
+            <div className="photo-actions"><button className="photo-primary" type="submit" disabled={!file || Array.from(caption.trim()).length > 200}>{busy === "upload" ? "正在上傳…" : "收藏照片"}</button></div>
+          </fieldset>
+          {(file || caption) && <button className="photo-discard" type="button" disabled={Boolean(busy)} onClick={() => { if (window.confirm("放棄這張尚未上傳的照片與說明嗎？")) clearUpload(); }}>放棄這次上傳</button>}
+        </form>
+      </section>
+      <section className="photo-library" aria-labelledby="photo-library-title">
+        <div className="photo-section-heading"><h2 id="photo-library-title">我的相簿</h2><small className="photo-muted">選一張，留在艙室。</small></div>
+        {edit && <form className="photo-panel photo-caption-editor" onSubmit={saveCaption} aria-label="編輯照片說明">
+          <label htmlFor="photo-edit-caption">編輯照片說明</label>
+          <textarea ref={captionEditor} id="photo-edit-caption" value={edit.draft} disabled={Boolean(busy)} onChange={event => setEdit({ ...edit, draft: event.target.value })} rows={3} aria-describedby="photo-edit-count" aria-invalid={Array.from(edit.draft.trim()).length > 200} />
+          <small id="photo-edit-count" className="photo-count">{Array.from(edit.draft.trim()).length} / 200 · 留空保存可清除</small>
+          <div className="photo-actions"><button className="photo-primary" type="submit" disabled={unavailable || edit.draft === edit.original || Array.from(edit.draft.trim()).length > 200}>保存說明</button><button type="button" onClick={cancelEdit} disabled={Boolean(busy)}>取消編輯</button></div>
+        </form>}
+        <div className="photo-grid">
+          {album?.photos.map((photo, index) => <article key={photo.id} className={`photo-tile${photo.id === album.displayed_id ? " is-displayed" : ""}`} aria-label={`照片 ${index + 1}`}>
+            <div className="photo-thumbnail"><PhotoImage src={photo.url} alt={photo.caption || `收藏照片 ${index + 1}`} />{photo.id === album.displayed_id && <span className="photo-badge">展示中</span>}</div>
+            <div className="photo-tile-body"><p>{photo.caption || "尚未添加說明"}</p><div className="photo-tile-actions">
+              <button type="button" className="photo-primary" disabled={unavailable || photo.id === album.displayed_id} onClick={() => mutate(`display:${photo.id}`, () => updatePhoto(photo.id, { display: true }), "相框已更新。")}>{photo.id === album.displayed_id ? "已擺上相框" : "擺上相框"}</button>
+              <button type="button" disabled={unavailable} onClick={() => startEdit(photo)}>編輯說明</button><button type="button" className="photo-delete" disabled={unavailable} onClick={() => remove(photo)}>刪除照片</button>
+            </div></div>
+          </article>)}
         </div>
-      ) : (
-        <button
-          onClick={() => setComposing(true)}
-          className="mb-5 w-full rounded-lg py-2.5 text-[13px] font-medium"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            color: "var(--ink-soft)",
-          }}
-        >
-          + 新增相框
-        </button>
-      )}
-
-      {/* Frames list */}
-      {loading ? (
-        <p
-          className="text-center text-[13px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          載入中⋯
-        </p>
-      ) : filtered.length === 0 ? (
-        <p
-          className="text-center text-[13px]"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          {filterCat ? "這個分類還沒有相框" : "還沒有相框"}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((frame) => (
-            <div
-              key={frame.id}
-              className="rounded-xl px-4 py-3"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div className="mb-1 flex items-start justify-between">
-                <div>
-                  <span
-                    className="mr-2 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                    style={{
-                      background: "var(--surface-dim)",
-                      color: "var(--ink-soft)",
-                    }}
-                  >
-                    {CATEGORIES.find((c) => c.value === frame.category)?.label}
-                  </span>
-                  <h3
-                    className="mt-1 text-[14px] font-medium"
-                    style={{ color: "var(--ink)" }}
-                  >
-                    {frame.title}
-                  </h3>
-                </div>
-              </div>
-              <p
-                className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed"
-                style={{ color: "var(--ink-soft)" }}
-              >
-                {frame.content}
-              </p>
-              <div className="mt-3 flex gap-3">
-                <button
-                  onClick={() => startEdit(frame)}
-                  className="text-[12px]"
-                  style={{ color: "var(--ink-muted)" }}
-                >
-                  編輯
-                </button>
-                <button
-                  onClick={() => handleDelete(frame.id)}
-                  className="text-[12px]"
-                  style={{ color: "var(--error)" }}
-                >
-                  拿下來
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </main>
-  );
+        {ready && !album?.photos.length && <p className="photo-panel photo-empty-library">相簿還是空的，從收藏第一張開始。</p>}
+      </section>
+      <p className="photo-footnote">想告訴室友的日常與習慣，請到鏡子裡的「給室友的話」。</p>
+    </div>
+  </main>;
 }

@@ -78,6 +78,9 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-leader path { fill: none; stroke: var(--c-moon); stroke-width: 1; }
 .cabin-callout { position: absolute; z-index: 4; padding: 12px 16px; border: 1px solid var(--c-moon); border-radius: 16px; color: var(--c-frost); background: rgb(8 6 24 / .94); backdrop-filter: blur(8px); animation: cabin-fade 150ms ease; }
 .cabin-callout strong { display: block; padding-right: 20px; font-size: 16px; font-weight: 400; }
+.cabin-frame-preview { height: 56px; margin-top: 8px; border-radius: 6px; overflow: hidden; background: #090612; }
+.cabin-frame-preview img { width: 100%; height: 100%; object-fit: contain; }
+.cabin-frame-preview .photo-image-fallback { font-size: 10px; line-height: 1.3; padding: 4px; }
 .cabin-callout p { font-size: 12px; opacity: .75; line-height: 1.5; margin-top: 4px; }
 .cabin-enter { min-height: 36px; border: 0; color: var(--c-moon); background: none; text-align: left; width: 100%; }
 .cabin-callout-close { position: absolute; right: 0; top: 0; width: 36px; height: 36px; border: 0; background: none; color: var(--c-frost); }

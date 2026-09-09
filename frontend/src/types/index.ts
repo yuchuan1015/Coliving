@@ -7,6 +7,7 @@ export interface UserPublic {
 }
 
 export interface UserMe extends UserPublic {
+  note_to_agent?: string | null;
   birth_year?: number | null;
   coordinate?: { l: number; b: number; r: number; partial?: boolean } | null;
   anchor_date_1?: string | null;
