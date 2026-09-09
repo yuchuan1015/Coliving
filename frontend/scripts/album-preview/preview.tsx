@@ -15,6 +15,9 @@ import { DiaryPage } from "../../src/pages/DiaryPage";
 import { DrawerPage } from "../../src/pages/DrawerPage";
 import { MailboxPage } from "../../src/pages/MailboxPage";
 import { SchedulesPage } from "../../src/pages/SchedulesPage";
+import { AdoptPage } from "../../src/pages/AdoptPage";
+import { AdminPage } from "../../src/pages/AdminPage";
+import { AdvancedAgentPage } from "../../src/pages/AdvancedAgentPage";
 import type { ScheduleOut } from "../../src/api/schedules";
 import { FrameDetail } from "./FrameDetail";
 import type { AgentPublic, UserMe } from "../../src/types";
@@ -25,6 +28,14 @@ import { LanguageDocument } from "../../src/i18n/LanguageControl";
 
 const created = "2026-09-09T03:00:00Z";
 const params = new URLSearchParams(location.search);
+const managementState = params.get("management-state") ?? "ready";
+const previewStats = {
+  residents: { total_users: 12, active_users: 8, total_agents: 10 },
+  content: { posts: 48, works: 6, book_clubs: 2, book_club_replies: 9, skins: 3, published_skins: 1, announcements: 2 },
+  today: { posts: 4, works: 0, park_checkins: 3, club_replies: 2 },
+  week: { posts: 15, works: 2 }, system: { db_size: "2.4 MB" },
+  recent_users: managementState === "empty" ? [] : [{ display_name: "本地範例住戶", created_at: created, is_active: true }],
+};
 const usageCase = params.get("usage") ?? "unknown";
 const total: UsageTotals = { calls: 3, input_tokens: 12840, output_tokens: 860, total_tokens: 13700, usage_partial: false, missing_usage: 0, cost_usd: .004321, cost_partial: false };
 const empty: UsageTotals = { calls: 0, input_tokens: null, output_tokens: null, total_tokens: null, usage_partial: false, missing_usage: 0, cost_usd: null, cost_partial: false };
@@ -57,7 +68,13 @@ api.defaults.adapter = async config => {
   const path = config.url ?? "", method = config.method ?? "get";
   const payload = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
   let data: unknown;
-  if (path === "/schedules" && method === "get") {
+  if (method === "get" && (path === "/admin/stats" || (path === "/agents/mine" && params.get("page") === "advanced"))) {
+    if (managementState === "loading") await new Promise<never>(() => {});
+    if (managementState === "error" || managementState === "denied") throw new AxiosError("Preview management failure", "ERR_BAD_RESPONSE", config, undefined, { config, status: managementState === "denied" ? 403 : 503, statusText: "Preview", headers: {}, data: {} });
+    data = path === "/admin/stats" ? previewStats : agent;
+  }
+  else if (method === "get" && ["/skins/mine", "/oauth/grants", "/agents/mine/mcp-tokens"].includes(path)) data = [];
+  else if (path === "/schedules" && method === "get") {
     if (params.get("schedule-state") === "error") throw new AxiosError("Preview schedule failure", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例讀取失敗" } });
     data = schedules;
   }
@@ -85,6 +102,7 @@ api.defaults.adapter = async config => {
   else if (method === "get" && path.startsWith("/mail/")) { data = [...inbox, ...sent].find(row => row.id === path.split("/").at(-1)); if (!data) throw Error("範例信件不存在"); inbox = inbox.map(row => row === data ? { ...row, is_read: true } : row); }
   else if (method === "get" && path === "/users/residents") data = { residents: [{ agent_id: "preview-neighbor", display_name: "範例住戶", agent_name: "星際鄰居", agent_emoji: "✦" }] };
   else if (path === "/users/me" && (method === "get" || method === "patch")) { if (method === "patch") user.note_to_agent = payload.note_to_agent; data = { ...user }; }
+  else if (method === "post" && path === "/agents") { agent = { ...agent, name: payload.name, persona: payload.persona, avatar_emoji: payload.avatar_emoji, llm_provider: payload.llm_provider, llm_model: payload.llm_model, has_api_key: !!payload.api_key }; data = agent; }
   else if (method === "get" && path === "/agents/mine") data = agent;
   else if (method === "get" && path === "/agents/providers") data = { providers: [{ key: "claude", name: "Claude" }], disclaimer: "本地範例聲明。所有操作只更改此分頁的模擬資料，重新整理即可還原。不會寫入正式帳號。" };
   else if (method === "patch" && path === "/agents/preview-agent") { agent = { ...agent, ...payload }; data = agent; }
@@ -108,11 +126,11 @@ api.defaults.adapter = async config => {
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><LanguageDocument /><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
-  <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link></nav>
-  <Routes><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link><Link to="/adopt">領養室友</Link><Link to="/admin">系統儀表板</Link><Link to="/agent/advanced">進階設定</Link></nav>
+  <Routes><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);

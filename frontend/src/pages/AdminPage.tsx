@@ -2,7 +2,9 @@ import { uiText, getUiLanguage } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CabinUtilityShell } from "../components/CabinUtilityShell";
 import client from "../api/client";
+import "../cabin-management.css";
 
 interface Stats {
   residents: {
@@ -39,33 +41,15 @@ interface Stats {
   }[];
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: number | string;
-  sub?: string;
-}) {
-  return (
-    <div
-      className="rounded-xl p-4"
-      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-    >
-      <div className="text-2xl font-bold" style={{ color: "var(--accent)" }}>
-        {value}
-      </div>
-      <div className="mt-1 text-xs font-medium" style={{ color: "var(--ink)" }}>
-        {label}
-      </div>
-      {sub && (
-        <div className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-          {sub}
-        </div>
-      )}
-    </div>
-  );
+
+function StatCard({ label, value, sub }: { label: string; value?: number | string | null; sub?: string }) {
+  const display = typeof value === "number" && Number.isFinite(value) ? value.toLocaleString(getUiLanguage())
+    : typeof value === "string" && value ? value : uiText("未取得");
+  return <div className="photo-panel admin-stat">
+    <span className="admin-stat-value">{display}</span>
+    <span className="admin-stat-label">{label}</span>
+    {sub && <span className="admin-stat-note">{sub}</span>}
+  </div>;
 }
 
 export function AdminPage() {
@@ -74,159 +58,88 @@ export function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [denied, setDenied] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    client
-      .get<Stats>("/admin/stats")
-      .then((res) => setStats(res.data))
-      .catch((err) => {
-        if (err.response?.status === 403) {
-          setError("需要管理員權限");
-        } else {
-          setError("載入失敗");
-        }
+    let active = true;
+    setLoading(true); setError(""); setDenied(false); setStats(null);
+    client.get<Stats>("/admin/stats")
+      .then(res => {
+        if (!res.data || typeof res.data !== "object" || Array.isArray(res.data)) throw Error("Invalid stats");
+        if (active) setStats(res.data);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(err => {
+        if (!active) return;
+        const forbidden = err?.response?.status === 403;
+        setDenied(forbidden);
+        setError(forbidden ? "需要管理員權限" : "暫時無法讀取系統資料，請稍後再試。");
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [revision]);
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入系統資料...")}</p>
-      </main>
-    );
-  }
-
-  if (error || !stats) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--error)" }}>{uiText(error)}</p>
-        <button
-          onClick={() => navigate("/")}
-          className="mt-4 text-sm"
-          style={{ color: "var(--accent)" }}
-        >
-          ← {uiText("回首頁")}
-        </button>
-      </main>
-    );
-  }
-
-  return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-24">
-      <button
-        onClick={() => navigate("/")}
-        className="mb-4 text-sm"
-        style={{ color: "var(--accent)" }}
-      >
-        ← {uiText("回首頁")}
-      </button>
-
-      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("系統儀表板")}</h1>
-      <button type="button" className="mb-4" onClick={() => navigate("/admin/dm-reports")}>{uiText("私訊檢舉審核 →")}</button>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("社區營運概覽")}</p>
-
-      {/* Residents */}
-      <h2
-        className="mb-3 text-xs font-medium uppercase tracking-wider"
-        style={{ color: "var(--ink-soft)" }}
-      >{uiText("居民")}</h2>
-      <div className="mb-6 grid grid-cols-3 gap-2">
-        <StatCard label={uiText("總用戶")} value={stats.residents.total_users} />
-        <StatCard label={uiText("活躍用戶")} value={stats.residents.active_users} />
-        <StatCard label={uiText("AI 室友")} value={stats.residents.total_agents} />
-      </div>
-
-      {/* Today */}
-      <h2
-        className="mb-3 text-xs font-medium uppercase tracking-wider"
-        style={{ color: "var(--ink-soft)" }}
-      >{uiText("今日活動")}</h2>
-      <div className="mb-6 grid grid-cols-2 gap-2">
-        <StatCard label={uiText("新留言")} value={stats.today.posts} />
-        <StatCard label={uiText("新作品")} value={stats.today.works} />
-        <StatCard label={uiText("公園打卡")} value={stats.today.park_checkins} />
-        <StatCard label={uiText("讀書會回覆")} value={stats.today.club_replies} />
-      </div>
-
-      {/* Content totals */}
-      <h2
-        className="mb-3 text-xs font-medium uppercase tracking-wider"
-        style={{ color: "var(--ink-soft)" }}
-      >{uiText("內容總量")}</h2>
-      <div className="mb-6 grid grid-cols-2 gap-2">
-        <StatCard
-          label={uiText("留言")}
-          value={stats.content.posts}
-          sub={`本週 +${stats.week.posts}`}
-        />
-        <StatCard
-          label={uiText("作品")}
-          value={stats.content.works}
-          sub={`本週 +${stats.week.works}`}
-        />
-        <StatCard
-          label={uiText("讀書會")}
-          value={stats.content.book_clubs}
-          sub={`${stats.content.book_club_replies} 則回覆`}
-        />
-        <StatCard
-          label={uiText("皮膚")}
-          value={stats.content.skins}
-          sub={`${stats.content.published_skins} 個已發布`}
-        />
-        <StatCard label={uiText("公告")} value={stats.content.announcements} />
-      </div>
-
-      {/* System */}
-      <h2
-        className="mb-3 text-xs font-medium uppercase tracking-wider"
-        style={{ color: "var(--ink-soft)" }}
-      >{uiText("系統")}</h2>
-      <div className="mb-6 grid grid-cols-2 gap-2">
-        <StatCard label={uiText("資料庫大小")} value={stats.system.db_size} />
-      </div>
-
-      {/* Recent users */}
-      <h2
-        className="mb-3 text-xs font-medium uppercase tracking-wider"
-        style={{ color: "var(--ink-soft)" }}
-      >{uiText("最近入住")}</h2>
-      <div
-        className="rounded-xl"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-      >
-        {stats.recent_users.map((u, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between px-4 py-3"
-            style={{
-              borderBottom:
-                i < stats.recent_users.length - 1
-                  ? "1px solid var(--border)"
-                  : "none",
-            }}
-          >
-            <div>
-              <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-                {u.display_name}
-              </span>
-              <span className="ml-2 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                {new Date(u.created_at).toLocaleDateString(getUiLanguage())}
-              </span>
+  return <CabinUtilityShell title={uiText("系統儀表板")} code="SYSTEM">
+    <div className="cabin-admin">
+      {loading ? <section className="photo-panel"><p role="status">{uiText("正在讀取系統資料…")}</p></section>
+        : error || !stats ? <section className="photo-panel admin-problem">
+          <h2>{denied ? uiText("需要管理員權限") : uiText("系統資料暫時無法取得")}</h2>
+          <p role="alert">{denied ? uiText("這裡只開放給管理員，請返回艙室。") : uiText(error || "暫時無法讀取系統資料，請稍後再試。")}</p>
+          {!denied && <button type="button" onClick={() => setRevision(value => value + 1)}>{uiText("重新讀取")}</button>}
+        </section> : <>
+          <section className="photo-panel"><div className="utility-toolbar">
+            <p className="management-lede">{uiText("社區營運概覽")}</p>
+            <button type="button" onClick={() => navigate("/admin/dm-reports")}>{uiText("私訊檢舉審核 →")}</button>
+          </div></section>
+          <section className="admin-section" aria-labelledby="admin-residents">
+            <h2 id="admin-residents">{uiText("居民")}</h2>
+            <div className="admin-stat-grid">
+              <StatCard label={uiText("總用戶")} value={stats.residents?.total_users} />
+              <StatCard label={uiText("活躍用戶")} value={stats.residents?.active_users} />
+              <StatCard label={uiText("AI 室友")} value={stats.residents?.total_agents} />
             </div>
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px]"
-              style={{
-                background: u.is_active ? "var(--accent-light)" : "var(--surface-dim)",
-                color: u.is_active ? "var(--accent)" : "var(--ink-soft)",
-              }}
-            >
-              {u.is_active ? uiText("活躍") : uiText("停用")}
-            </span>
-          </div>
-        ))}
-      </div>
-    </main>
-  );
+          </section>
+          <section className="admin-section" aria-labelledby="admin-today">
+            <h2 id="admin-today">{uiText("今日活動")}</h2>
+            <div className="admin-stat-grid">
+              <StatCard label={uiText("新留言")} value={stats.today?.posts} />
+              <StatCard label={uiText("新作品")} value={stats.today?.works} />
+              <StatCard label={uiText("公園打卡")} value={stats.today?.park_checkins} />
+              <StatCard label={uiText("讀書會回覆")} value={stats.today?.club_replies} />
+            </div>
+          </section>
+          <section className="admin-section" aria-labelledby="admin-content">
+            <h2 id="admin-content">{uiText("內容總量")}</h2>
+            <div className="admin-stat-grid">
+              <StatCard label={uiText("留言")} value={stats.content?.posts}
+                sub={Number.isFinite(stats.week?.posts) ? uiText`本週 +${stats.week.posts}` : undefined} />
+              <StatCard label={uiText("作品")} value={stats.content?.works}
+                sub={Number.isFinite(stats.week?.works) ? uiText`本週 +${stats.week.works}` : undefined} />
+              <StatCard label={uiText("讀書會")} value={stats.content?.book_clubs}
+                sub={Number.isFinite(stats.content?.book_club_replies) ? uiText`${stats.content.book_club_replies} 則回覆` : undefined} />
+              <StatCard label={uiText("皮膚")} value={stats.content?.skins}
+                sub={Number.isFinite(stats.content?.published_skins) ? uiText`${stats.content.published_skins} 個已發布` : undefined} />
+              <StatCard label={uiText("公告")} value={stats.content?.announcements} />
+            </div>
+          </section>
+          <section className="admin-section" aria-labelledby="admin-system">
+            <h2 id="admin-system">{uiText("系統")}</h2>
+            <div className="admin-stat-grid"><StatCard label={uiText("資料庫大小")} value={stats.system?.db_size} /></div>
+          </section>
+          <section className="admin-section" aria-labelledby="admin-recent">
+            <h2 id="admin-recent">{uiText("最近入住")}</h2>
+            <div className="photo-panel admin-resident-list">
+              {!Array.isArray(stats.recent_users) ? <p>{uiText("最近入住資料未取得")}</p>
+                : stats.recent_users.length === 0 ? <p>{uiText("目前沒有最近入住的居民。")}</p>
+                : stats.recent_users.map((resident, index) => <div className="admin-resident-row" key={index}>
+                  <div className="admin-resident-copy"><span>{resident.display_name}</span>
+                    <time dateTime={resident.created_at}>{Number.isFinite(new Date(resident.created_at).getTime()) ? new Date(resident.created_at).toLocaleDateString(getUiLanguage()) : uiText("時間未取得")}</time>
+                  </div>
+                  <span className="photo-badge">{resident.is_active ? uiText("活躍") : uiText("停用")}</span>
+                </div>)}
+            </div>
+          </section>
+        </>}
+    </div>
+  </CabinUtilityShell>;
 }

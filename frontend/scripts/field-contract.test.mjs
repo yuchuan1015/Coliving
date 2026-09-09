@@ -680,6 +680,166 @@ const { CabinUtilityShell, CabinUtilityEmpty } = load("src/components/CabinUtili
 const { DiaryPage } = load("src/pages/DiaryPage.tsx");
 
 const { SchedulesPage } = load("src/pages/SchedulesPage.tsx");
+
+const { AdminPage } = load("src/pages/AdminPage.tsx");
+const { AdvancedAgentPage } = load("src/pages/AdvancedAgentPage.tsx");
+const adminFixture = {
+  residents: { total_users: 12, active_users: 8, total_agents: 10 },
+  content: { posts: 48, works: 6, book_clubs: 2, book_club_replies: 9, skins: 3, published_skins: 1, announcements: 2 },
+  today: { posts: 4, works: 0, park_checkins: 3, club_replies: 2 },
+  week: { posts: 15, works: 2 }, system: { db_size: "2.4 MB" },
+  recent_users: [{ display_name: "繁體名字", created_at: "2026-09-09T03:00:00Z", is_active: true }],
+};
+test("admin loading and loaded states use the cabin shell; stats remain read-only and complete", async () => {
+  const initial = mount(AdminPage);
+  assert.equal(one(initial, "CabinUtilityShell").props.code, "SYSTEM");
+  assert.match(text(initial.tree), /正在讀取系統資料/);
+  const h = await utilityLoaded(AdminPage, adminFixture);
+  assert.equal(one(h, "CabinUtilityShell").props.title, "系統儀表板");
+  const cards = components(h, "StatCard");
+  assert.equal(cards.length, 13);
+  assert.deepEqual(cards.map(c => c.props.value), [12, 8, 10, 4, 0, 3, 2, 48, 6, 2, 3, 2, "2.4 MB"]);
+  assert.match(text(h.tree), /繁體名字/);
+  assert.ok(calls.every(c => c.method === "get" && c.args[0] === "/admin/stats"));
+  click(h, "私訊檢舉審核 →"); expectCall("navigate", "/admin/dm-reports");
+  h.dispose();
+});
+test("admin preserves true zero and labels missing values without fabricating metrics", async () => {
+  const h = await utilityLoaded(AdminPage, { residents: { total_users: 0 }, recent_users: [] });
+  const cards = components(h, "StatCard");
+  assert.equal(text(mount(cards[0].type, cards[0].props).tree), "0總用戶");
+  assert.equal(text(mount(cards[1].type, cards[1].props).tree), "未取得活躍用戶");
+  assert.match(text(h.tree), /目前沒有最近入住的居民/);
+  assert.ok(cards.every(card => !card.props.sub));
+  const missing = await utilityLoaded(AdminPage, {});
+  assert.match(text(missing.tree), /最近入住資料未取得/);
+});
+test("admin denied state never shows private data or review controls", async () => {
+  answer = async () => { throw { response: { status: 403 } }; };
+  const h = mount(AdminPage); h.effects(); await tick(); h.render();
+  assert.equal(one(h, "CabinUtilityShell").props.code, "SYSTEM");
+  assert.match(text(h.tree), /需要管理員權限/);
+  assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+  assert.equal(components(h, "StatCard").length, 0);
+  assert.equal(nodes(h.tree, n => n.type === "button").length, 0);
+  assert.ok(calls.every(c => c.method === "get"));
+});
+test("admin errors are not empty data and retry fetches the same endpoint", async () => {
+  for (const failure of [null, { response: { status: 503 } }]) {
+    answer = async () => { throw failure; };
+    const h = mount(AdminPage); h.effects(); await tick(); h.render();
+    assert.match(text(h.tree), /系統資料暫時無法取得/);
+    assert.ok(!text(h.tree).includes("目前沒有最近入住的居民"));
+    answer = async () => ({ data: adminFixture });
+    click(h, "重新讀取"); h.effects(); await tick(); h.render();
+    assert.equal(components(h, "StatCard").length, 13);
+    h.dispose();
+  }
+  for (const malformed of [null, [], "invalid"]) {
+    const h = await utilityLoaded(AdminPage, malformed);
+    assert.match(text(h.tree), /系統資料暫時無法取得/); h.dispose();
+  }
+  assert.ok(calls.every(c => c.method === "get" && c.args[0] === "/admin/stats"));
+});
+test("admin ignores a late response after unmount", async () => {
+  const pending = deferred(); answer = () => pending.promise;
+  const h = mount(AdminPage); h.effects(); h.dispose();
+  pending.resolve({ data: adminFixture }); await tick(); h.render();
+  assert.equal(components(h, "StatCard").length, 0);
+  assert.match(text(h.tree), /正在讀取系統資料/);
+});
+test("admin Simplified labels do not rewrite resident names or database-size values", async () => {
+  language.setUiLanguage("zh-CN");
+  const h = await utilityLoaded(AdminPage, adminFixture);
+  assert.equal(one(h, "CabinUtilityShell").props.title, "系统仪表板");
+  assert.match(text(h.tree), /繁體名字/);
+  assert.ok(!text(h.tree).includes("繁体名字"));
+  assert.equal(components(h, "StatCard")[7].props.sub, "本周 +15");
+  assert.equal(components(h, "StatCard").at(-1).props.value, "2.4 MB");
+});
+test("adoption has labeled fields, optional secret and twenty accessible avatar choices", () => {
+  const h = mount(AdoptPage);
+  assert.equal(one(h, "CabinUtilityShell").props.code, "ADOPTION");
+  const fields = nodes(h.tree, n => ["input", "select", "textarea"].includes(n.type));
+  assert.equal(fields.length, 4);
+  for (const field of fields) assert.equal(nodes(h.tree, n => n.type === "label" && n.props.htmlFor === field.props.id).length, 1);
+  const avatars = nodes(h.tree, n => n.props.className === "adoption-avatar-grid")[0];
+  assert.equal(nodes(avatars, n => n.type === "button").length, 20);
+  assert.equal(nodes(avatars, n => n.props["aria-pressed"]).length, 1);
+  assert.ok(nodes(avatars, n => n.type === "button").every(b => b.props["aria-label"] && b.props.type === "button"));
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-name")[0].props.maxLength, 64);
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-persona")[0].props.maxLength, 2000);
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.type, "password");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.autoComplete, "off");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-model")[0].props.value, "claude-opus-4-6");
+  assert.equal(calls.length, 0);
+});
+test("adoption language switches preserve drafts, selected brain and the exact submission fields", async () => {
+  const h = mount(AdoptPage);
+  scheduleInput(h, "adopt-name", "繁體名字");
+  scheduleInput(h, "adopt-persona", "喜歡圖書館");
+  scheduleInput(h, "adopt-api-key", " test-only-key ");
+  click(h, "OpenAI"); scheduleInput(h, "adopt-model", "gpt-4o-mini"); click(h, "🐻");
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.equal(one(h, "CabinUtilityShell").props.title, "领养室友");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-name")[0].props.value, "繁體名字");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-persona")[0].props.value, "喜歡圖書館");
+  assert.equal(button(h, "OpenAI").props["aria-pressed"], true);
+  assert.equal(button(h, "🐻").props["aria-pressed"], true);
+  answer = async () => ({ data: settingsAgent });
+  await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+  expectCall("post", "/agents", { name: "繁體名字", persona: "喜歡圖書館", llm_provider: "openai", llm_model: "gpt-4o-mini", api_key: "test-only-key", avatar_emoji: "🐻" });
+  assert.equal(components(h, "AdoptionSuccess").length, 1);
+  assert.ok([...languageStorage.values()].every(value => value !== "test-only-key"));
+});
+test("adoption blocks empty submits and freezes the entire form during a pending request", async () => {
+  const h = mount(AdoptPage);
+  await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} });
+  assert.equal(calls.length, 0);
+  fillAdopt(h, "test-only-key"); const pending = deferred(); answer = () => pending.promise;
+  const submission = nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
+  assert.equal(nodes(h.tree, n => n.type === "form")[0].props["aria-busy"], true);
+  pending.reject(null); await submission; h.render();
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, false);
+  assert.match(text(h.tree), /領養失敗，請稍後再試/);
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.value, "test-only-key");
+});
+test("advanced loading and failed reads use the cabin shell and retry without writes", async () => {
+  answer = async (_method, path) => { if (path === "/agents/mine") throw { response: { status: 503 } }; return { data: [] }; };
+  const h = mount(AdvancedAgentPage);
+  assert.equal(one(h, "CabinUtilityShell").props.code, "CONNECTIONS");
+  assert.match(text(h.tree), /正在讀取室友設定/);
+  h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /暫時無法讀取室友設定/);
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.match(text(h.tree), /暂时无法读取室友设置/);
+  answer = async (_method, path) => ({ data: path === "/agents/mine" ? settingsAgent : [] });
+  click(h, "重新读取"); h.effects(); await tick(); h.render();
+  assert.equal(h.tree.props.className, "ya-agent-settings");
+  assert.equal(components(h, "McpKeysPanel").length, 1);
+  assert.ok(calls.every(c => c.method === "get" && ["/agents/mine", "/skins/mine"].includes(c.args[0])));
+});
+test("advanced missing agent still redirects to adoption; unmounted reads cannot navigate", async () => {
+  answer = async (_method, path) => { if (path === "/agents/mine") throw { response: { status: 404 } }; return { data: [] }; };
+  const h = mount(AdvancedAgentPage); h.effects(); await tick(); h.render();
+  assert.equal(calls.filter(c => c.method === "navigate").length, 1); expectCall("navigate", "/adopt");
+  h.dispose(); calls = [];
+  const pending = deferred(); answer = () => pending.promise;
+  const gone = mount(AdvancedAgentPage); gone.effects(); gone.dispose();
+  pending.resolve({ data: null }); await tick(); gone.render();
+  assert.ok(calls.every(c => c.method === "get"));
+  assert.equal(one(gone, "CabinUtilityShell").props.code, "CONNECTIONS");
+});
+test("management CSS stays scoped and keeps adaptive grids and accessible controls", () => {
+  const css = readFileSync(resolve(root, "src/cabin-management.css"), "utf8");
+  assert.ok(!/(^|\n)\s*(?:body|html|:root|button|input|fieldset)\s*[{,]/m.test(css));
+  assert.match(css, /repeat\(auto-fit, minmax\(48px, 1fr\)\)/);
+  assert.match(css, /min-height: 48px/);
+  assert.match(css, /repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(min-width: 650px\)/);
+  assert.ok(!/height:\s*100vh|position:\s*fixed|overflow:\s*hidden/.test(css));
+});
 test("every current page route is registered in the interface inventory", () => {
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
   const inventory = readFileSync(resolve(root, "../docs/介面盤點.md"), "utf8");

@@ -1,0 +1,29 @@
+/* Reuse the cabin's approved palette; no global theme or public field changes. */
+.cabin-adoption, .cabin-admin { display: grid; gap: 24px; min-width: 0; }
+.cabin-adoption .management-lede, .cabin-admin .management-lede { color: var(--album-muted); font-size: 1rem; line-height: 1.7; }
+.cabin-adoption .management-hint { color: var(--album-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.cabin-adoption .adoption-form, .cabin-adoption .adoption-form > fieldset { gap: 24px; }
+.cabin-adoption .adoption-avatars, .cabin-adoption .adoption-provider { display: block; }
+.cabin-adoption legend { margin-bottom: 12px; color: var(--album-muted); font-size: .875rem; }
+.adoption-avatar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 8px; }
+.adoption-avatar-grid button { padding: 4px; min-height: 48px; font-size: 1.5rem; }
+.adoption-provider-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.adoption-provider-grid button { padding: 8px 4px; min-width: 0; min-height: 48px; overflow-wrap: anywhere; }
+.adoption-avatar-grid [aria-pressed="true"], .adoption-provider-grid [aria-pressed="true"] { border-color: var(--album-accent); background: #30203f; color: #e6caff; }
+.adoption-count { justify-self: end; font-size: .875rem; color: var(--album-muted); }
+.cabin-adoption .adoption-submit { width: 100%; min-height: 48px; }
+.admin-section { display: grid; gap: 16px; min-width: 0; }
+.admin-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cabin-admin .admin-stat { gap: 8px; padding: 16px; align-content: start; }
+.admin-stat-value { font-size: clamp(1.5rem, 5vw, 2rem); font-variant-numeric: tabular-nums; line-height: 1.3; color: var(--album-accent); overflow-wrap: anywhere; }
+.admin-stat-label { font-size: .875rem; color: var(--album-ink); }
+.admin-stat-note { font-size: .875rem; color: var(--album-muted); }
+.cabin-admin .admin-resident-list { gap: 0; }
+.admin-resident-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-block: 16px; }
+.admin-resident-row + .admin-resident-row { border-top: 1px solid var(--album-line); }
+.admin-resident-copy { display: grid; gap: 4px; flex: 1; min-width: min(100%, 10rem); overflow-wrap: anywhere; }
+.admin-resident-copy time { font-size: .875rem; color: var(--album-muted); }
+.admin-problem p { color: var(--album-muted); overflow-wrap: anywhere; }
+.admin-problem > button { justify-self: start; }
+@media (min-width: 650px) { .admin-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 350px) { .adoption-provider-grid { grid-template-columns: 1fr; } }

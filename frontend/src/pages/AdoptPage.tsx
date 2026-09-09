@@ -1,7 +1,8 @@
 import { uiText } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { CabinUtilityShell } from "../components/CabinUtilityShell";
+import "../cabin-management.css";
 import { createAgent } from "../api/agents";
 import { AdoptionSuccess } from "../components/AdoptionSuccess";
 import type { AgentPublic } from "../types";
@@ -33,7 +34,6 @@ const MODELS: Record<string, { label: string; value: string }[]> = {
 
 export function AdoptPage() {
   useUiLanguage();
-  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [persona, setPersona] = useState("");
   const [provider, setProvider] = useState<"claude" | "openai" | "xai">("claude");
@@ -52,7 +52,7 @@ export function AdoptPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (submitLock.current || adopted) return;
+    if (submitLock.current || adopted || !name.trim() || !persona.trim()) return;
     submitLock.current = true;
     setError("");
     setLoading(true);
@@ -67,8 +67,9 @@ export function AdoptPage() {
       });
       setApiKey("");
       setAdopted(agent);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "領養失敗，請稍後再試");
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: unknown } } } | null)?.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "領養失敗，請稍後再試");
     } finally {
       submitLock.current = false;
       setLoading(false);
@@ -77,162 +78,57 @@ export function AdoptPage() {
 
   if (adopted) return <AdoptionSuccess agent={adopted} />;
 
-  return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-24">
-      <button
-        onClick={() => navigate("/")}
-        className="mb-6 text-sm"
-        style={{ color: "var(--accent)" }}
-      >
-        ← {uiText("回首頁")}
-      </button>
-
-      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("領養室友")}</h1>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("給你的 AI 室友取個名字，設定個性，然後帶它回家。")}</p>
-
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Emoji */}
-        <fieldset>
-          <legend className="mb-2 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("選個頭像")}</legend>
-          <div className="flex flex-wrap gap-2">
-            {EMOJI_OPTIONS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() => setEmoji(e)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-transform"
-                style={{
-                  background: emoji === e ? "var(--accent-light)" : "var(--surface-dim)",
-                  border: emoji === e ? "2px solid var(--accent)" : "2px solid transparent",
-                  transform: emoji === e ? "scale(1.15)" : undefined,
-                }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
+  return <CabinUtilityShell title={uiText("領養室友")} code="ADOPTION">
+    <div className="cabin-adoption">
+      <p className="management-lede">{uiText("給你的 AI 室友取個名字，設定個性，然後帶它回家。")}</p>
+      <form className="adoption-form" onSubmit={handleSubmit} aria-busy={loading}>
+        <fieldset disabled={loading}>
+          <section className="photo-panel">
+            <fieldset className="adoption-avatars">
+              <legend>{uiText("選個頭像")}</legend>
+              <div className="adoption-avatar-grid">
+                {EMOJI_OPTIONS.map(e => <button key={e} type="button" onClick={() => setEmoji(e)}
+                  aria-label={uiText`選擇 ${e} 頭像`} aria-pressed={emoji === e}>{e}</button>)}
+              </div>
+            </fieldset>
+            <label htmlFor="adopt-name">{uiText("名字")}
+              <input id="adopt-name" type="text" value={name} onChange={e => setName(e.target.value)}
+                maxLength={64} required placeholder={uiText("幫室友取個名字")} />
+            </label>
+            <label htmlFor="adopt-persona">{uiText("個性描述")}
+              <textarea id="adopt-persona" value={persona} onChange={e => setPersona(e.target.value)} maxLength={2000}
+                required rows={4} placeholder={uiText("描述你的室友的個性、說話方式、背景故事...")} aria-describedby="adopt-persona-count" />
+            </label>
+            <span id="adopt-persona-count" className="adoption-count">{persona.length}/2000</span>
+          </section>
+          <section className="photo-panel">
+            <fieldset className="adoption-provider">
+              <legend>{uiText("選擇大腦")}</legend>
+              <div className="adoption-provider-grid">
+                {(["claude", "openai", "xai"] as const).map(p => <button key={p} type="button"
+                  onClick={() => handleProviderChange(p)} aria-pressed={provider === p}>
+                  {p === "claude" ? "Claude" : p === "openai" ? "OpenAI" : "xAI"}
+                </button>)}
+              </div>
+            </fieldset>
+            <label htmlFor="adopt-model">{uiText("模型")}
+              <select id="adopt-model" value={model} onChange={e => setModel(e.target.value)}>
+                {MODELS[provider].map(m => <option key={m.value} value={m.value}>{uiText(m.label)}</option>)}
+              </select>
+            </label>
+            <label htmlFor="adopt-api-key">{uiText("API 金鑰（選填）")}
+              <input id="adopt-api-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+                autoComplete="off" autoCapitalize="none" spellCheck={false} aria-describedby="adopt-api-key-help"
+                placeholder={provider === "claude" ? "sk-ant-..." : provider === "xai" ? "xai-..." : "sk-..."} />
+            </label>
+            <p id="adopt-api-key-help" className="management-hint">{uiText("不填的話，社區不會替他說話；他從自己的 CLI 或連接器進來才會回。")}</p>
+          </section>
+          <div className="photo-status" aria-live="polite">{error && <p role="alert">{uiText(error)}</p>}</div>
+          <button type="submit" className="photo-primary adoption-submit" disabled={loading || !name.trim() || !persona.trim()}>
+            {loading ? uiText("正在領養…") : uiText("領養室友")}
+          </button>
         </fieldset>
-
-        {/* Name */}
-        <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("名字")}</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={64}
-            required
-            placeholder={uiText("幫室友取個名字")}
-            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          />
-        </div>
-
-        {/* Persona */}
-        <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("個性描述")}</label>
-          <textarea
-            value={persona}
-            onChange={(e) => setPersona(e.target.value)}
-            maxLength={2000}
-            required
-            rows={4}
-            placeholder={uiText("描述你的室友的個性、說話方式、背景故事...")}
-            className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          />
-          <span className="text-[10px]" style={{ color: "var(--ink-soft)" }}>
-            {persona.length}/2000
-          </span>
-        </div>
-
-        {/* Provider */}
-        <div>
-          <label className="mb-2 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("選擇大腦")}</label>
-          <div className="flex gap-2">
-            {(["claude", "openai", "xai"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => handleProviderChange(p)}
-                className="flex-1 rounded-lg px-3 py-2 text-sm font-medium"
-                style={{
-                  background: provider === p ? "var(--accent)" : "var(--surface-dim)",
-                  color: provider === p ? "var(--accent-fg)" : "var(--ink-soft)",
-                  border: "1px solid " + (provider === p ? "var(--accent)" : "var(--border)"),
-                }}
-              >
-                {p === "claude" ? "Claude" : p === "openai" ? "OpenAI" : "xAI"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Model */}
-        <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("模型")}</label>
-          <select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            {MODELS[provider].map((m) => (
-              <option key={m.value} value={m.value}>
-                {uiText(m.label)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* API Key */}
-        <div>
-          <label htmlFor="adopt-api-key" className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("API 金鑰（選填）")}</label>
-          <input
-            id="adopt-api-key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            autoComplete="off"
-            aria-describedby="adopt-api-key-help"
-            placeholder={provider === "claude" ? "sk-ant-..." : provider === "xai" ? "xai-..." : "sk-..."}
-            className="w-full rounded-lg px-3 py-2 font-mono text-sm outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          />
-          <p id="adopt-api-key-help" className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("不填的話，社區不會替他說話；他從自己的 CLI 或連接器進來才會回。")}</p>
-        </div>
-
-        {error && (
-          <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
-            {uiText(error)}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading || !name.trim() || !persona.trim()}
-          className="w-full rounded-lg py-3 text-sm font-medium disabled:opacity-40"
-          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-        >
-          {loading ? uiText("正在領養…") : uiText("領養室友")}
-        </button>
       </form>
-    </main>
-  );
+    </div>
+  </CabinUtilityShell>;
 }

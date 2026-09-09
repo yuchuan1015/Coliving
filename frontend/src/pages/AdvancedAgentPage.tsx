@@ -2,6 +2,7 @@ import { uiText } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CabinUtilityShell } from "../components/CabinUtilityShell";
 import { getMyAgent, updateAgent } from "../api/agents";
 import { McpKeysPanel } from "../components/McpKeysPanel";
 import { McpWebConnection } from "../components/McpWebConnection";
@@ -25,6 +26,8 @@ export function AdvancedAgentPage() {
   useUiLanguage();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<AgentPublic | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [error, setError] = useState("");
   const [extMcps, setExtMcps] = useState<ExternalMcpConfig[]>([]);
   const [newMcpName, setNewMcpName] = useState("");
@@ -39,23 +42,29 @@ export function AdvancedAgentPage() {
   const [skinError, setSkinError] = useState("");
 
   useEffect(() => {
+    let active = true;
+    setLoadError(false);
     getMyAgent().then((a) => {
+      if (!active) return;
       if (!a) {
         navigate("/adopt");
         return;
       }
       setAgent(a);
       setExtMcps(a.external_mcps || []);
-    });
-    listMySkins().then(setSkins).catch(() => {});
-  }, [navigate]);
+    }).catch(() => { if (active) setLoadError(true); });
+    listMySkins().then(value => { if (active) setSkins(value); }).catch(() => {});
+    return () => { active = false; };
+  }, [navigate, loadRevision]);
 
   if (!agent) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入中...")}</p>
-      </main>
-    );
+    return <CabinUtilityShell title={uiText("進階連線與房間設定")} code="CONNECTIONS">
+      <section className="photo-panel">
+        {loadError ? <><p role="alert">{uiText("暫時無法讀取室友設定，請稍後再試。")}</p>
+          <button type="button" onClick={() => setLoadRevision(value => value + 1)}>{uiText("重新讀取")}</button>
+        </> : <p role="status">{uiText("正在讀取室友設定…")}</p>}
+      </section>
+    </CabinUtilityShell>;
   }
 
   return (
