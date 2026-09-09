@@ -79,6 +79,18 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-hotspot { position: absolute; z-index: 2; width: 44px; height: 44px; transform: translate(-50%, -50%); display: grid; place-items: center; background: none; border: 0; border-radius: 50%; padding: 0; }
 .cabin-hotspot > span { display: block; width: 12px; height: 12px; border: 1.5px solid var(--c-moon); border-radius: 50%; background: rgb(8 6 24 / .46); }
 .cabin-hotspot.is-selected > span { background: var(--c-moon); outline: 1px solid var(--c-frost); outline-offset: 3px; }
+/* Live functional dial stays inside the photographed clock's original bezel.
+   Its invisible 44px button remains easy to tap; no dot obscures the hands. */
+.cabin-clock-face { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; overflow: visible; }
+.cabin-clock-dial { fill: #141318; }
+.cabin-clock-tick { stroke: var(--c-frost); stroke-width: 1.5; opacity: .7; }
+.cabin-clock-hour, .cabin-clock-minute { stroke: var(--c-frost); stroke-linecap: round; }
+.cabin-clock-hour { stroke-width: 4; }
+.cabin-clock-minute { stroke-width: 2.5; }
+.cabin-clock-second { stroke: var(--c-moon); stroke-width: 1.6; stroke-linecap: round; }
+.cabin-clock-pin { fill: var(--c-moon); }
+.cabin-clock-hotspot.is-selected .cabin-clock-face { outline: 1px solid var(--c-moon); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .cabin-clock-second { visibility: hidden; } }
 .cabin-leader { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .cabin-leader path { fill: none; stroke: var(--c-moon); stroke-width: 1; }
 .cabin-callout { position: absolute; z-index: 4; padding: 12px 16px; border: 1px solid var(--c-moon); border-radius: 16px; color: var(--c-frost); background: rgb(8 6 24 / .94); backdrop-filter: blur(8px); animation: cabin-fade 150ms ease; }

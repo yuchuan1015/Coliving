@@ -9,6 +9,9 @@ import { CabinPanelDialog } from "../components/CabinPanelDialog";
 import { AvatarContent } from "../components/AvatarContent";
 import { PhotoImage } from "../components/PhotoImage";
 import { CabinPhotoFrame } from "../components/CabinPhotoFrame";
+import { CabinClockFace } from "../components/CabinClockFace";
+import { clockDialSize } from "../data/cabin-clock";
+import { useCabinTime } from "../hooks/useCabinTime";
 import { getMyAgent } from "../api/agents";
 import type { AnnouncementOut, DashboardData } from "../types";
 import "../cabin-home.css";
@@ -29,7 +32,7 @@ export function HomePage() {
   const [selected, setSelected] = useState<CabinFurniture | null>(null);
   const [panel, setPanel] = useState<CabinPanel | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
-  const [now, setNow] = useState(() => new Date());
+  const now = useCabinTime();
   const sceneRef = useRef<HTMLDivElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const [sceneSize, setSceneSize] = useState({ width: 1, height: 1 });
@@ -70,9 +73,8 @@ export function HomePage() {
     getAnnouncements().then(items => {
       if (!cancelled) setAnnouncement([...items].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null);
     }).catch(() => {});
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => {
-      cancelled = true; window.clearInterval(timer);
+      cancelled = true;
       document.removeEventListener("visibilitychange", syncSummary);
       window.removeEventListener("focus", syncSummary);
       window.removeEventListener("pageshow", syncSummary);
@@ -111,6 +113,7 @@ export function HomePage() {
   const size = imageSizes[zone.id] ?? { width: 792, height: 1124 };
   // On short screens reveal more floor/furniture and less ceiling, with the same crop for hotspots.
   const positionY = sceneSize.width / sceneSize.height > .9 ? .8 : .5;
+  const dialSize = clockDialSize(sceneSize, size);
   const point = (item: CabinFurniture) => coverPoint(item.x, item.y, sceneSize.width, sceneSize.height, size.width, size.height, positionY);
   const selectedPoint = selected ? point(selected) : null;
   const calloutWidth = Math.min(176, sceneSize.width - 32);
@@ -141,7 +144,9 @@ export function HomePage() {
         {failedImages.includes(zone.id) && <p className="cabin-image-error">艙室圖片暫時無法載入，家具入口仍可使用。</p>}
         {zone.furniture.map(item => {
           const position = point(item);
-          return <button key={item.id} className={`cabin-hotspot${selected?.id === item.id ? " is-selected" : ""}`} style={{ left: position.x, top: position.y }} onClick={() => { setSelected(selected?.id === item.id ? null : item); setFabOpen(false); }} aria-label={`查看${item.label}`} aria-expanded={selected?.id === item.id} aria-controls={selected?.id === item.id ? "cabin-callout" : undefined}><span /></button>;
+          return <button key={item.id} className={`cabin-hotspot${item.id === "clock" ? " cabin-clock-hotspot" : ""}${selected?.id === item.id ? " is-selected" : ""}`} style={{ left: position.x, top: position.y }} onClick={() => { setSelected(selected?.id === item.id ? null : item); setFabOpen(false); }} aria-label={`查看${item.label}`} aria-expanded={selected?.id === item.id} aria-controls={selected?.id === item.id ? "cabin-callout" : undefined}>
+            {item.id === "clock" ? <CabinClockFace now={now} timeZone={timezone} {...dialSize} /> : <span />}
+          </button>;
         })}
         {selected && selectedPoint && <>
           <svg className="cabin-leader" width="100%" height="100%" aria-hidden="true"><path d={`M ${selectedPoint.x} ${selectedPoint.y} L ${calloutEndX + (calloutEndX === calloutX ? -12 : 12)} ${calloutY + 40} H ${calloutEndX}`} /></svg>

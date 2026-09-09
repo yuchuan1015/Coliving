@@ -134,6 +134,122 @@ beforeEach(() => {
   };
 });
 
+const { clockHandAngles, clockDialSize } = load("src/data/cabin-clock.ts");
+const { CabinClockFace } = load("src/components/CabinClockFace.tsx");
+const { useCabinTime } = load("src/hooks/useCabinTime.ts");
+test("clock hands include fractional hour and minute movement from real seconds", () => {
+  assert.deepEqual(clockHandAngles(new Date("2026-09-09T03:15:30Z"), "UTC"), { hour: 97.75, minute: 93, second: 180 });
+  assert.deepEqual(clockHandAngles(new Date("2026-09-09T03:15:31Z"), "UTC"), { hour: 97.5 + 31 / 120, minute: 93.1, second: 186 });
+});
+test("clock respects resident timezone, quarter-hour offsets and daylight savings", () => {
+  const now = new Date("2026-09-09T00:00:00Z");
+  assert.deepEqual(clockHandAngles(now, "Asia/Taipei"), { hour: 240, minute: 0, second: 0 });
+  assert.deepEqual(clockHandAngles(now, "Asia/Kathmandu"), { hour: 172.5, minute: 270, second: 0 });
+  assert.equal(clockHandAngles(new Date("2026-01-01T12:00:00Z"), "America/New_York").hour, 210);
+  assert.equal(clockHandAngles(new Date("2026-07-01T12:00:00Z"), "America/New_York").hour, 240);
+});
+test("clock wraps noon and midnight without an accumulated animation angle", () => {
+  for (const stamp of ["2026-09-09T00:00:00Z", "2026-09-09T12:00:00Z"]) {
+    assert.deepEqual(clockHandAngles(new Date(stamp), "UTC"), { hour: 0, minute: 0, second: 0 });
+  }
+  assert.deepEqual(clockHandAngles(new Date("2026-09-08T23:59:59Z"), "UTC"), { hour: 359.5 + 59 / 120, minute: 359.9, second: 354 });
+});
+test("live clock face exposes twelve ticks and actual hands but no duplicate focus target", () => {
+  const props = { now: new Date("2026-09-09T03:15:30Z"), timeZone: "UTC", width: 26, height: 27 };
+  const h = mount(CabinClockFace, props);
+  assert.equal(h.tree.props["aria-hidden"], "true");
+  assert.equal(h.tree.props.focusable, "false");
+  assert.equal(h.tree.props.width, 26);
+  assert.equal(h.tree.props.height, 27);
+  assert.equal(nodes(h.tree, n => n.props.className === "cabin-clock-tick").length, 12);
+  assert.equal(nodes(h.tree, n => n.props.className === "cabin-clock-second")[0].props.transform, "rotate(180 50 50)");
+  props.now = new Date("2026-09-09T03:15:31Z"); h.render();
+  assert.equal(nodes(h.tree, n => n.props.className === "cabin-clock-second")[0].props.transform, "rotate(186 50 50)");
+  assert.equal(calls.length, 0);
+});
+test("clock dial scales with the original photograph in tall and short cabin crops", () => {
+  const image = { width: 1053, height: 1494 };
+  assert.deepEqual(clockDialSize(image, image), { width: 52, height: 54 });
+  for (const scene of [{ width: 320, height: 550 }, { width: 390, height: 430 }, { width: 500, height: 220 }]) {
+    const size = clockDialSize(scene, image), scale = Math.max(scene.width / image.width, scene.height / image.height);
+    assert.ok(Math.abs(size.width - 52 * scale) < 1e-8);
+    assert.ok(Math.abs(size.height - 54 * scale) < 1e-8);
+  }
+  const { cabinZones } = load("src/data/cabin.ts");
+  const clock = cabinZones[0].furniture.find(item => item.id === "clock");
+  assert.deepEqual([clock.x, clock.y, clock.panel], [.782, .335, "clock"]);
+});
+test("clock ticks align to seconds and recover actual time after a delayed callback", t => {
+  const start = Date.parse("2026-09-09T03:15:30.250Z");
+  t.mock.timers.enable({ apis: ["Date"], now: start });
+  const h = mount(useCabinTime); h.effects();
+  assert.equal(h.tree.getTime(), start);
+  assert.equal(timers.size, 1);
+  const [id, timer] = [...timers][0];
+  assert.equal(timer.delay, 750);
+  t.mock.timers.setTime(start + 12_400);
+  timers.delete(id); timer.fn(); h.render();
+  assert.equal(h.tree.getTime(), start + 12_400);
+  assert.equal([...timers.values()][0].delay, 350);
+  assert.equal(calls.length, 0);
+  h.dispose(); assert.equal(timers.size, 0);
+});
+test("clock sleeps in hidden tabs and resyncs once on visibility, focus or page restore", t => {
+  const start = Date.parse("2026-09-09T03:00:00Z");
+  t.mock.timers.enable({ apis: ["Date"], now: start });
+  const h = mount(useCabinTime); h.effects();
+  documentStub.hidden = true; emit(documentEvents, "visibilitychange");
+  assert.equal(timers.size, 0);
+  t.mock.timers.setTime(start + 3_600_000);
+  emit(windowEvents, "focus"); emit(windowEvents, "pageshow"); h.render();
+  assert.equal(h.tree.getTime(), start);
+  assert.equal(timers.size, 0);
+  documentStub.hidden = false;
+  emit(documentEvents, "visibilitychange"); emit(windowEvents, "focus"); emit(windowEvents, "pageshow"); h.render();
+  assert.equal(h.tree.getTime(), start + 3_600_000);
+  assert.equal(timers.size, 1);
+  h.dispose();
+  assert.equal(timers.size, 0);
+  assert.equal(windowEvents.get("focus").size, 0);
+  assert.equal(windowEvents.get("pageshow").size, 0);
+  assert.equal(documentEvents.get("visibilitychange").size, 0);
+  assert.equal(calls.length, 0);
+});
+test("a hidden clock starts without a timer and strict remount keeps one timer", () => {
+  documentStub.hidden = true;
+  const hidden = mount(useCabinTime); hidden.effects(); assert.equal(timers.size, 0); hidden.dispose();
+  documentStub.hidden = false;
+  const first = mount(useCabinTime); first.effects(); first.dispose();
+  const second = mount(useCabinTime); second.effects(); assert.equal(timers.size, 1);
+  second.dispose(); assert.equal(timers.size, 0);
+});
+test("clock button retains its card and local/community panel without changing other furniture", async () => {
+  auth.user.timezone = "Asia/Kathmandu";
+  answer = async (_method, url) => ({ data: url === "/home/furniture" ? { clock: { timezone: "UTC", community_timezone: "Asia/Taipei" } } : url === "/home/dashboard" ? { agents: [], community_status: {} } : [] });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage); h.effects(); await tick(); h.render();
+  const face = one(h, "CabinClockFace");
+  assert.equal(face.props.timeZone, "Asia/Kathmandu");
+  const trigger = nodes(h.tree, n => n.props["aria-label"] === "查看時鐘")[0];
+  assert.equal(nodes(trigger, n => n.type === "span").length, 0);
+  trigger.props.onClick(); h.render(); click(h, "進入 ›"); h.render();
+  const panel = one(h, "CabinPanelDialog");
+  assert.equal(panel.props.panel, "clock");
+  assert.equal(panel.props.now.getTime(), one(h, "CabinClockFace").props.now.getTime());
+  assert.equal(nodes(h.tree, n => n.type === "time")[0].props.dateTime, panel.props.now.toISOString());
+  assert.ok(calls.every(call => call.method === "get"));
+  nodes(h.tree, n => n.type === "input" && n.props.type === "range")[0].props.onChange({ target: { value: "1" } }); h.render();
+  assert.equal(nodes(h.tree, n => n.type?.name === "CabinClockFace").length, 0);
+  h.dispose();
+});
+test("clock keeps the touch area and reduced-motion preference without backwards sweep transitions", () => {
+  const css = readFileSync(resolve(root, "src/cabin-home.css"), "utf8");
+  assert.match(css, /\.cabin-hotspot\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px/);
+  assert.match(css, /\.cabin-clock-face\s*\{[^}]*pointer-events:\s*none/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.cabin-clock-second\s*\{\s*visibility:\s*hidden/);
+  const clockSource = readFileSync(resolve(root, "src/components/CabinClockFace.tsx"), "utf8");
+  assert.doesNotMatch(clockSource, /transition|animateTransform|requestAnimationFrame|fetch\(/);
+});
+
 const { CabinUtilityShell, CabinUtilityEmpty } = load("src/components/CabinUtilityShell.tsx");
 const { DiaryPage } = load("src/pages/DiaryPage.tsx");
 const { DrawerPage } = load("src/pages/DrawerPage.tsx");
