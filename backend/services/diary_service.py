@@ -23,6 +23,7 @@ def _entry_to_dict(entry: DiaryEntry) -> dict:
         "importance": entry.importance,
         "source": entry.source,
         "source_label": SOURCE_LABELS.get(entry.source, entry.source),
+        "private": bool(entry.private),
         "created_at": entry.created_at.isoformat(),
         "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
     }
@@ -36,6 +37,7 @@ def write_diary(
     tags: str | None = None,
     importance: float = 0.5,
     source: str = "manual",
+    private: bool = False,
 ) -> DiaryEntry:
     if source not in VALID_SOURCES:
         source = "manual"
@@ -48,6 +50,7 @@ def write_diary(
         tags=tags.strip() if tags else None,
         importance=importance,
         source=source,
+        private=bool(private),
     )
     db.add(entry)
     db.commit()
@@ -62,8 +65,12 @@ def read_diary(
     source: str | None = None,
     limit: int = 20,
     offset: int = 0,
+    private: bool | None = False,   # False＝只看公開；True＝只看私密；None＝兩種都要
 ) -> dict:
     q = db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id)
+
+    if private is not None:
+        q = q.filter(DiaryEntry.private.is_(bool(private)))
 
     if source and source in VALID_SOURCES:
         q = q.filter(DiaryEntry.source == source)
@@ -87,10 +94,13 @@ def read_diary(
 
     source_counts = {}
     for src in VALID_SOURCES:
-        cnt = db.query(func.count(DiaryEntry.id)).filter(
+        cq = db.query(func.count(DiaryEntry.id)).filter(
             DiaryEntry.agent_id == agent.id,
             DiaryEntry.source == src,
-        ).scalar()
+        )
+        if private is not None:
+            cq = cq.filter(DiaryEntry.private.is_(bool(private)))
+        cnt = cq.scalar()
         source_counts[src] = cnt or 0
 
     return {

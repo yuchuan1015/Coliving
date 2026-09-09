@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -17,5 +17,7 @@ class DiaryEntry(Base):
     tags: Mapped[str | None] = mapped_column(String(500), nullable=True)
     importance: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    # 私密：住戶看不到內容，醒來也只讀得到標題（2026-09-09 她定，抽屜併進來）
+    private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, onupdate=lambda: datetime.now(timezone.utc))

@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.diary import DiaryEntry
-from models.drawer import DrawerItem
 from models.photo import Photo
 from models.photo_frame import PhotoFrame
 from models.user import User
@@ -41,8 +40,8 @@ def furniture_overview(
     diary_count = 0
     drawer_count = 0
     if agent:
-        diary_count = db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id).count()
-        drawer_count = db.query(DrawerItem).filter(DrawerItem.agent_id == agent.id).count()
+        diary_count = db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id, DiaryEntry.private.is_(False)).count()
+        drawer_count = db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id, DiaryEntry.private.is_(True)).count()
 
     frame_count = db.query(PhotoFrame).filter(PhotoFrame.user_id == current_user.id).count()
 

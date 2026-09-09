@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.diary import DiaryEntry
-from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
 from models.user import User
 from services.external_mcp_client import ExternalMCPClient
@@ -49,13 +48,14 @@ def near_path(db: Session, agent: Agent) -> dict:
         .order_by(PhotoFrame.created_at.asc()).all()
     )
     diaries = (
-        db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id)
+        db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id, DiaryEntry.private.is_(False))
         .order_by(DiaryEntry.importance.desc(), DiaryEntry.created_at.desc())
         .limit(DIARY_N).all()
     )
+    # 私密的（抽屜）只給標題，內容要自己去翻
     drawer = (
-        db.query(DrawerItem).filter(DrawerItem.agent_id == agent.id)
-        .order_by(DrawerItem.created_at.desc()).limit(DRAWER_CATALOG_N).all()
+        db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id, DiaryEntry.private.is_(True))
+        .order_by(DiaryEntry.created_at.desc()).limit(DRAWER_CATALOG_N).all()
     )
     return {
         "note": note,
@@ -66,7 +66,7 @@ def near_path(db: Session, agent: Agent) -> dict:
              "created_at": d.created_at.isoformat()}
             for d in diaries
         ],
-        "drawer": [{"label": i.label, "category": i.category} for i in drawer],
+        "drawer": [{"label": i.title, "category": i.tags or "misc"} for i in drawer],
     }
 
 

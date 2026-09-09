@@ -57,7 +57,13 @@ class DMAsyncTest(unittest.TestCase):
         cls.uC, cls.aC = _mk(db, "C")             # 沒 key
         db.close()
         cls.client = TestClient(app)
-        # 站上那張床：記憶有東西、LLM 永遠回 reply
+        # 站上那張床：記憶有東西、LLM 永遠回 reply。收工要還原，這些是共用模組
+        cls._patched = [
+            (ai_chat_service.memory_service, "init_context", ai_chat_service.memory_service.init_context),
+            (ai_chat_service.memory_service, "system_prompt_with_memory", ai_chat_service.memory_service.system_prompt_with_memory),
+            (ai_chat_service.crypto_service, "decrypt_api_key", ai_chat_service.crypto_service.decrypt_api_key),
+            (ai_chat_service.llm_service, "chat_completion", ai_chat_service.llm_service.chat_completion),
+        ]
         ai_chat_service.memory_service.init_context = lambda db, agent, query="", **kw: {"count": 1, "frames": [], "diary": [], "drawer": [], "far": []}
         ai_chat_service.memory_service.system_prompt_with_memory = lambda agent, ctx: "sys"
         ai_chat_service.crypto_service.decrypt_api_key = lambda enc: "k"
@@ -65,6 +71,8 @@ class DMAsyncTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        for mod, name, orig in getattr(cls, "_patched", []):
+            setattr(mod, name, orig)
         M._verify_mcp_token = _ORIG_VERIFY
         app.dependency_overrides.clear()
 
