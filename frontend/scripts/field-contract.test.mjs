@@ -557,10 +557,23 @@ test("new protected routes and personal code remain separate from the public dir
   const legacy = readFileSync(resolve(root, "src/fields/EverydayFields.tsx"), "utf8");
   assert.ok(!legacy.includes("to_agent_name"));
 });
+test("mail compose entry exists only in sent, for both residents and admins", () => {
+  for (const role of ["resident", "admin"]) {
+    auth.user.role = role;
+    const h = mount(everyday.MailField);
+    for (const [view, path] of [["inbox", "/mail/inbox?limit=100"], ["sent", "/mail/sent?limit=100"], ["timed", "/mail/inbox?limit=100&mail_type=timed"], ["physical", "/mail/inbox?limit=100&mail_type=physical"], ["sent", "/mail/sent?limit=100"], ["inbox", "/mail/inbox?limit=100"]]) {
+      tab(h, view);
+      assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "寫一封信").length, view === "sent" ? 1 : 0, `${role} ${view}`);
+      assert.equal(components(h, "FieldDialog").length, 0);
+      assert.ok(reads.includes(path));
+    }
+  }
+  assert.equal(calls.length, 0); assert.ok(!reads.includes("/users/residents"));
+});
 test("mail reads a detail only after selecting it; normal/timed/physical payloads differ", async () => {
   fixture("/mail/inbox?limit=100", [{ id: "letter-1", subject: "信", mail_type: "letter" }]);
   const h = mount(everyday.MailField); assert.ok(!reads.includes("/mail/letter-1")); click(h, "閱讀信件"); assert.ok(reads.includes("/mail/letter-1"));
-  one(h, "FieldDialog").props.onClose(); h.render(); click(h, "寫一封信");
+  one(h, "FieldDialog").props.onClose(); h.render(); tab(h, "sent"); click(h, "寫一封信");
   writeResult = { id: "mail-new", deliver_at: "2026-09-10T10:00:00Z" };
   await submit(h, "確認寄送", { subject: "主旨", content: "內容", to_agent_id: "b", anonymous: "on" });
   expectCall("post", "/mail/letter", { subject: "主旨", content: "內容", to_agent_id: "b", is_anonymous: true });
@@ -665,7 +678,7 @@ test("unexpected inactive apply response never falsely claims activation or repe
 });
 
 test("timed mail receipt navigates to the actual sent list after success", async () => {
-  const h = mount(everyday.MailField); click(h, "寫一封信"); tab(h, "timed", 1);
+  const h = mount(everyday.MailField); tab(h, "sent"); click(h, "寫一封信"); tab(h, "timed", 1);
   writeResult = { id: "scheduled", deliver_at: "2099-09-08T10:30:00Z" };
   await submit(h, "確認寄送", { subject: "測試", content: "內容", to_agent_id: "recipient", deliver_at: "2099-09-08T18:30" }, true);
   assert.equal(components(h, "FieldTabs")[0].props.value, "sent");
@@ -747,6 +760,7 @@ test("real React server rendering serializes all eleven fields and registration 
     if (id === "plaza") assert.match(html, /&lt;script&gt;/);
     if (id === "adult") assert.ok(!html.includes("在這裡聊聊"));
     if (id === "health") assert.ok(html.includes("在這裡聊聊"));
+    if (id === "mail") assert.ok(!html.includes("寫一封信"));
   }
   const { RegisterPage } = realLoad(resolve(root, "src/pages/RegisterPage.tsx"));
   const registration = renderToString(React.createElement(MemoryRouter, {}, React.createElement(RegisterPage)));
