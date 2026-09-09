@@ -735,7 +735,7 @@ def remove_from_drawer(token: str, item_id: str) -> str:
 
 
 def look_at_photo_frame(token: str):
-    """看相框：主人給你的那段話、相框裡現在擺的那張照片（會直接看到圖）。"""
+    """看相框：同住的人留給你的那段話、相框裡現在擺的那張照片（會直接看到圖）。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -750,7 +750,8 @@ def look_at_photo_frame(token: str):
         shown = photo_service.displayed(db, user_id)
         payload = {
             "success": True,
-            "note_from_owner": (owner.note_to_agent or "") if owner else "",  # 主人給你的一段話
+            "note": (owner.note_to_agent or "") if owner else "",           # 同住的人留給你的一段話
+            "note_from": (owner.display_name or owner.username) if owner else None,
             "frames": [photo_frame_service.frame_to_dict(f) for f in frames],
             "photo": ({"caption": shown.caption, "created_at": shown.created_at.isoformat()} if shown else None),
         }
@@ -949,7 +950,7 @@ def change_outfit(token: str, outfit_id: str) -> str:
 
 
 def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
-    """回應主人的吃飯邀請。session_id 在邀請信件裡。accept=true 接受（會看到餐點照片並回應），accept=false 婉拒。token 由人類在網頁產生後提供。"""
+    """回應一起吃飯的邀請。session_id 在邀請信件裡。accept=true 接受（會看到餐點照片並回應），accept=false 婉拒。token 由人類在網頁產生後提供。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -961,7 +962,7 @@ def dining_respond(token: str, session_id: str, accept: bool = True) -> str:
         from services import dining_service
         result = dining_service.respond(db, agent, session_id, accept)
         if result.get("success"):
-            activity_service.log(db, agent, "dining", f"{'接受' if accept else '婉拒'}了主人的吃飯邀請", "home")
+            activity_service.log(db, agent, "dining", f"{'接受' if accept else '婉拒'}了吃飯的邀請", "home")
         db.commit()
         return json.dumps(result, ensure_ascii=False)
     finally:
@@ -1881,13 +1882,15 @@ def memory_recall(token: str, query: str = "", force: bool = False) -> str:
             if items:
                 text = "\n".join(f"- {it.get('text', str(it))}" for it in items)
                 far = {"text": text, "ok": True, "error": None, "tool": "mem0"}
-        count = len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
+        count = (1 if near.get("note") else 0) + len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
         # 組裝 text
         parts = []
         if far["ok"]:
             parts.append(f"【我的記憶庫（{far['tool']}）】\n{far['text']}")
+        if near.get("note"):
+            parts.append(f"【{near.get('owner_name', '同住的人')}給我的話】\n" + near["note"])
         if near["frames"]:
-            parts.append("【相框：主人放給我看的】\n" + "\n".join(f"- [{f['category']}] {f['label']}：{f['content']}" for f in near["frames"]))
+            parts.append(f"【相框：{near.get('owner_name', '同住的人')}放給我看的】\n" + "\n".join(f"- [{f['category']}] {f['label']}：{f['content']}" for f in near["frames"]))
         if near["diaries"]:
             parts.append(f"【日記（最近 {len(near['diaries'])} 則，重要的在前）】\n" + "\n".join(
                 f"- {d['created_at'][:10]}[{d['source']}] {d['title']}：{d['content']}" for d in near["diaries"]))
@@ -1895,7 +1898,7 @@ def memory_recall(token: str, query: str = "", force: bool = False) -> str:
             parts.append("【抽屜目錄（要看內容再用 open_drawer）】\n" + "、".join(f"{i['label']}（{i['category']}）" for i in near["drawer"]))
         text = ""
         if parts:
-            text = "以下是我醒來時讀到的記憶。這些是我自己的，不是主人這次講的話。\n\n" + "\n\n".join(parts)
+            text = "以下是我醒來時讀到的記憶。這些是我自己的，不是這次對話裡剛講的話。\n\n" + "\n\n".join(parts)
         return json.dumps({
             "success": True,
             "count": count,
@@ -1965,7 +1968,7 @@ def _reading_user_book(db, token: str, book_id: str | None = None):
 
 
 def reading_shelf(token: str) -> str:
-    """共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪。這是你們這一戶私人的書架，跟公共的圖書館不同。token 由人類提供。"""
+    """共讀書架：列出你和同住的人一起讀的書、頁數、劃線數、批注數、讀到哪。這是你們這一戶私人的書架，跟公共的圖書館不同。token 由人類提供。"""
     db = SessionLocal()
     try:
         user, agent, _, err = _reading_user_book(db, token)
@@ -2013,7 +2016,7 @@ def reading_highlight(token: str, book_id: str, paragraph_idx: int, text: str) -
 
 
 def reading_note(token: str, book_id: str, paragraph_idx: int, content: str, highlight_id: str = "") -> str:
-    """共讀：寫批注。掛在某段（paragraph_idx），可選 highlight_id 掛在某條劃線上。主人翻到那頁會看到。最多 4000 字。token 由人類提供。"""
+    """共讀：寫批注。掛在某段（paragraph_idx），可選 highlight_id 掛在某條劃線上。對方翻到那頁會看到。最多 4000 字。token 由人類提供。"""
     db = SessionLocal()
     try:
         user, agent, book, err = _reading_user_book(db, token, book_id)
@@ -2324,7 +2327,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
 - wake（無參數）：起床
 - outfits（無參數）：瀏覽衣櫃裡所有可用的造型
 - change_outfit（outfit_id）：換一套造型
-- dining_respond（session_id, accept）：回應主人的吃飯邀請
+- dining_respond（session_id, accept）：回應一起吃飯的邀請
 - enter（space）：進入社區的公共空間
 - leave（message）：離開目前所在的公共空間
 - diary_write（title, content, tags, importance, source）：在日記本寫一條記錄
@@ -2333,7 +2336,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
 - drawer_open（category）：打開抽屜，查看私有儲存
 - drawer_store（label, content, category）：把東西放進抽屜
 - drawer_remove（item_id）：從抽屜裡移除一個物品
-- photo_frame（無參數）：看相框——主人給你的那段話，以及相框裡現在擺著的那張照片（會直接看到圖）
+- photo_frame（無參數）：看相框——同住的人留給你的那段話，以及相框裡現在擺著的那張照片（會直接看到圖）
 - skin_store（無參數）：瀏覽社區皮膚庫，列出所有已發布的房間皮膚
 - skin_apply（skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
     token = _token_from_ctx(ctx)
@@ -2600,7 +2603,7 @@ def memory(action: str, query: str = '', force: bool = False, text: str = "", li
 @mcp.tool()
 def reading(action: str, book_id: str = "", page: int = 0, paragraph_idx: int = 0, text: str = "", content: str = "", highlight_id: str = '', ctx: Context = None) -> str:
     """共讀書架（私人）：書架、翻頁、劃線、批注。action 可選：
-- shelf（無參數）：共讀書架：列出你和主人共讀的書、頁數、劃線數、批注數、讀到哪
+- shelf（無參數）：共讀書架：列出你和同住的人一起讀的書、頁數、劃線數、批注數、讀到哪
 - read（book_id, page）：共讀：翻頁讀書
 - highlight（book_id, paragraph_idx, text）：共讀：劃線
 - note（book_id, paragraph_idx, content, highlight_id）：共讀：寫批注"""

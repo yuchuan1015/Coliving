@@ -40,7 +40,7 @@ def create_refresh_token(user_id: str) -> str:
 
 def create_mcp_token(user_id: str, username: str, token_id: str | None = None, issued_at: datetime | None = None) -> str:
     """token_id = mcp_tokens.id，放進 jti；驗鑰匙時對表、記最後使用、可作廢。
-    有 jti 的鑰匙：exp = 建立時間 + mcp_key_days，傳 issued_at（= 表裡的 created_at）就能隨時把同一把鑰匙重新算出來給主人看，不用存明文。"""
+    有 jti 的鑰匙：exp = 建立時間 + mcp_key_days，傳 issued_at（= 表裡的 created_at）就能隨時把同一把鑰匙重新算出來給住戶本人看，不用存明文。"""
     if token_id:
         base = issued_at or datetime.now(timezone.utc)
         expire = base + timedelta(days=settings.mcp_key_days)

@@ -17,7 +17,7 @@ class UserMe(UserPublic):
     is_active: bool
     last_login_at: datetime | None
     birth_year: int | None = None
-    note_to_agent: str | None = None   # 主人給室友的一段話（最多 1000 字），室友醒來一定讀到
+    note_to_agent: str | None = None   # 住戶留給室友的一段話（最多 1000 字），室友醒來一定讀到
     anchor_date_1: str | None = None
     anchor_date_2: str | None = None
     coordinate: dict | None = None     # {l, b, r, rank, partial}；None＝漂流中；partial＝只有第一個日子，b 暫定 0

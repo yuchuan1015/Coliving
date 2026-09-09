@@ -78,7 +78,7 @@ def create_schedule(
     except (ValueError, KeyError):
         raise HTTPException(status_code=400, detail="無效的 cron 表達式")
 
-    # cron 照主人的時區解讀（她定：艙室內用住戶當地時間）
+    # cron 照住戶的時區解讀（她定：艙室內用住戶當地時間）
     next_run = time_service.next_cron_run(body.cron_expr, time_service.tz_of(current_user))
 
     schedule = Schedule(

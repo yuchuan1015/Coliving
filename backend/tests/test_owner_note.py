@@ -1,4 +1,4 @@
-"""主人給室友的一段話：只有主人能寫、最多 1000 字、室友醒來一定讀到。
+"""住戶留給室友的一段話：只有住戶本人能寫、最多 1000 字、室友醒來一定讀到。
 跑法：cd backend && DATABASE_URL=sqlite:////tmp/nt.db .venv/bin/python -m unittest tests.test_owner_note
 """
 import json
@@ -90,7 +90,8 @@ class OwnerNoteTest(unittest.TestCase):
         M._verify_mcp_token = lambda token: self.uid
         out = M.look_at_photo_frame("k")
         d = json.loads(out if isinstance(out, str) else out[0])
-        self.assertEqual(d["note_from_owner"], "冰箱裡有布丁")
+        self.assertEqual(d["note"], "冰箱裡有布丁")
+        self.assertTrue(d["note_from"])  # 誰寫的
 
 
 if __name__ == "__main__":

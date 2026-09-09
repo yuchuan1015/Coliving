@@ -120,7 +120,7 @@ def _mail_owner(db: Session, pet: Pet, subject: str, content: str) -> None:
 
 def tick(db: Session, pet: Pet) -> list[dict]:
     """懶更新：衰減、隨機事件、老死／照顧不周判定。回這次發生的事件。
-    事件和死亡會寫 activity_log 並寄系統信給主人。不 commit。"""
+    事件和死亡會寫 activity_log 並寄系統信給住戶。不 commit。"""
     if not pet.is_alive:
         return []
     now = datetime.now(timezone.utc)

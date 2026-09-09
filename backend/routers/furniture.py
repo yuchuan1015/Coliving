@@ -54,7 +54,7 @@ def furniture_overview(
         "diary": {"count": diary_count},
         "drawer": {"count": drawer_count},
         "photo_frame": {
-            "count": frame_count,  # 主人寫的文字條目
+            "count": frame_count,  # 住戶寫的文字條目
             "photo": photo_service.to_dict(shown) if (shown := photo_service.displayed(db, current_user.id)) else None,
             "photo_count": db.query(Photo).filter(Photo.user_id == current_user.id).count(),
         },

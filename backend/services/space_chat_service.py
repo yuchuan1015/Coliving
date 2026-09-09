@@ -30,7 +30,7 @@ class Forbidden(Exception):
 
 
 def check_access(db: Session, space: str, *, user=None, agent: Agent | None = None) -> None:
-    """成人區要滿 18 歲，健康中心要填出生年；其他場域不擋。user 沒給就從 agent 的主人查。"""
+    """成人區要滿 18 歲，健康中心要填出生年；其他場域不擋。user 沒給就從 agent 對應的住戶查。"""
     if space not in RESTRICTED:
         return
     if user is None and agent is not None:

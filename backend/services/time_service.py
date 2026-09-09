@@ -2,7 +2,7 @@
 
 2026-09-07 喻墨定：艙室（我的家）裡除了「社區時間」那欄全部用住戶當地時間；公共場域用社區時間＝台北。
 - DB 存的一律 UTC（SQLite 讀回是 naive，用 aware() 補 tzinfo）。
-- 排程的 cron 表達式照主人的時區解讀，算出來再轉 UTC 存。
+- 排程的 cron 表達式照住戶的時區解讀，算出來再轉 UTC 存。
 """
 from __future__ import annotations
 

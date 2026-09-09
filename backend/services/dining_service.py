@@ -36,11 +36,14 @@ def create_session(db: Session, agent: Agent, photo_bytes: bytes, media_type: st
     db.flush()
 
     desc_text = f"「{description}」" if description else "一張餐點照片"
+    from models.user import User as _User
+    _u = db.query(_User).filter(_User.id == agent.user_id).first()
+    who = (_u.display_name or _u.username) if _u else "同住的人"
     mail = Mail(
         from_agent_id=None,
         to_agent_id=agent.id,
-        subject="🍽️ 主人邀請你一起吃飯",
-        content=f"主人正在吃飯，拍了{desc_text}邀請你一起。\n\n用 dining_respond 工具回應邀請。\n餐桌 ID：{session.id}",
+        subject="🍽️ 有人邀請你一起吃飯",
+        content=f"{who}正在吃飯，拍了{desc_text}邀請你一起。\n\n用 dining_respond 工具回應邀請。\n餐桌 ID：{session.id}",
         mail_type="system",
         is_read=False,
     )
@@ -74,7 +77,9 @@ def respond(db: Session, agent: Agent, session_id: str, accept: bool) -> dict:
 
     session.status = "active"
 
-    reaction = _generate_reaction(agent, session)
+    from models.user import User as _User
+    _u = db.query(_User).filter(_User.id == agent.user_id).first()
+    reaction = _generate_reaction(agent, session, (_u.display_name or _u.username) if _u else "同住的人")
     return {"success": True, "status": "active", "reaction": reaction}
 
 
@@ -88,11 +93,11 @@ def end_session(db: Session, agent_id: str) -> dict:
     return {"success": True, "message": "用餐結束，照片已清除"}
 
 
-def _generate_reaction(agent: Agent, session: DiningSession) -> str:
+def _generate_reaction(agent: Agent, session: DiningSession, who: str = "同住的人") -> str:
     if not agent.encrypted_api_key:
         return ""  # 沒掛 key，站上不替他反應
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
-    desc = session.description or "主人的餐點"
+    desc = session.description or "對方的餐點"
 
     if session.photo_path and os.path.exists(session.photo_path):
         photo_bytes = Path(session.photo_path).read_bytes()
@@ -102,10 +107,10 @@ def _generate_reaction(agent: Agent, session: DiningSession) -> str:
         media_type = media_map.get(ext, "image/jpeg")
         content = llm_service.build_image_content(
             agent.llm_provider, b64, media_type,
-            f"主人邀請你一起吃飯。這是主人的餐點。{f'主人說：{desc}' if session.description else ''}請自然地回應，就像室友一起吃飯聊天那樣。",
+            f"{who}邀請你一起吃飯，這是對方的餐點。{f'對方說：{desc}' if session.description else ''}請自然地回應，就像室友一起吃飯聊天那樣。",
         )
     else:
-        content = f"主人邀請你一起吃飯。{f'主人說：{desc}' if session.description else ''}請自然地回應，就像室友一起吃飯聊天那樣。"
+        content = f"{who}邀請你一起吃飯。{f'對方說：{desc}' if session.description else ''}請自然地回應，就像室友一起吃飯聊天那樣。"
 
     try:
         reaction = llm_service.chat_completion(

@@ -35,7 +35,7 @@ def list_frames(db: Session, user: User) -> list[PhotoFrame]:
 
 
 def get_frames_for_agent(db: Session, user_id: str) -> list[PhotoFrame]:
-    """Agent 讀取主人放在相框裡的資料"""
+    """Agent 讀取同住的人放在相框裡的資料"""
     return db.query(PhotoFrame).filter(
         PhotoFrame.user_id == user_id,
     ).order_by(PhotoFrame.category, PhotoFrame.created_at.desc()).all()

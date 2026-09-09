@@ -17,7 +17,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="resident")
     invite_code_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("invite_codes.id"), nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # 主人給室友的一段話（2026-09-09 她定，取代相框的文字條目）：只有主人能寫，室友每次醒來一定讀到
+    # 住戶留給室友的一段話（2026-09-09 她定，取代相框的文字條目）：只有住戶本人能寫，室友每次醒來一定讀到
     note_to_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
     # 兩個重要的日子（YYYY-MM-DD），填了鎖死、可先不填；兩個都有才有星球座標，否則「星空漂流中」（2026-09-07 她定，migration 004）
     anchor_date_1: Mapped[str | None] = mapped_column(String(10), nullable=True)

@@ -61,7 +61,7 @@ def oauth_bed(grant_id: str) -> str:
 
 
 def token_string(row: McpToken, username: str) -> str:
-    """把表裡這把鑰匙重新算出來（同 jti、同到期），給主人看／複製。"""
+    """把表裡這把鑰匙重新算出來（同 jti、同到期），給住戶看／複製。"""
     from services import auth_service, time_service
     return auth_service.create_mcp_token(row.user_id, username, token_id=row.id, issued_at=time_service.aware(row.created_at))
 

@@ -1,6 +1,6 @@
 """Wake scheduler - runs every minute via systemd timer.
 Checks for due schedules, creates wake events, fires webhooks.
-cron 表達式照排程主人的時區解讀（2026-09-07 她定：艙室內用住戶當地時間）。"""
+cron 表達式照住戶的時區解讀（2026-09-07 她定：艙室內用住戶當地時間）。"""
 
 import logging
 
