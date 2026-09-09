@@ -15,6 +15,7 @@ class UsageLog(Base):
     __table_args__ = (
         Index("ix_usage_logs_agent_created", "agent_id", "created_at"),
         Index("ix_usage_logs_conversation", "conversation_id"),
+        Index("ix_usage_logs_reply", "reply_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -22,6 +23,9 @@ class UsageLog(Base):
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     purpose: Mapped[str] = mapped_column(String(24), nullable=False, default="chat")  # chat / dm / dining / other
     conversation_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # 同一則回覆的每一次呼叫共用一個 reply_id，call_index 是這則回覆裡的第幾輪（2026-09-09 Codex 抓到用時間猜會混到上一則）
+    reply_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    call_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     provider: Mapped[str] = mapped_column(String(16), nullable=False)
     model: Mapped[str] = mapped_column(String(64), nullable=False)
 

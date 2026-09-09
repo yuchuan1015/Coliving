@@ -131,6 +131,87 @@ class UsageTest(unittest.TestCase):
         self.assertEqual(before, after)
         db.close()
 
+    # ── Codex 2026-09-09 抓到的兩個 bug，照他列的邊界測 ──
+
+    def test_two_quick_replies_do_not_merge(self):
+        """兩則連在一起的回覆不能混算（以前用 120 秒的時間窗猜，會把上一則算進來）。"""
+        db = SessionLocal()
+        a = self._agent(db)
+        conv = "conv-quick"
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 100, "output_tokens": 10,
+             "cached_input_tokens": None, "reasoning_tokens": None}], conversation_id=conv)
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 1000, "output_tokens": 100,
+             "cached_input_tokens": None, "reasoning_tokens": None}], conversation_id=conv)
+        db.commit()
+        s = usage_service.summary(db, a, conversation_id=conv)
+        self.assertEqual(s["this_reply"]["calls"], 1)
+        self.assertEqual(s["this_reply"]["total_tokens"], 1100)
+        self.assertEqual(s["conversation_total"]["total_tokens"], 1210)   # 累計照樣是兩則加起來
+        self.assertEqual(s["current_context_tokens"], 1000)
+        db.close()
+
+    def test_one_reply_with_tool_rounds_sums_all(self):
+        """一則回覆跑三輪工具＝三次呼叫，本次回覆要全部加起來，上下文取最後一輪。"""
+        db = SessionLocal()
+        a = self._agent(db)
+        conv = "conv-tools"
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 100, "output_tokens": 10,
+             "cached_input_tokens": None, "reasoning_tokens": None},
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 300, "output_tokens": 20,
+             "cached_input_tokens": None, "reasoning_tokens": None},
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 700, "output_tokens": 30,
+             "cached_input_tokens": None, "reasoning_tokens": None},
+        ], conversation_id=conv)
+        db.commit()
+        s = usage_service.summary(db, a, conversation_id=conv)
+        self.assertEqual(s["this_reply"]["calls"], 3)
+        self.assertEqual(s["this_reply"]["total_tokens"], 1160)
+        self.assertEqual(s["current_context_tokens"], 700)      # 最後一輪的輸入
+        self.assertFalse(s["this_reply"]["usage_partial"])
+        db.close()
+
+    def test_partial_usage_is_flagged(self):
+        """只缺輸入、只缺輸出都算沒拿全；總數是已知小計，而且要標不完整。"""
+        db = SessionLocal()
+        a = self._agent(db)
+        conv = "conv-partial"
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 100, "output_tokens": None,
+             "cached_input_tokens": None, "reasoning_tokens": None},
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": None, "output_tokens": 20,
+             "cached_input_tokens": None, "reasoning_tokens": None},
+        ], conversation_id=conv)
+        db.commit()
+        t = usage_service.summary(db, a, conversation_id=conv)["conversation_total"]
+        self.assertEqual(t["missing_usage"], 2)      # 兩筆各缺一邊，都算缺
+        self.assertTrue(t["usage_partial"])
+        self.assertEqual(t["total_tokens"], 120)     # 已知小計
+        db.close()
+
+    def test_all_missing_versus_real_zero(self):
+        """全缺 → total None、missing 1；真的是 0 → total 0、missing 0。這個差別要留著。"""
+        db = SessionLocal()
+        a = self._agent(db)
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": None, "output_tokens": None,
+             "cached_input_tokens": None, "reasoning_tokens": None}], conversation_id="conv-null")
+        usage_service.record(db, a, [
+            {"provider": "claude", "model": "claude-sonnet-5", "input_tokens": 0, "output_tokens": 0,
+             "cached_input_tokens": None, "reasoning_tokens": None}], conversation_id="conv-zero")
+        db.commit()
+        n = usage_service.summary(db, a, conversation_id="conv-null")["conversation_total"]
+        self.assertIsNone(n["total_tokens"])
+        self.assertEqual(n["missing_usage"], 1)
+        self.assertTrue(n["usage_partial"])
+        z = usage_service.summary(db, a, conversation_id="conv-zero")["conversation_total"]
+        self.assertEqual(z["total_tokens"], 0)
+        self.assertEqual(z["missing_usage"], 0)
+        self.assertFalse(z["usage_partial"])
+        db.close()
+
 
 if __name__ == "__main__":
     unittest.main()
