@@ -37,7 +37,7 @@
 .cabin-utility .utility-empty { min-height: 240px; justify-content: center; align-content: center; text-align: center; color: var(--album-muted); }
 .utility-empty-mark { display: block; font-size: 32px; color: var(--album-accent); }
 .utility-empty p { max-width: 32ch; margin-inline: auto; font-size: 14px; }
-.utility-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--album-line); border-radius: 20px; background: rgb(194 165 233 / .04); }
+.utility-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--album-line); border-radius: 20px; background: rgb(194 165 233 / .04); }
 .cabin-utility .utility-tabs button { padding: 8px 4px; border-color: transparent; background: transparent; }
 .cabin-utility .utility-tabs button[aria-pressed="true"] { color: #ead9ff; border-color: var(--album-line); background: rgb(197 167 230 / .14); }
 .cabin-utility .utility-mail { text-align: left; width: 100%; display: grid; padding: 24px; gap: 12px; font-size: 16px; border-radius: 26px; }
@@ -55,6 +55,13 @@
 .cabin-utility .utility-back { justify-self: start; }
 .cabin-utility .photo-status { margin: 0; }
 .cabin-utility .photo-status p { font-size: 14px; }
+.cabin-utility .utility-locked { display: grid; justify-items: center; text-align: center; min-height: 320px; align-content: center; gap: 24px; }
+.utility-lock-mark { font-size: 2rem; }
+.utility-locked > p { max-width: 36ch; margin: 0; overflow-wrap: anywhere; }
+.utility-lock-count { color: var(--album-ink); font-size: 1rem; }
+.utility-lock-count strong { font-size: 1.5rem; font-weight: 400; color: var(--album-accent); }
+.utility-lock-error { display: grid; justify-items: center; gap: 16px; }
+.utility-readonly-note { color: var(--album-muted); font-size: .875rem; line-height: 1.7; }
 @media (max-width: 380px) {
   .cabin-utility .photo-panel, .cabin-utility .utility-mail, .cabin-utility .utility-entry-toggle { padding: 16px; }
   .cabin-utility .utility-entry { padding: 0; }

@@ -25,8 +25,8 @@ export const cabinZones: CabinZone[] = [
     { id: "window", label: "窗戶", detail: "看看今天的天氣", x: .13, y: .36, panel: "window" },
   ] },
   { id: "memory", label: "記憶區", image: "/ya-chao-assets/cabin-memory-v1.webp", furniture: [
-    { id: "diary", label: "日記本", detail: "寫下值得留下的片刻", x: .25, y: .59, path: "/home/diary" },
-    { id: "drawer", label: "抽屜", detail: "收藏室友的私人物件", x: .36, y: .74, path: "/home/drawer" },
+    { id: "diary", label: "日記本", detail: "閱讀室友留下的片刻", x: .25, y: .59, path: "/home/diary" },
+    { id: "drawer", label: "抽屜", detail: "室友的私人物件，抽屜已上鎖", x: .36, y: .74, path: "/home/drawer" },
     { id: "photos", label: "相框", detail: "收藏照片 · 選一張擺上相框", x: .34, y: .52, path: "/home/photos" },
     { id: "bookshelf", label: "記憶書架", detail: "我的記憶 · 一起讀書", x: .62, y: .31, path: "/home/library" },
     { id: "mailbox", label: "星際信箱", detail: "居民寄來的訊息", x: .90, y: .42, path: "/mailbox" },

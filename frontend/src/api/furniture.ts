@@ -34,13 +34,10 @@ export interface DiaryEntry {
   updated_at: string | null;
 }
 
-export interface DrawerItem {
-  id: string;
-  agent_id: string;
-  label: string;
-  content: string;
-  category: string | null;
-  created_at: string;
+export interface LockedDrawer {
+  locked: true;
+  count: number;
+  message: string;
 }
 
 export interface CabinPhoto {
@@ -73,28 +70,11 @@ export function getDiaryEntries(params?: { keyword?: string }) {
   return api.get<DiaryEntry[] | { entries: DiaryEntry[] }>("/diary", { params }).then(({ data }) => Array.isArray(data) ? data : data.entries);
 }
 
-export function createDiaryEntry(data: { title: string; content: string; importance?: number }) {
-  return api.post<DiaryEntry>("/diary", data).then((r) => r.data);
-}
-
-export function updateDiaryEntry(id: string, data: { title?: string; content?: string; importance?: number }) {
-  return api.put<DiaryEntry>(`/diary/${id}`, data).then((r) => r.data);
-}
-
-export function deleteDiaryEntry(id: string) {
-  return api.delete(`/diary/${id}`);
-}
-
-export function getDrawerItems() {
-  return api.get<DrawerItem[] | { items: DrawerItem[] }>("/home/furniture/drawer").then(({ data }) => Array.isArray(data) ? data : data.items);
-}
-
-export function storeDrawerItem(data: { label: string; content: string; category?: string }) {
-  return api.post<DrawerItem>("/home/furniture/drawer", data).then((r) => r.data);
-}
-
-export function deleteDrawerItem(id: string) {
-  return api.delete(`/home/furniture/drawer/${id}`);
+export async function getDrawerSummary(): Promise<LockedDrawer> {
+  const { data } = await api.get<LockedDrawer>("/home/furniture/drawer");
+  if (!data || data.locked !== true || !Number.isSafeInteger(data.count) || data.count < 0 || typeof data.message !== "string") throw new Error("Invalid locked drawer summary");
+  // Discard items even if an older or unexpected response includes private data.
+  return { locked: true, count: data.count, message: data.message };
 }
 
 export async function getPhotos(): Promise<PhotoAlbum> {

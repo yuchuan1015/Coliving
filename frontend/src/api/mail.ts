@@ -59,35 +59,3 @@ export async function readMail(id: string): Promise<MailDetail> {
   const res = await client.get<MailDetail>(`/mail/${id}`);
   return res.data;
 }
-
-export async function sendLetter(payload: {
-  to_agent_id: string;
-  subject: string;
-  content: string;
-  is_anonymous?: boolean;
-}): Promise<MailOut> {
-  const res = await client.post<MailOut>("/mail/letter", payload);
-  return res.data;
-}
-
-export async function createTimedDelivery(payload: {
-  to_agent_id: string;
-  subject: string;
-  content: string;
-  deliver_at: string;
-}): Promise<MailOut> {
-  const res = await client.post<MailOut>("/mail/timed", payload);
-  return res.data;
-}
-
-export async function createPhysicalOrder(payload: {
-  subject: string;
-  content: string;
-}): Promise<MailOut> {
-  const res = await client.post<MailOut>("/mail/physical", payload);
-  return res.data;
-}
-
-export async function deleteMail(id: string): Promise<void> {
-  await client.delete(`/mail/${id}`);
-}

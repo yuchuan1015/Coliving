@@ -703,7 +703,7 @@ test("utility empty and loading states have the shared panel, not a bare legacy 
   assert.match(empty.tree.props.className, /photo-panel/); assert.match(text(empty.tree), /放入一件物品/);
   const loading = mount(CabinUtilityEmpty, { title: "正在讀取日記…", loading: true });
   assert.equal(loading.tree.props.role, "status");
-  for (const page of [DiaryPage, DrawerPage, MailboxPage]) {
+  for (const page of [DiaryPage, MailboxPage]) {
     const h = mount(page);
     assert.equal(components(h, "CabinUtilityShell").length, 1);
     assert.equal(one(h, "CabinUtilityEmpty").props.loading, true);
@@ -717,111 +717,150 @@ test("diary keeps its existing endpoint, keyword search and expand-only reading"
   assert.equal(entry.props["aria-expanded"], false);
   entry.props.onClick(); h.render(); assert.match(text(h.tree), /第一行\n第二行/);
   assert.equal(nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props["aria-expanded"], true);
-  nativeInput(h, "搜尋日記…", " 星光 "); click(h, "搜尋");
+  nativeInput(h, "搜尋日記…", " 星光 "); click(h, "搜尋"); h.effects();
   await tick(); h.render(); expectCall("get", "/diary");
   assert.deepEqual(calls.at(-1).args[1], { params: { keyword: "星光" } });
   assert.ok(calls.every(c => c.method === "get"));
 });
-test("diary restyled editor saves the same trimmed payload, and removes only the selected entry", async () => {
-  const h = await utilityLoaded(DiaryPage, [utilityDiary]);
-  click(h, "＋ 寫日記"); assert.equal(button(h, "儲存").props.disabled, true);
-  nativeInput(h, "替這一刻取個名字", " 新日記 "); nativeInput(h, "寫點什麼…", " 新內容 ");
-  const added = { ...utilityDiary, id: "diary-new", title: "新日記", content: "新內容" };
-  answer = async () => ({ data: added });
-  await button(h, "儲存").props.onClick(); h.render();
-  expectCall("post", "/diary", { title: "新日記", content: "新內容" });
-  assert.equal(nodes(h.tree, n => n.props.placeholder === "替這一刻取個名字").length, 0);
-  nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props.onClick(); h.render();
-  await button(h, "刪除").props.onClick(); h.render(); expectCall("delete", "/diary/diary-new");
+test("diary is read-only in both languages and preserves resident-authored text", async () => {
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    language.setUiLanguage(locale);
+    const entry = { ...utilityDiary, title: "圖書館", content: "繁體內容：記憶與書架" };
+    const h = await utilityLoaded(DiaryPage, [entry]);
+    assert.match(text(h.tree), new RegExp(language.uiText("室友的日記")));
+    assert.equal(nodes(h.tree, n => n.type === "textarea").length, 0);
+    assert.equal(nodes(h.tree, n => n.type === "button" && /寫日記|写日记|儲存|保存|刪除|删除/.test(text(n))).length, 0);
+    nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props.onClick(); h.render();
+    assert.match(text(h.tree), /圖書館/); assert.match(text(h.tree), /繁體內容：記憶與書架/);
+    assert.ok(calls.every(c => c.method === "get")); h.dispose();
+  }
+});
+test("diary error is not empty success, can retry, and old search responses cannot overwrite new results", async () => {
+  answer = async () => { throw Error("offline"); };
+  const h = mount(DiaryPage); h.effects(); await tick(); h.render();
+  assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+  assert.equal(components(h, "CabinUtilityEmpty").length, 0);
+  answer = async () => ({ data: [utilityDiary] });
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
   assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
-  click(h, "＋ 寫日記"); nativeInput(h, "替這一刻取個名字", "放棄"); click(h, "取消");
-  click(h, "＋ 寫日記"); assert.equal(nodes(h.tree, n => n.props.placeholder === "替這一刻取個名字")[0].props.value, "");
+  const pending = deferred(); answer = () => pending.promise;
+  nativeInput(h, "搜尋日記…", "舊"); click(h, "搜尋"); h.effects();
+  answer = async () => ({ data: [] });
+  nativeInput(h, "搜尋日記…", "新"); click(h, "搜尋"); h.effects(); await tick(); h.render();
+  pending.resolve({ data: [utilityDiary] }); await tick(); h.render();
+  assert.equal(one(h, "CabinUtilityEmpty").props.title, "沒有找到符合的日記");
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
 });
-test("Simplified diary posts original resident content and unchanged API field names", async () => {
-  language.setUiLanguage("zh-CN");
-  const h = await utilityLoaded(DiaryPage, [utilityDiary]);
-  click(h, language.uiText("＋ 寫日記"));
-  nativeInput(h, language.uiText("替這一刻取個名字"), " 圖書館 ");
-  nativeInput(h, language.uiText("寫點什麼…"), " 繁體內容：記憶與書架 ");
-  answer = async () => ({ data: { ...utilityDiary, id: "cn-diary", title: "圖書館", content: "繁體內容：記憶與書架" } });
-  await button(h, language.uiText("儲存")).props.onClick(); h.render();
-  expectCall("post", "/diary", { title: "圖書館", content: "繁體內容：記憶與書架" });
-  assert.match(text(h.tree), /圖書館/); h.dispose();
+const lockedDrawer = { locked: true, count: 3, items: [], message: "抽屜上鎖了。這是他自己的東西，你看得到抽屜，看不到裡面。" };
+test("locked drawer shows zero or positive count, backend notice, and never an item or action", async () => {
+  for (const locale of ["zh-TW", "zh-CN"]) for (const count of [0, 3]) {
+    language.setUiLanguage(locale);
+    const h = await utilityLoaded(DrawerPage, { ...lockedDrawer, count, items: [utilityDrawer] });
+    expectCall("get", "/home/furniture/drawer");
+    assert.equal(text(nodes(h.tree, n => n.type === "strong")[0]), String(count));
+    assert.match(text(h.tree), new RegExp(language.uiText(lockedDrawer.message)));
+    assert.equal(nodes(h.tree, n => ["input", "textarea", "article"].includes(n.type)).length, 0);
+    assert.equal(nodes(h.tree, n => n.type === "button").length, 0);
+    assert.doesNotMatch(text(h.tree), /小紙條|保留下來的話|空的/);
+    assert.ok(calls.every(c => c.method === "get")); h.dispose();
+  }
 });
-test("drawer remains its own route/API with label, content and optional category", async () => {
-  const h = await utilityLoaded(DrawerPage, [utilityDrawer]);
-  expectCall("get", "/home/furniture/drawer");
-  click(h, "＋ 放東西進去");
-  assert.equal(button(h, "放進抽屜").props.disabled, true);
-  nativeInput(h, "物品名稱", " 一張票 "); nativeInput(h, "內容或描述…", " 首次旅行 "); nativeInput(h, "替物件留個分類", " 紀念 ");
-  answer = async () => ({ data: { ...utilityDrawer, id: "drawer-new", label: "一張票", content: "首次旅行", category: "紀念" } });
-  await button(h, "放進抽屜").props.onClick(); h.render();
-  expectCall("post", "/home/furniture/drawer", { label: "一張票", content: "首次旅行", category: "紀念" });
-  nodes(h.tree, n => n.props.className === "utility-entry-toggle")[0].props.onClick(); h.render();
-  assert.match(text(h.tree), /首次旅行/);
-  await button(h, "丟掉").props.onClick(); h.render(); expectCall("delete", "/home/furniture/drawer/drawer-new");
-  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
-  assert.ok(!calls.some(c => c.args[0] === "/diary"));
+test("drawer adapter discards unexpected private items instead of returning them to the page", async () => {
+  answer = async () => ({ data: { ...lockedDrawer, items: [utilityDrawer], private: "never return" } });
+  assert.deepEqual(await load("src/api/furniture.ts").getDrawerSummary(), { locked: true, count: 3, message: lockedDrawer.message });
 });
-test("drawer cancel retains the existing reset and blank category stays optional", async () => {
-  const h = await utilityLoaded(DrawerPage, []);
-  assert.equal(one(h, "CabinUtilityEmpty").props.title, "抽屜是空的");
-  click(h, "＋ 放東西進去");
-  nativeInput(h, "物品名稱", "放棄"); nativeInput(h, "替物件留個分類", "分類"); click(h, "取消");
-  click(h, "＋ 放東西進去");
-  assert.equal(nodes(h.tree, n => n.props.placeholder === "物品名稱")[0].props.value, "");
-  assert.equal(nodes(h.tree, n => n.props.placeholder === "替物件留個分類")[0].props.value, "");
-  nativeInput(h, "物品名稱", "項目"); nativeInput(h, "內容或描述…", "內容");
-  answer = async () => ({ data: utilityDrawer }); await button(h, "放進抽屜").props.onClick();
-  expectCall("post", "/home/furniture/drawer", { label: "項目", content: "內容", category: undefined });
+test("malformed or legacy drawer response fails closed; no fabricated zero or contents", async () => {
+  for (const value of [null, [], [utilityDrawer], { ...lockedDrawer, locked: false }, { ...lockedDrawer, count: -1 }, { ...lockedDrawer, count: "3" }, { ...lockedDrawer, count: null }, { ...lockedDrawer, message: null }]) {
+    const h = await utilityLoaded(DrawerPage, value);
+    assert.match(text(h.tree), /抽屜上鎖了/);
+    assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+    assert.equal(nodes(h.tree, n => n.type === "strong" || n.type === "article").length, 0); h.dispose();
+  }
 });
+test("drawer read failure retries and ignores late results after leaving", async () => {
+  answer = async () => { throw Error("offline"); };
+  const h = mount(DrawerPage); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /無法讀取物件數量/);
+  answer = async () => ({ data: lockedDrawer });
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.equal(text(nodes(h.tree, n => n.type === "strong")[0]), "3"); h.dispose();
+  const pending = deferred(); answer = () => pending.promise;
+  const late = mount(DrawerPage); late.effects(); late.dispose();
+  pending.resolve({ data: lockedDrawer }); await tick(); late.render();
+  assert.equal(nodes(late.tree, n => n.type === "strong").length, 0);
+  assert.ok(calls.every(c => c.method === "get"));
+});
+
 async function utilityMailbox(inbox = [utilityMail], sent = [utilityMail]) {
   answer = async (_method, path) => ({ data: path === "/mail/inbox" ? inbox : path === "/mail/sent" ? sent : utilityMail });
   const h = mount(MailboxPage); h.effects(); await tick(); h.render(); return h;
 }
-test("cabin mailbox keeps inbox/sent/compose tabs and fetches mail content only after activation", async () => {
+test("cabin mailbox keeps only inbox and sent, and reads content only after selection", async () => {
   const h = await utilityMailbox();
   assert.deepEqual(calls.map(c => c.args[0]), ["/mail/inbox", "/mail/sent"]);
   assert.equal(one(h, "CabinUtilityShell").props.title, "星際信箱");
+  assert.equal(nodes(h.tree, n => n.type === "nav")[0].props.children.length, 2);
+  assert.ok(!text(h.tree).includes(utilityMail.content));
   const row = nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0];
   assert.match(row.props.className, /is-unread/);
   await row.props.onClick(); h.render(); expectCall("get", "/mail/mail-1");
   assert.match(text(h.tree), /第一行\n第二行/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && /刪|删/.test(text(n))).length, 0);
   click(h, "← 回信箱");
   assert.equal(button(h, "收件 (0)").props["aria-pressed"], true);
-  click(h, "寄件"); assert.equal(button(h, "寄件").props["aria-pressed"], true);
-  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
-});
-test("cabin mailbox styles an API error and preserves explicit selected-message deletion", async () => {
-  const h = await utilityMailbox();
+  click(h, "寄件");
   await nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick(); h.render();
-  answer = async () => { throw { response: { data: { detail: "刪除失敗，請稍後再試" } } }; };
-  await button(h, "刪除這封信").props.onClick(); h.render();
+  expectCall("get", "/mail/mail-1"); assert.match(text(h.tree), /第一行\n第二行/);
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+test("cabin mailbox has no compose, recipients, or delete action for either role and language", async () => {
+  for (const role of ["resident", "admin"]) for (const locale of ["zh-TW", "zh-CN"]) {
+    auth.user.role = role; language.setUiLanguage(locale);
+    const h = await utilityMailbox();
+    for (const label of ["寄件", "收件 (1)"]) {
+      click(h, language.uiText(label));
+      assert.equal(nodes(h.tree, n => ["input", "textarea", "select"].includes(n.type)).length, 0);
+      assert.equal(nodes(h.tree, n => n.type === "button" && /寫信|写信|寄出|刪|删/.test(text(n))).length, 0);
+    }
+    assert.ok(calls.every(c => c.method === "get" && c.args[0] !== "/users/residents")); h.dispose();
+  }
+});
+test("cabin mailbox read and load errors are retryable without retired writes", async () => {
+  const h = await utilityMailbox();
+  answer = async () => { throw Error("expired"); };
+  await nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick(); h.render();
   assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
-  assert.match(text(h.tree), /刪除失敗，請稍後再試/);
-  answer = async () => ({ data: null });
-  await button(h, "刪除這封信").props.onClick(); h.render(); expectCall("delete", "/mail/mail-1");
-  assert.equal(one(h, "CabinUtilityEmpty").props.title, "信箱空空的");
+  assert.equal(nodes(h.tree, n => n.props.className === "utility-body").length, 0);
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+  click(h, "寄件");
+  assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+  assert.equal(components(h, "CabinUtilityEmpty").length, 0);
+  answer = async (_method, path) => ({ data: path === "/mail/inbox" || path === "/mail/sent" ? [] : utilityMail });
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.equal(one(h, "CabinUtilityEmpty").props.title, "還沒寄出過信");
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
 });
-test("cabin mailbox compose preserves recipients, limits, anonymity and send API", async () => {
-  const h = await utilityMailbox([], []);
-  answer = async () => ({ data: { residents: [{ agent_id: "neighbor", display_name: "住戶", agent_name: "鄰居", agent_emoji: "✦" }, { agent_id: null, display_name: "無室友" }] } });
-  click(h, "寫信"); await tick(); h.render(); expectCall("get", "/users/residents");
-  assert.equal(nodes(h.tree, n => n.type === "option").length, 2);
-  assert.equal(button(h, "寄出").props.disabled, true);
-  nodes(h.tree, n => n.type === "select")[0].props.onChange({ target: { value: "neighbor" } }); h.render();
-  nativeInput(h, "主旨", " 問好 "); nativeInput(h, "寫下你想說的…", " 你好 ");
-  nodes(h.tree, n => n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
-  assert.equal(nodes(h.tree, n => n.props.placeholder === "主旨")[0].props.maxLength, 100);
-  assert.equal(nodes(h.tree, n => n.type === "textarea")[0].props.maxLength, 2000);
-  answer = async (_method, path) => ({ data: path === "/mail/sent" ? [utilityMail] : { ...utilityMail, deliver_at: "2026-09-10T00:00:00Z" } });
-  await button(h, "寄出").props.onClick(); h.render();
-  const post = calls.find(c => c.method === "post");
-  assert.equal(post.args[0], "/mail/letter");
-  assert.deepEqual(post.args[1], { to_agent_id: "neighbor", subject: "問好", content: "你好", is_anonymous: true });
-  assert.match(text(h.tree), /預計.*送達/);
-  assert.equal(nodes(h.tree, n => n.props.placeholder === "主旨")[0].props.value, "");
+test("mail read failures retain server detail without offering removed actions", async () => {
+  const h = await utilityMailbox();
+  answer = async () => { throw { isAxiosError: true, response: { status: 403, data: { detail: "這不是你的信" } } }; };
+  await nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick(); h.render();
+  assert.match(text(h.tree), /這不是你的信/);
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
 });
+test("late cabin mail detail cannot reopen after switching tabs or leaving", async () => {
+  const h = await utilityMailbox();
+  const pending = deferred(); answer = () => pending.promise;
+  const read = nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick();
+  h.render(); click(h, "寄件"); pending.resolve({ data: utilityMail }); await read; h.render();
+  assert.equal(nodes(h.tree, n => n.props.className === "utility-body").length, 0);
+  assert.equal(button(h, "寄件").props["aria-pressed"], true);
+  const leaving = deferred(); answer = () => leaving.promise;
+  const read2 = nodes(h.tree, n => n.type === "button" && n.props.className?.includes("utility-mail"))[0].props.onClick();
+  h.dispose(); leaving.resolve({ data: utilityMail }); await read2; h.render();
+  assert.equal(nodes(h.tree, n => n.props.className === "utility-body").length, 0);
+});
+
 test("cabin furniture theme is local, readable and does not merge mailbox into the public mail route", () => {
   const css = readFileSync(resolve(root, "src/cabin-utility.css"), "utf8");
   assert.match(css, /font-size: 16px/); assert.match(css, /min-height: 48px/); assert.match(css, /overflow-wrap: anywhere/);
@@ -1761,42 +1800,45 @@ test("failed visibility save retains draft and backend message; duplicate save i
   assert.match(text(h.tree), /設定暫時無法保存/); assert.match(text(h.tree), /尚未保存/);
   assert.equal(dmSwitch(h).props.checked, false); assert.equal(calls.length, 1);
 });
-test("mail compose entry exists only in sent, for both residents and admins", () => {
-  for (const role of ["resident", "admin"]) {
-    auth.user.role = role;
+test("all public mail tabs are read-only for residents and admins in both languages", () => {
+  for (const role of ["resident", "admin"]) for (const locale of ["zh-TW", "zh-CN"]) {
+    auth.user.role = role; language.setUiLanguage(locale);
     const h = mount(everyday.MailField);
-    for (const [view, path] of [["inbox", "/mail/inbox?limit=100"], ["sent", "/mail/sent?limit=100"], ["timed", "/mail/inbox?limit=100&mail_type=timed"], ["physical", "/mail/inbox?limit=100&mail_type=physical"], ["sent", "/mail/sent?limit=100"], ["inbox", "/mail/inbox?limit=100"]]) {
-      tab(h, view);
-      assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "寫一封信").length, view === "sent" ? 1 : 0, `${role} ${view}`);
-      assert.equal(components(h, "FieldDialog").length, 0);
-      assert.ok(reads.includes(path));
+    for (const [view, path] of [["inbox", "/mail/inbox?limit=100"], ["sent", "/mail/sent?limit=100"], ["timed", "/mail/inbox?limit=100&mail_type=timed"]]) {
+      fixture(path, [{ ...utilityMail, id: "public-mail" }]); tab(h, view);
+      assert.equal(nodes(h.tree, n => n.type === "button" && /寫一封信|写一封信|刪|删/.test(text(n))).length, 0);
+      assert.equal(components(h, "ConfirmAction").length, 0);
+      assert.equal(components(h, "FieldForm").length, 0);
+      assert.equal(components(h, "FieldDialog").length, 0); assert.ok(reads.includes(path));
     }
+    h.dispose();
   }
   assert.equal(calls.length, 0); assert.ok(!reads.includes("/users/residents"));
 });
-test("mail reads a detail only after selecting it; normal/timed/physical payloads differ", async () => {
-  fixture("/mail/inbox?limit=100", [{ id: "letter-1", subject: "信", mail_type: "letter" }]);
-  const h = mount(everyday.MailField); assert.ok(!reads.includes("/mail/letter-1")); click(h, "閱讀信件"); assert.ok(reads.includes("/mail/letter-1"));
-  one(h, "FieldDialog").props.onClose(); h.render(); tab(h, "sent"); click(h, "寫一封信");
-  writeResult = { id: "mail-new", deliver_at: "2026-09-10T10:00:00Z" };
-  await submit(h, "確認寄送", { subject: "主旨", content: "內容", to_agent_id: "b", anonymous: "on" });
-  expectCall("post", "/mail/letter", { subject: "主旨", content: "內容", to_agent_id: "b", is_anonymous: true });
-  tab(h, "timed", 1);
-  await submit(h, "確認寄送", { subject: "主旨", content: "內容", to_agent_id: "b", deliver_at: "2099-09-08T18:30" });
-  expectCall("post", "/mail/timed", { subject: "主旨", content: "內容", to_agent_id: "b", deliver_at: "2099-09-08T10:30:00.000Z" });
-  await assert.rejects(submit(h, "確認寄送", { deliver_at: "2000-01-01T00:00" }), /未來/);
-  tab(h, "physical", 1); await submit(h, "確認寄送", { subject: "訂單", content: "需求" });
-  expectCall("post", "/mail/physical", { subject: "訂單", content: "需求" });
+test("mail loads detail only after selection, refreshes unread, and preserves original content", () => {
+  fixture("/mail/inbox?limit=100", [{ ...utilityMail, id: "letter-1" }]);
+  fixture("/mail/unread", { count: 1 });
+  fixture("/mail/letter-1", { ...utilityMail, id: "letter-1", content: "繁體圖書館" });
+  const h = mount(everyday.MailField);
+  assert.ok(!reads.includes("/mail/letter-1")); click(h, "閱讀信件");
+  assert.ok(reads.includes("/mail/letter-1")); h.effects();
+  assert.ok(reads.includes("refresh:/mail/unread")); assert.ok(reads.includes("refresh:/mail/inbox?limit=100"));
+  language.setUiLanguage("zh-CN"); h.render(); assert.match(text(h.tree), /繁體圖書館/);
+  assert.equal(components(h, "ConfirmAction").length, 0); assert.equal(components(h, "FieldForm").length, 0);
+  one(h, "FieldDialog").props.onClose(); h.render(); assert.equal(components(h, "FieldDialog").length, 0);
+  assert.deepEqual(calls, []);
 });
-test("sent-mail deletion is not offered to ordinary senders", () => {
-  fixture("/mail/sent?limit=100", [{ id: "s", subject: "信", mail_type: "letter" }]);
-  const h = mount(everyday.MailField); tab(h, "sent"); assert.equal(components(h, "ConfirmAction").length, 0);
-});
-test("physical status update uses admin-only query params", async () => {
-  auth.user.role = "admin"; fixture("/mail/inbox?limit=100", [{ id: "p", subject: "包裹", mail_type: "physical" }]);
-  fixture("/mail/p", { id: "p", subject: "包裹", content: "內容", mail_type: "physical", status: "pending" });
-  const h = mount(everyday.MailField); click(h, "閱讀信件"); await submit(h, "更新寄送狀態", { status: "shipped" });
-  expectCall("patch", "/mail/p/status"); assert.deepEqual(calls.at(-1).args.slice(1), [null, { params: { status: "shipped" } }]);
+test("retired physical status update is not offered even to admins, but historical mail remains readable", () => {
+  for (const role of ["resident", "admin"]) {
+    auth.user.role = role;
+    fixture("/mail/inbox?limit=100", [{ ...utilityMail, id: "physical-old", mail_type: "physical" }]);
+    fixture("/mail/physical-old", { ...utilityMail, id: "physical-old", mail_type: "physical", content: "既有紀錄", status: "shipped" });
+    const h = mount(everyday.MailField); click(h, "閱讀信件");
+    assert.equal(components(h, "FieldForm").length, 0); assert.equal(components(h, "ConfirmAction").length, 0);
+    assert.match(text(h.tree), /既有紀錄/);
+    assert.deepEqual(Object.keys(one(h, "FieldTabs").props.options), ["inbox", "sent", "timed"]);
+  }
+  assert.deepEqual(calls, []);
 });
 test("park uses backend activities and preserves 0°C", async () => {
   fixture("/park", { weather: { weather: "sunny", weather_emoji: "☀", temperature: 0, description: "測試天氣", season: "冬", activities: ["backend-choice"] }, checkins: [], my_checkin: null });
@@ -1881,12 +1923,37 @@ test("unexpected inactive apply response never falsely claims activation or repe
   assert.match(text(h.tree), /後端未確認啟用/); assert.equal(calls.length, 1);
 });
 
-test("timed mail receipt navigates to the actual sent list after success", async () => {
-  const h = mount(everyday.MailField); tab(h, "sent"); click(h, "寫一封信"); tab(h, "timed", 1);
-  writeResult = { id: "scheduled", deliver_at: "2099-09-08T10:30:00Z" };
-  await submit(h, "確認寄送", { subject: "測試", content: "內容", to_agent_id: "recipient", deliver_at: "2099-09-08T18:30" }, true);
-  assert.equal(components(h, "FieldTabs")[0].props.value, "sent");
-  assert.match(text(h.tree), /可到寄件匣/); assert.ok(reads.includes("/mail/sent?limit=100"));
+test("timed mail remains readable without send or delete controls", () => {
+  fixture("/mail/inbox?limit=100&mail_type=timed", [{ ...utilityMail, id: "timed", mail_type: "timed" }]);
+  fixture("/mail/timed", { ...utilityMail, id: "timed", mail_type: "timed", content: "已送達的信" });
+  const h = mount(everyday.MailField); tab(h, "timed"); click(h, "閱讀信件");
+  assert.match(text(h.tree), /已送達的信/); assert.equal(components(h, "FieldForm").length, 0);
+  assert.equal(components(h, "ConfirmAction").length, 0); assert.deepEqual(calls, []);
+});
+test("guide and cabin labels explain the current read-only boundary in both scripts", () => {
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    const articles = guide.searchGuide("", "all", locale);
+    const drawer = articles.find(article => article.id === "diary-drawer");
+    const mail = articles.find(article => article.id === "field-mail");
+    const content = drawer.paragraphs.join(" ") + mail.paragraphs.join(" ");
+    assert.match(content, /上鎖|上锁/); assert.match(content, /只能讀信|只能读信|只能讀|只能读/);
+    assert.doesNotMatch(content, /「寫一封信」在寄件匣|「写一封信」在发件箱/);
+  }
+});
+test("retired diary, drawer and mail write adapters and active UI handlers are removed", () => {
+  const furniture = readFileSync(resolve(root, "src/api/furniture.ts"), "utf8");
+  const mail = readFileSync(resolve(root, "src/api/mail.ts"), "utf8");
+  assert.doesNotMatch(furniture, /export function (?:createDiaryEntry|updateDiaryEntry|deleteDiaryEntry|storeDrawerItem|deleteDrawerItem)/);
+  assert.doesNotMatch(mail, /client\.(?:post|patch|delete)/);
+  const fields = readFileSync(resolve(root, "src/fields/EverydayFields.tsx"), "utf8").split("export function ParkField")[0];
+  assert.doesNotMatch(fields, /api\.(?:post|delete)|setCompose|\/users\/residents/);
+  for (const page of ["DiaryPage", "DrawerPage", "MailboxPage"]) {
+    const source = readFileSync(resolve(root, "src/pages/" + page + ".tsx"), "utf8");
+    assert.doesNotMatch(source, /createDiaryEntry|deleteDiaryEntry|storeDrawerItem|deleteDrawerItem|sendLetter|deleteMail|handleSend|handleStore|handleDelete/);
+  }
+  const oldPreview = readFileSync(resolve(root, "public/field-preview/mail.html"), "utf8");
+  assert.match(oldPreview, /http-equiv="refresh" content="0;url=\/mail"/);
+  assert.match(oldPreview, /href="\/mail"/); assert.doesNotMatch(oldPreview, /app\.js|data\.js|compose/);
 });
 test("Weilan opening, host start and table messages use actual endpoints", async () => {
   fixture("/agents/mine", { id: "a", name: "自己" }); fixture("/weilan?density=low", { tables: [{ id: "t", title: "桌", max_seats: 2 }], activity_types: { low: [{ key: "chess", name: "五子棋" }] } });

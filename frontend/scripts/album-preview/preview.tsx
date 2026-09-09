@@ -16,7 +16,7 @@ import { DrawerPage } from "../../src/pages/DrawerPage";
 import { MailboxPage } from "../../src/pages/MailboxPage";
 import { FrameDetail } from "./FrameDetail";
 import type { AgentPublic, UserMe } from "../../src/types";
-import type { CabinPhoto, DiaryEntry, DrawerItem } from "../../src/api/furniture";
+import type { CabinPhoto, DiaryEntry } from "../../src/api/furniture";
 import type { MailDetail } from "../../src/api/mail";
 import "../../src/index.css";
 import { LanguageDocument } from "../../src/i18n/LanguageControl";
@@ -39,17 +39,14 @@ let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "
 let photos: CabinPhoto[] = ["life", "memory", "shared"].map((zone, i) => ({ id: String(i), caption: ["範例照片 · 出發前的艙室", "範例照片 · 留下文字的角落", "範例照片 · 等你一起吃飯"][i], url: "/ya-chao-assets/cabin-" + zone + "-v1.webp", is_displayed: i === 0, width: 792, height: 1124, bytes: 100000, created_at: created }));
 let displayedId: string | null = "0";
 let sequence = 3;
-let diaries: DiaryEntry[] = [
+const diaries: DiaryEntry[] = [
   { id: "diary-1", agent_id: agent.id, title: "把今天的星光收進來", content: "今天留在艙室，整理了一些舊照片。\n\n那些沒說出口的小事，也想慢慢記下來。", source: "manual", importance: 3, created_at: created, updated_at: null },
   { id: "diary-2", agent_id: agent.id, title: "一封還沒寄出的信", content: "先把想說的話寫好，明天再寄出去。", source: "manual", importance: 3, created_at: "2026-09-08T12:00:00Z", updated_at: null },
 ];
-let drawer: DrawerItem[] = [
-  { id: "drawer-1", agent_id: agent.id, label: "窗邊的小紙條", content: "「回來的時候，記得看看窗外。」\n把這句話收在這裡。", category: "紙條", created_at: created },
-  { id: "drawer-2", agent_id: agent.id, label: "第一次出艙的紀念", content: "一張寫著目的地座標的卡片。", category: "紀念物", created_at: "2026-09-08T12:00:00Z" },
-];
+const drawer = { locked: true, count: 2, items: [], message: "抽屜上鎖了。這是他自己的東西，你看得到抽屜，看不到裡面。" };
 const letter = (id: string, subject: string, body: string): MailDetail => ({ id, subject, content: body, from_name: "星際鄰居", from_emoji: "✦", to_name: "星際室友", to_emoji: "☾", mail_type: "letter", is_anonymous: false, is_read: false, status: null, created_at: created, deliver_at: created, expires_at: null });
 let inbox = [letter("mail-1", "路過這片星空，想和你打個招呼", "你好，\n\n今天從廣場回來，看見你的艙室還亮著燈。\n有空的時候，一起去看看公園吧。\n\n星際鄰居"), { ...letter("mail-2", "謝謝你上次分享的那本書", "已經讀完第一章了，留了一點筆記。"), is_read: true }];
-let sent: MailDetail[] = [{ ...letter("mail-sent", "把一點星光寄給你", "很高興在這裡遇見你。"), from_name: "星際室友", from_emoji: "☾", to_name: "星際鄰居", to_emoji: "✦" }];
+const sent: MailDetail[] = [{ ...letter("mail-sent", "把一點星光寄給你", "很高興在這裡遇見你。"), from_name: "星際室友", from_emoji: "☾", to_name: "星際鄰居", to_emoji: "✦" }];
 const record = (text: string) => { const p = document.createElement("p"); p.textContent = text; document.getElementById("mock-log")?.append(p); };
 api.interceptors.request.clear();
 api.interceptors.response.clear();
@@ -69,20 +66,14 @@ api.defaults.adapter = async config => {
     chatMessages = [...chatMessages, user_message, assistant_message]; data = { user_message, assistant_message };
   }
   else if (method === "get" && path === "/home/furniture/photos") data = { photos: photos.map(p => ({ ...p, is_displayed: p.id === displayedId })), max: 20, displayed_id: displayedId };
-  else if (method === "get" && path === "/home/furniture") data = { window: { temperature: 23, description: "晴朗的夜", weather: "sunny", is_day: false }, clock: { timezone: "Asia/Taipei", utc: created }, photo_frame: { photo: photos.find(p => p.id === displayedId) ?? null, photo_count: photos.length }, diary: { count: diaries.length }, drawer: { count: drawer.length }, mirror: {}, door: {}, bed: { has_agent: true, is_sleeping: false } };
+  else if (method === "get" && path === "/home/furniture") data = { window: { temperature: 23, description: "晴朗的夜", weather: "sunny", is_day: false }, clock: { timezone: "Asia/Taipei", utc: created }, photo_frame: { photo: photos.find(p => p.id === displayedId) ?? null, photo_count: photos.length }, diary: { count: diaries.length }, drawer: { count: drawer.count }, mirror: {}, door: {}, bed: { has_agent: true, is_sleeping: false } };
   else if (method === "get" && path === "/home/dashboard") data = { agents: [agent], community_status: { message: "本地範例，沒有連上正式帳號" } };
   else if (method === "get" && path === "/community/announcements") data = [];
   else if (method === "get" && path === "/diary") data = diaries.filter(row => !config.params?.keyword || (row.title + row.content).includes(config.params.keyword));
-  else if (method === "post" && path === "/diary") { const row: DiaryEntry = { id: "diary-" + sequence++, agent_id: agent.id, title: payload.title, content: payload.content, source: "manual", importance: 3, created_at: new Date().toISOString(), updated_at: null }; diaries = [row, ...diaries]; data = row; }
-  else if (method === "delete" && path.startsWith("/diary/")) { diaries = diaries.filter(row => row.id !== path.split("/").at(-1)); data = null; }
   else if (method === "get" && path === "/home/furniture/drawer") data = drawer;
-  else if (method === "post" && path === "/home/furniture/drawer") { const row: DrawerItem = { id: "drawer-" + sequence++, agent_id: agent.id, label: payload.label, content: payload.content, category: payload.category ?? null, created_at: new Date().toISOString() }; drawer = [row, ...drawer]; data = row; }
-  else if (method === "delete" && path.startsWith("/home/furniture/drawer/")) { drawer = drawer.filter(row => row.id !== path.split("/").at(-1)); data = null; }
   else if (method === "get" && path === "/mail/inbox") data = inbox;
   else if (method === "get" && path === "/mail/sent") data = sent;
-  else if (method === "get" && path.startsWith("/mail/")) { data = inbox.find(row => row.id === path.split("/").at(-1)); if (!data) throw Error("範例信件不存在"); inbox = inbox.map(row => row === data ? { ...row, is_read: true } : row); }
-  else if (method === "delete" && path.startsWith("/mail/")) { inbox = inbox.filter(row => row.id !== path.split("/").at(-1)); data = null; }
-  else if (method === "post" && path === "/mail/letter") { const row = { ...letter("sent-" + sequence++, payload.subject, payload.content), from_name: "星際室友", to_name: "星際鄰居", is_anonymous: payload.is_anonymous, deliver_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() }; sent = [row, ...sent]; data = row; }
+  else if (method === "get" && path.startsWith("/mail/")) { data = [...inbox, ...sent].find(row => row.id === path.split("/").at(-1)); if (!data) throw Error("範例信件不存在"); inbox = inbox.map(row => row === data ? { ...row, is_read: true } : row); }
   else if (method === "get" && path === "/users/residents") data = { residents: [{ agent_id: "preview-neighbor", display_name: "範例住戶", agent_name: "星際鄰居", agent_emoji: "✦" }] };
   else if (path === "/users/me" && (method === "get" || method === "patch")) { if (method === "patch") user.note_to_agent = payload.note_to_agent; data = { ...user }; }
   else if (method === "get" && path === "/agents/mine") data = agent;

@@ -1,46 +1,46 @@
-import { uiText, uiOptions } from "../i18n/core";
+import { uiText } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import api from "../api/client";
-import type { ResidentList } from "../types";
-import { useAuth } from "../hooks/useAuth";
 import type { MailDetail, MailOut } from "../api/mail";
 import { MAIL_TYPE_LABELS, STATUS_LABELS } from "../api/mail";
 import { ACTIVITY_LABELS, type ParkResponse } from "../api/park";
-import { ConfirmAction, FieldDialog, FieldForm, FieldFrame, FieldInput, FieldPanel, FieldSelect, FieldTabs, FieldText, ResourceState } from "./shared";
+import { FieldDialog, FieldForm, FieldFrame, FieldPanel, FieldSelect, FieldTabs, ResourceState } from "./shared";
 import { fieldTime, formText, useFieldResource } from "./fieldData";
 
 export { AIChatField } from "./AIChatField";
 
 export function MailField() {
   useUiLanguage();
-  const { user } = useAuth(); const [tab, setTab] = useState("inbox"); const [compose, setCompose] = useState(false); const [kind, setKind] = useState("letter"); const [selected, setSelected] = useState<string | null>(null); const [message, setMessage] = useState("");
-  const list = useFieldResource<MailOut[]>(tab === "sent" ? "/mail/sent?limit=100" : `/mail/inbox?limit=100${tab === "physical" ? "&mail_type=physical" : tab === "timed" ? "&mail_type=timed" : ""}`);
+  const [tab, setTab] = useState("inbox");
+  const [selected, setSelected] = useState<string | null>(null);
+  const list = useFieldResource<MailOut[]>(tab === "sent" ? "/mail/sent?limit=100" : `/mail/inbox?limit=100${tab === "timed" ? "&mail_type=timed" : ""}`);
   const unread = useFieldResource<{ count: number }>("/mail/unread");
-  const residents = useFieldResource<ResidentList>(compose && kind !== "physical" ? "/users/residents" : null);
   const detail = useFieldResource<MailDetail>(selected ? `/mail/${encodeURIComponent(selected)}` : null);
   const refreshList = list.refresh, refreshUnread = unread.refresh;
   useEffect(() => { if (detail.data) { refreshList(); refreshUnread(); } }, [detail.data, refreshList, refreshUnread]);
-  const recipients = Object.fromEntries((residents.data?.residents ?? []).filter(r => r.agent_id && (kind === "timed" || r.id !== user?.id)).map(r => [r.agent_id!, r.agent_name ?? r.display_name]));
-  function changed() { setSelected(null); list.refresh(); unread.refresh(); }
-  async function send(data: FormData) {
-    const subject = formText(data, "subject"), content = formText(data, "content");
-    let payload: Record<string, unknown> = { subject, content };
-    if (kind !== "physical") payload.to_agent_id = formText(data, "to_agent_id");
-    if (kind === "letter") payload.is_anonymous = data.get("anonymous") === "on";
-    if (kind === "timed") {
-      const wallTime = formText(data, "deliver_at");
-      const date = new Date(`${wallTime.length === 16 ? wallTime + ":00" : wallTime}+08:00`);
-      if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) throw new Error("請選擇未來的台北時間。");
-      // Send UTC: backend accepts both explicit offsets and UTC.
-      payload = { ...payload, deliver_at: date.toISOString() };
-    }
-    const result = await api.post<MailOut>(`/mail/${kind}`, payload);
-    setMessage(kind === "timed" ? `定時信已建立（${result.data.id}），預計 ${fieldTime(result.data.deliver_at)} 送達。可到寄件匣查看預定投遞時間。` : kind === "physical" ? "實體寄送訂單已建立；後續狀態以管理員更新為準。" : `信件已交給郵驛，預計 ${fieldTime(result.data.deliver_at)} 送達。`);
-  }
-  return <FieldFrame id="mail"><FieldTabs options={{ inbox: uiText("收件匣"), sent: uiText("寄件匣"), timed: uiText("已送達定時信"), physical: uiText("實體寄送") }} value={tab} onChange={value => { setTab(value); setSelected(null); }} />{message && <p role="status">{uiText(message)}</p>}<FieldPanel title={uiText("郵驛")} action={tab === "sent" ? <button onClick={() => setCompose(true)}>{uiText("寫一封信")}</button> : undefined}><small>{unread.data ? uiText`${unread.data.count} 封未讀` : uiText("未讀數尚未同步")}{uiText(" · 最多顯示最近 100 封")}</small><ResourceState resource={unread} /><ResourceState resource={list} empty={list.data?.length === 0} /><div className="field-list">{list.data?.map(m => <article className="field-item" key={m.id}><div className="field-row"><h3>{!m.is_read && tab !== "sent" ? "● " : ""}{m.subject}</h3><span className="field-tag">{MAIL_TYPE_LABELS[m.mail_type] ?? m.mail_type}</span></div><p>{m.from_name ?? uiText("系統")} → {m.to_name}</p><small>{fieldTime(m.created_at)}{m.deliver_at && uiText` · 送達 ${fieldTime(m.deliver_at)}`}</small>{m.status && <p>{STATUS_LABELS[m.status] ?? m.status}</p>}<button onClick={() => setSelected(m.id)}>{uiText("閱讀信件")}</button>{(tab !== "sent" || user?.role === "admin") && <ConfirmAction title={uiText("刪除這封信")} label={uiText("確認刪除")} action={() => api.delete(`/mail/${encodeURIComponent(m.id)}`)} onDone={() => { setMessage("信件已刪除。"); changed(); }} />}</article>)}</div></FieldPanel>
-    {selected && <FieldDialog title={uiText("信件內容")} onClose={() => setSelected(null)}><ResourceState resource={detail} />{detail.data && <div className="field-stack"><h3>{detail.data.subject}</h3><small>{detail.data.from_name} → {detail.data.to_name}</small><p className="field-body">{detail.data.content}</p>{detail.data.mail_type === "physical" && user?.role === "admin" && <FieldForm label={uiText("更新寄送狀態")} submit={data => api.patch(`/mail/${encodeURIComponent(selected)}/status`, null, { params: { status: formText(data, "status") } })} onDone={() => { setMessage("寄送狀態已更新。"); changed(); }}><FieldSelect name="status" label={uiText("狀態")} options={uiOptions(STATUS_LABELS)} value={detail.data.status ?? "pending"} /></FieldForm>}</div>}</FieldDialog>}
-    {compose && <FieldDialog title={uiText("寄送信件")} onClose={() => setCompose(false)}><FieldTabs options={{ letter: uiText("一般信件"), timed: uiText("定時投遞"), physical: uiText("實體寄送") }} value={kind} onChange={setKind} /><ResourceState resource={residents} /><FieldForm key={kind} label={uiText("確認寄送")} submit={send} onDone={() => { setCompose(false); if (kind !== "physical") setTab("sent"); list.refresh(); unread.refresh(); }}><FieldInput name="subject" label={uiText("主旨")} max={100} />{kind !== "physical" && <FieldSelect name="to_agent_id" label={uiText("收件室友")} options={{ "": uiText("請選擇收件人"), ...recipients }} />}<FieldText />{kind === "letter" && <><label className="field-check"><input name="anonymous" type="checkbox" />{uiText("匿名寄送")}</label><small>{uiText("一般信件約 12～48 小時送達，不是即時訊息。")}</small></>}{kind === "timed" && <><FieldInput name="deliver_at" label={uiText("送達時間（Asia/Taipei）")} type="datetime-local" /><small>{uiText("可在寄件匣追蹤；收件人送達後看到系統名義。修正前建立的舊定時信可能不在寄件匣。")}</small></>}{kind === "physical" && <small>{uiText("建立實體寄送需求，不代表已付款或已完成物流寄送。請勿在此填寫不必要的敏感資料。")}</small>}</FieldForm></FieldDialog>}
+
+  return <FieldFrame id="mail">
+    <FieldTabs options={{ inbox: uiText("收件匣"), sent: uiText("寄件匣"), timed: uiText("已送達定時信") }} value={tab} onChange={value => { setTab(value); setSelected(null); }} />
+    <FieldPanel title={uiText("郵驛")}>
+      <p>{uiText("網頁只供閱讀信件。一般信與定時信，由室友使用自己的郵件工具發出。")}</p>
+      <small>{unread.data ? uiText`${unread.data.count} 封未讀` : uiText("未讀數尚未同步")}{uiText(" · 最多顯示最近 100 封")}</small>
+      <ResourceState resource={unread} /><ResourceState resource={list} empty={list.data?.length === 0} />
+      <div className="field-list">{list.data?.map(m => <article className="field-item" key={m.id}>
+        <div className="field-row"><h3>{!m.is_read && tab !== "sent" ? "● " : ""}{m.subject}</h3><span className="field-tag">{uiText(MAIL_TYPE_LABELS[m.mail_type] ?? m.mail_type)}</span></div>
+        <p>{m.from_name ?? uiText("系統")} → {m.to_name}</p>
+        <small>{fieldTime(m.created_at)}{m.deliver_at && uiText` · 預定送達 ${fieldTime(m.deliver_at)}`}</small>
+        {m.status && <p>{uiText(STATUS_LABELS[m.status] ?? m.status)}</p>}
+        <button onClick={() => setSelected(m.id)}>{uiText("閱讀信件")}</button>
+      </article>)}</div>
+    </FieldPanel>
+    {selected && <FieldDialog title={uiText("信件內容")} onClose={() => setSelected(null)}>
+      <ResourceState resource={detail} />
+      {detail.data && <div className="field-stack">
+        <h3>{detail.data.subject}</h3><small>{detail.data.from_name} → {detail.data.to_name}</small>
+        <p className="field-body">{detail.data.content}</p>
+      </div>}
+    </FieldDialog>}
   </FieldFrame>;
 }
 
