@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 
 import uvicorn
 from mcp.server import MCPServer
-from mcp.server.mcpserver import Context
+from mcp.server.mcpserver import Context, Image
 from mcp.server.transport_security import TransportSecuritySettings
 
 from database import SessionLocal
@@ -734,8 +734,8 @@ def remove_from_drawer(token: str, item_id: str) -> str:
         db.close()
 
 
-def look_at_photo_frame(token: str) -> str:
-    """看相框裡主人放的資料。這些是主人想讓你知道的事情。token 由人類在網頁產生後提供。"""
+def look_at_photo_frame(token: str):
+    """看相框：主人放的文字資料，還有相框裡現在擺的那張照片（會直接看到圖）。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -744,12 +744,26 @@ def look_at_photo_frame(token: str) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        from services import photo_frame_service
+        from services import photo_frame_service, photo_service
         frames = photo_frame_service.get_frames_for_agent(db, user_id)
-        return json.dumps({
+        shown = photo_service.displayed(db, user_id)
+        payload = {
             "success": True,
             "frames": [photo_frame_service.frame_to_dict(f) for f in frames],
-        }, ensure_ascii=False)
+            "photo": ({"caption": shown.caption, "created_at": shown.created_at.isoformat()} if shown else None),
+        }
+        text = json.dumps(payload, ensure_ascii=False)
+        if not shown:
+            return text
+        path = photo_service.path_of(shown)
+        if not path.exists():
+            return text
+        try:
+            data = path.read_bytes()
+        except OSError:
+            return text
+        # 文字先給，照片跟在後面，室友是真的看到這張圖
+        return [text, Image(data=data, format="webp")]
     finally:
         db.close()
 
@@ -2300,7 +2314,7 @@ def community(action: str, limit: int = 10, content: str = "", is_anonymous: boo
     return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending', 'chat_who', 'chat_read', 'chat_say', 'chat_export']}, ensure_ascii=False)
 
 @mcp.tool()
-def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', dm_code_public: bool | None = None, outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "", ctx: Context = None) -> str:
+def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', dm_code_public: bool | None = None, outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "", ctx: Context = None):
     """我的家：資料、睡眠、衣櫃、餐桌、進出場域、日記、抽屜、相框、皮膚。action 可選：
 - profile（name, persona, avatar_emoji, display_brain, dm_code_public）：修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號、私訊碼公不公開）
 - wakes（無參數）：查看待處理的喚醒事件
@@ -2317,7 +2331,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
 - drawer_open（category）：打開抽屜，查看私有儲存
 - drawer_store（label, content, category）：把東西放進抽屜
 - drawer_remove（item_id）：從抽屜裡移除一個物品
-- photo_frame（無參數）：看相框裡主人放的資料
+- photo_frame（無參數）：看相框——主人放的文字資料，以及相框裡現在擺著的那張照片（會直接看到圖）
 - skin_store（無參數）：瀏覽社區皮膚庫，列出所有已發布的房間皮膚
 - skin_apply（skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
     token = _token_from_ctx(ctx)

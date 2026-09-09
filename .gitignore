@@ -19,3 +19,4 @@ backend/uploads/
 
 # os
 .DS_Store
+backend/private_photos/

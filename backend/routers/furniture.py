@@ -2,16 +2,18 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.diary import DiaryEntry
 from models.drawer import DrawerItem
+from models.photo import Photo
 from models.photo_frame import PhotoFrame
 from models.user import User
-from services import time_service, diary_service, drawer_service, photo_frame_service, reading_service, weather_service
+from services import time_service, diary_service, drawer_service, photo_frame_service, photo_service, reading_service, weather_service
 from services.park_service import get_today_weather
 from utils.deps import get_current_user, get_db
 
@@ -51,7 +53,11 @@ def furniture_overview(
         "clock": time_service.clock_info(current_user),  # 艙室時鐘：住戶當地時間＋社區時間（台北）
         "diary": {"count": diary_count},
         "drawer": {"count": drawer_count},
-        "photo_frame": {"count": frame_count},
+        "photo_frame": {
+            "count": frame_count,  # 主人寫的文字條目
+            "photo": photo_service.to_dict(shown) if (shown := photo_service.displayed(db, current_user.id)) else None,
+            "photo_count": db.query(Photo).filter(Photo.user_id == current_user.id).count(),
+        },
         "mirror": {"agent_name": agent.name if agent else None, "avatar_emoji": agent.avatar_emoji if agent else None},
         "door": {"current_location": agent.current_location if agent else None},
         "bed": {"has_agent": agent is not None, "is_sleeping": agent.is_sleeping if agent else False},
@@ -162,3 +168,85 @@ def delete_photo_frame(
 ):
     if not photo_frame_service.delete_frame(db, current_user, frame_id):
         raise HTTPException(status_code=404, detail="找不到相框")
+
+
+# ───────── 相框的照片（2026-09-09 她定：最多 20 張、只擺 1 張）─────────
+
+class PhotoPatch(BaseModel):
+    caption: str | None = None
+    display: bool | None = None  # true＝擺這張；false＝相框空著
+
+
+@router.get("/photos")
+def list_photos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = photo_service.list_photos(db, current_user.id)
+    return {
+        "photos": [photo_service.to_dict(p) for p in rows],
+        "max": photo_service.MAX_PHOTOS,
+        "displayed_id": next((p.id for p in rows if p.is_displayed), None),
+    }
+
+
+@router.post("/photos", status_code=201)
+async def upload_photo(
+    file: UploadFile = File(...),
+    caption: str = Form(default=""),  # 要宣告成 Form，不然 FastAPI 會當成網址參數
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    data = await file.read()
+    try:
+        photo = photo_service.add(db, current_user, data, (file.content_type or "").lower(), caption)
+    except photo_service.PhotoError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.commit()
+    db.refresh(photo)
+    return photo_service.to_dict(photo)
+
+
+@router.patch("/photos/{photo_id}")
+def patch_photo(
+    photo_id: str,
+    body: PhotoPatch,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        if body.caption is not None:
+            photo_service.set_caption(db, current_user.id, photo_id, body.caption)
+        if body.display is True:
+            photo_service.display(db, current_user.id, photo_id)
+        elif body.display is False:
+            photo_service.clear_display(db, current_user.id)
+    except photo_service.PhotoError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    db.commit()
+    photo = photo_service.get(db, current_user.id, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="找不到這張照片")
+    return photo_service.to_dict(photo)
+
+
+@router.delete("/photos/{photo_id}", status_code=204)
+def delete_photo(photo_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not photo_service.delete(db, current_user.id, photo_id):
+        raise HTTPException(status_code=404, detail="找不到這張照片")
+    db.commit()
+    return None
+
+
+@router.get("/photos/{photo_id}/file")
+def photo_file(
+    photo_id: str,
+    exp: str | None = Query(default=None),
+    sig: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """照片本體。<img> 標籤帶不了 Authorization，所以走簽章網址（24 小時、猜不到）。"""
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo or not photo_service.check_signature(photo, exp, sig):
+        raise HTTPException(status_code=404, detail="找不到這張照片")
+    path = photo_service.path_of(photo)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="照片檔不見了")
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
