@@ -10,6 +10,7 @@ import { AdvancedAgentPage } from "./pages/AdvancedAgentPage";
 import { FurniturePage } from "./pages/FurniturePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
+import { GuidePage } from "./pages/GuidePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResidentDirectory, ResidentCardPage } from "./pages/ResidentDirectory";
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/authorize" element={<AuthorizePage />} />
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/guide" element={<GuidePage />} />
               <Route path="/home/diary" element={<DiaryPage />} />
               <Route path="/home/drawer" element={<DrawerPage />} />
               <Route path="/home/photos" element={<PhotoFramePage />} />

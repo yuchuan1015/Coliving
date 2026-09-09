@@ -119,7 +119,7 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-fab { border: 0; background: none; color: var(--c-moon); width: 44px; height: 44px; display: grid; place-items: center; padding: 0; }
 .cabin-fab > span { width: calc(var(--c-avatar) / 2); height: calc(var(--c-avatar) / 2); border: 1px solid var(--c-moon); border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 300; line-height: 1; background: rgb(201 167 255 / .06); box-shadow: inset 0 1px 0 rgb(244 240 255 / .10); }
 .cabin-fab.is-open > span { transform: rotate(45deg); }
-.cabin-fab-menu { position: absolute; right: 0; bottom: 60px; width: 168px; padding: 8px; border: 1px solid var(--c-moon); border-radius: 16px; background: rgb(8 6 24 / .96); animation: cabin-fade 150ms ease; }
+.cabin-fab-menu { position: absolute; right: 0; bottom: 60px; width: 168px; max-height: min(360px, calc(100dvh - 160px)); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--c-moon); border-radius: 16px; background: rgb(8 6 24 / .96); animation: cabin-fade 150ms ease; }
 .cabin-fab-menu button { display: block; width: 100%; min-height: 44px; text-align: left; padding: 8px 12px; color: var(--c-frost); background: none; border: 0; border-radius: 8px; }
 .cabin-menu-dismiss { position: fixed; inset: 0; z-index: 9; background: none; border: 0; }
 .cabin-image-error { position: absolute; inset: 12px; color: var(--c-frost); font-size: 13px; }

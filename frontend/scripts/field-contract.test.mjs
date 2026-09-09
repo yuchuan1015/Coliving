@@ -136,6 +136,128 @@ beforeEach(() => {
 });
 
 const { clockHandAngles, clockDialSize } = load("src/data/cabin-clock.ts");
+const guide = load("src/data/guide.ts");
+const { GuidePage } = load("src/pages/GuidePage.tsx");
+const guideEntries = h => nodes(h.tree, n => n.type === "details" && n.props.className === "photo-panel guide-entry");
+function findGuide(h, query) { nodes(h.tree, n => n.props.id === "guide-search")[0].props.onChange({ target: { value: query } }); h.render(); }
+test("guide covers each real destination exactly once without inventing paths or planet names", () => {
+  const fields = guide.GUIDE_ARTICLES.filter(article => article.category === "fields");
+  assert.equal(fields.length, 11);
+  assert.deepEqual(fields.map(article => [article.id, article.title, article.link.to]), fieldData.FIELDS.map(([id, star, name]) => [`field-${id}`, `${star} · ${name}`, `/${id}`]));
+  assert.equal(new Set(guide.GUIDE_ARTICLES.map(article => article.id)).size, guide.GUIDE_ARTICLES.length);
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  for (const article of guide.GUIDE_ARTICLES) {
+    assert.ok(article.title && article.summary && article.paragraphs.length);
+    if (article.link) { assert.ok(app.includes(`path="${article.link.to}"`), article.link.to); assert.ok(!article.link.to.includes("/agent/edit")); }
+  }
+});
+test("guide searches titles, full body, aliases, ASCII case and full-width inputs locally", () => {
+  for (const [query, id] of [["SIRIUS", "field-plaza"], ["ｓｉｒｉｕｓ", "field-plaza"], ["头像", "mirror"], ["給室友的話", "mirror"], ["413", "upload-help"], ["工坊", "field-workshop"], ["Outlook", "contact"], ["隔離環境", "field-workshop"], ["分级式人机亲密关系中心", "field-adult"]]) {
+    assert.ok(guide.searchGuide(query).some(article => article.id === id), query);
+  }
+  assert.equal(calls.length, 0);
+});
+test("guide search supports multiple keywords and category filtering without treating input as regex", () => {
+  const matches = guide.searchGuide("頭像 2MB"); assert.ok(matches.some(a => a.id === "mirror"));
+  assert.ok(matches.every(a => a.id === "mirror" || a.id === "upload-help"));
+  assert.ok(guide.searchGuide("頭像", "fields").length === 0);
+  assert.equal(guide.searchGuide("", "fields").length, 11);
+  assert.equal(guide.searchGuide(" \n\t ").length, guide.GUIDE_ARTICLES.length);
+  for (const input of ["[.*", "<script>alert(1)</script>", "不存在的功能abcdefgh"]) assert.deepEqual(guide.searchGuide(input), []);
+});
+test("guide surfaces the matching body excerpt and documents real current limitations", () => {
+  const workshop = guide.GUIDE_ARTICLES.find(a => a.id === "field-workshop");
+  assert.match(guide.guideExcerpt(workshop, "隔離環境"), /隔離環境/);
+  assert.match(workshop.notice, /不會自動替換/);
+  assert.match(guide.GUIDE_ARTICLES.find(a => a.id === "sleep").notice, /尚未接成可操作/);
+  assert.match(guide.GUIDE_ARTICLES.find(a => a.id === "field-adult").notice, /不會跳過/);
+  assert.match(guide.GUIDE_ARTICLES.find(a => a.id === "field-museum").paragraphs.join(""), /不是直接上傳/);
+  assert.match(guide.GUIDE_ARTICLES.find(a => a.id === "usage-help").paragraphs.join(""), /不改成 0/);
+});
+test("guide renders real contents and does not read APIs, start timers or send reports on open", () => {
+  const h = mount(GuidePage); h.effects(); h.render();
+  assert.equal(h.tree.props.title, "導覽手冊"); assert.equal(guideEntries(h).length, 30);
+  assert.equal(calls.length, 0); assert.equal(reads.length, 0); assert.equal(timers.size, 0);
+  assert.ok(nodes(h.tree, n => n.props.id === "guide-search")[0].props["aria-describedby"]);
+  assert.equal(nodes(h.tree, n => n.type === "summary").length, 31);
+  h.dispose();
+});
+test("guide tabs and search work together; clearing text retains chosen category", () => {
+  const h = mount(GuidePage); click(h, "場域介紹"); assert.equal(guideEntries(h).length, 11);
+  findGuide(h, "Sirius"); assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /找到 1 則相關說明/);
+  click(h, "清除搜尋"); assert.equal(guideEntries(h).length, 11);
+  assert.equal(button(h, "場域介紹").props["aria-pressed"], true);
+  click(h, "基本功能"); assert.equal(guideEntries(h).length, 11);
+  click(h, "問題排除"); assert.equal(guideEntries(h).length, 7);
+});
+test("no-result guide state can reset both filters or open contact without carrying stale query", () => {
+  const h = mount(GuidePage); click(h, "場域介紹"); findGuide(h, "不可能找到的東西");
+  assert.equal(guideEntries(h).length, 0); assert.match(text(h.tree), /沒有找到相關說明/);
+  let focused = 0; nodes(h.tree, n => n.props.id === "guide-search")[0].props.ref.current = { focus() { focused++; } };
+  click(h, "查看全部說明"); assert.equal(guideEntries(h).length, 30); assert.equal(focused, 1);
+  findGuide(h, "再次找不到"); click(h, "前往 Bug 報錯");
+  assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /therookery1108@outlook\.com/);
+  assert.equal(nodes(h.tree, n => n.props.id === "guide-search")[0].props.value, "");
+});
+test("bug draft has exact user-approved recipient and fixed encoded template with no account data", () => {
+  assert.equal(guide.SUPPORT_EMAIL, "therookery1108@outlook.com");
+  const draft = new URL(guide.BUG_REPORT_MAILTO);
+  assert.equal(draft.protocol, "mailto:"); assert.equal(draft.pathname, guide.SUPPORT_EMAIL);
+  assert.deepEqual([...draft.searchParams.keys()], ["subject", "body"]);
+  assert.equal(draft.searchParams.get("subject"), "鴉巢 Bug 報錯");
+  assert.equal(draft.searchParams.get("body"), guide.BUG_REPORT_TEMPLATE);
+  for (const field of ["發生時間", "裝置與瀏覽器", "操作步驟", "預期", "實際", "遮蔽個資", "請勿附上密碼"]) assert.ok(guide.BUG_REPORT_TEMPLATE.includes(field));
+  const h = mount(GuidePage);
+  const link = nodes(h.tree, n => n.type === "a" && n.props.href?.startsWith("mailto:"))[0];
+  assert.equal(link.props.href, guide.BUG_REPORT_MAILTO); assert.equal(link.props.onClick, undefined);
+  assert.ok(!guide.BUG_REPORT_TEMPLATE.includes(auth.user.id)); assert.equal(calls.length, 0);
+});
+test("copy email and template report success only after clipboard resolves, never send email", async () => {
+  const h = mount(GuidePage); h.effects(); const pending = deferred();
+  navigatorStub.clipboard = { writeText: value => { calls.push({ method: "copy", args: [value] }); return pending.promise; } };
+  const handler = button(h, "複製信箱").props.onClick; const first = handler(), second = handler(); h.render();
+  assert.equal(calls.length, 1); assert.equal(calls[0].args[0], guide.SUPPORT_EMAIL);
+  assert.equal(button(h, "複製信箱").props.disabled, true); assert.ok(!text(h.tree).includes("已複製信箱"));
+  pending.resolve(); await Promise.all([first, second]); h.render(); assert.match(text(h.tree), /已複製信箱，尚未寄出郵件/);
+  navigatorStub.clipboard = { writeText: async value => { calls.push({ method: "copy", args: [value] }); } };
+  await button(h, "複製報錯格式").props.onClick(); h.render();
+  assert.equal(calls.at(-1).args[0], guide.BUG_REPORT_TEMPLATE); assert.match(text(h.tree), /已複製報錯格式/);
+  assert.ok(calls.every(c => c.method === "copy")); h.dispose();
+});
+test("denied or missing clipboard preserves visible selectable email and manual template", async () => {
+  for (const clipboard of [undefined, { writeText: async () => { throw Error("Denied"); } }]) {
+    navigatorStub.clipboard = clipboard; const h = mount(GuidePage); h.effects();
+    await button(h, "複製信箱").props.onClick(); h.render();
+    assert.match(text(h.tree), /無法自動複製/); assert.match(text(h.tree), /therookery1108@outlook\.com/);
+    assert.equal(nodes(h.tree, n => n.type === "pre")[0].props.children, guide.BUG_REPORT_TEMPLATE);
+    assert.equal(button(h, "複製信箱").props.disabled, false); assert.equal(calls.length, 0); h.dispose();
+  }
+});
+test("late clipboard result cannot update a closed guide", async () => {
+  const pending = deferred(); navigatorStub.clipboard = { writeText: () => pending.promise };
+  const h = mount(GuidePage); h.effects(); const job = button(h, "複製信箱").props.onClick();
+  h.dispose(); pending.resolve(); await job; h.render(); assert.ok(!text(h.tree).includes("已複製信箱"));
+});
+test("guide navigation is protected and FAB opens it without making avatar editable", async () => {
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.ok(app.includes('path="/guide" element={<GuidePage />}'));
+  assert.ok(app.indexOf('path="/guide"') > app.indexOf("<ProtectedRoute"));
+  answer = async (_method, url) => ({ data: url === "/home/dashboard" ? { agents: [], community_status: {} } : url === "/home/furniture" ? { clock: {}, photo_frame: null } : [] });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage); h.effects(); await tick(); h.render();
+  nodes(h.tree, n => n.props["aria-label"] === "展開快捷選單")[0].props.onClick(); h.render();
+  assert.equal(nodes(h.tree, n => n.props.id === "cabin-fab-menu")[0].props.children.filter(Boolean).length, 5);
+  click(h, "導覽手冊"); expectCall("navigate", "/guide");
+  assert.equal(nodes(h.tree, n => n.props.id === "cabin-fab-menu").length, 0);
+  assert.equal(nodes(h.tree, n => n.props.className === "cabin-agent-info")[0].props.onClick, undefined); h.dispose();
+});
+test("guide keeps search and report data local and does not advertise made-up support promises", () => {
+  for (const file of ["src/data/guide.ts", "src/pages/GuidePage.tsx"]) {
+    const source = readFileSync(resolve(root, file), "utf8");
+    for (const forbidden of ["localStorage", "sessionStorage", "useAuth", "getMyAgent", "window.location", "location.href", "api.post", "fetch(", "dangerouslySetInnerHTML", "三個工作日", "24 小時內回覆"]) assert.ok(!source.includes(forbidden), forbidden);
+  }
+  const css = readFileSync(resolve(root, "src/cabin-home.css"), "utf8");
+  assert.match(css, /\.cabin-fab-menu \{[^}]*max-height:[^}]*overflow-y: auto/);
+});
 const chatApi = load("src/api/chat.ts");
 const { ChatUsageDialog, UsageSummary, UsageTotalCard } = load("src/components/ChatUsageDialog.tsx");
 const { ChatPage, ChatSession } = load("src/pages/ChatPage.tsx");

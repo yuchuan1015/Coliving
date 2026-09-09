@@ -178,6 +178,7 @@ export function HomePage() {
           <button onClick={() => navigate("/outside")}>出艙 ↗</button>
           <button onClick={() => navigate(agent ? `/chat/${agent.id}` : "/adopt")}>聊天</button>
           <button onClick={() => navigate("/schedules")}>排程管理</button>
+          <button onClick={() => { closeFab(); navigate("/guide"); }}>導覽手冊</button>
           <button onClick={() => { closeFab(); setPanel("settings"); }}>設定</button>
         </nav>}
         <button ref={fabRef} className={`cabin-fab${fabOpen ? " is-open" : ""}`} aria-label={fabOpen ? "收起快捷選單" : "展開快捷選單"} aria-expanded={fabOpen} aria-controls="cabin-fab-menu" onClick={() => setFabOpen(!fabOpen)}><span aria-hidden="true">+</span></button>

@@ -8,6 +8,7 @@ import { AuthContext } from "../../src/contexts/AuthContext";
 import { PhotoFramePage } from "../../src/pages/PhotoFramePage";
 import { EditAgentPage } from "../../src/pages/EditAgentPage";
 import { ChatPage } from "../../src/pages/ChatPage";
+import { GuidePage } from "../../src/pages/GuidePage";
 import type { ChatUsage, UsageTotals } from "../../src/api/chat";
 import { HomePage } from "../../src/pages/HomePage";
 import { DiaryPage } from "../../src/pages/DiaryPage";
@@ -106,11 +107,11 @@ api.defaults.adapter = async config => {
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link></nav>
-  <Routes><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <Routes><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);
