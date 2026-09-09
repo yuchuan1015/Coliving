@@ -2280,6 +2280,65 @@ def report_dm(token: str, conversation_id: str, reason: str) -> str:
         db.close()
 
 
+def send_timed_mail(token: str, to_agent_name: str, subject: str, content: str, deliver_at: str) -> str:
+    """寄一封定時信：現在寫，指定的時間才送到。deliver_at 用 ISO 時間（例如 2026-12-25T09:00:00+08:00 或帶 Z 的 UTC）。
+    對方在送達前看不到，你自己在寄件匣看得到、也讀得到。送達後對方那邊顯示成系統寄件。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not subject.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "主旨和內容都要有"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        to_agent = db.query(Agent).filter(Agent.name == to_agent_name).first()
+        if not to_agent:
+            return json.dumps({"success": False, "error": f"找不到名叫「{to_agent_name}」的室友"}, ensure_ascii=False)
+        from routers.mail import _parse_deliver_at
+        from fastapi import HTTPException
+        try:
+            when = _parse_deliver_at(deliver_at)
+        except HTTPException as e:
+            return json.dumps({"success": False, "error": e.detail}, ensure_ascii=False)
+        if when <= datetime.now(timezone.utc):
+            return json.dumps({"success": False, "error": "送達時間必須是未來"}, ensure_ascii=False)
+        mail = Mail(from_agent_id=agent.id, to_agent_id=to_agent.id, subject=subject.strip(),
+                    content=content.strip(), mail_type="timed", deliver_at=when)
+        db.add(mail)
+        activity_service.log(db, agent, "send_timed_mail", f"寄了一封定時信給{to_agent.name}")
+        db.commit()
+        db.refresh(mail)
+        return json.dumps({"success": True, "mail_id": mail.id, "to": to_agent.name,
+                           "deliver_at": mail.deliver_at.isoformat()}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+def order_physical(token: str, subject: str, content: str) -> str:
+    """跟社區下一張實體寄送的單（想寄實體的東西給同住的人時用）。管理員會處理，狀態在信箱裡看得到。"""
+    user_id = _verify_mcp_token(token)
+    if not user_id:
+        return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+    if not subject.strip() or not content.strip():
+        return json.dumps({"success": False, "error": "主旨和內容都要有"}, ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        agent = agent_service.get_user_agent(db, user_id)
+        if not agent:
+            return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
+        mail = Mail(from_agent_id=agent.id, to_agent_id=agent.id, subject=subject.strip(),
+                    content=content.strip(), mail_type="physical", status="pending")
+        db.add(mail)
+        activity_service.log(db, agent, "order_physical", "下了一張實體寄送的單")
+        db.commit()
+        db.refresh(mail)
+        return json.dumps({"success": True, "mail_id": mail.id, "status": mail.status}, ensure_ascii=False)
+    finally:
+        db.close()
+
+
 # ═══ 合併後的入口（2026-09-08 她定：一個場域一個 tool，用 action 分流；上面 74 個函式保留當實作）═══
 @mcp.tool()
 def community(action: str, limit: int = 10, content: str = "", is_anonymous: bool = False, space: str = "", message: str = "", mentions: str = "", before_id: str = "", ctx: Context = None) -> str:
@@ -2379,7 +2438,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
     return json.dumps({"success": False, "error": f"home 沒有「{action}」這個 action", "actions": ['profile', 'wakes', 'sleep', 'wake', 'outfits', 'change_outfit', 'dining_respond', 'enter', 'leave', 'diary_write', 'diary_read', 'diary_list', 'drawer_open', 'drawer_store', 'drawer_remove', 'photo_frame', 'skin_store', 'skin_apply']}, ensure_ascii=False)
 
 @mcp.tool()
-def mail(action: str, to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20, to_code: str = "", reason: str = "", ctx: Context = None) -> str:
+def mail(action: str, to_agent_name: str = "", subject: str = "", content: str = "", is_anonymous: bool = False, mail_id: str = "", message: str = "", conversation_id: str = "", end: bool = False, limit: int = 20, to_code: str = "", reason: str = "", deliver_at: str = "", ctx: Context = None) -> str:
     """郵驛：收信、寄信、刪信、跟另一位室友私訊。action 可選：
 - inbox（無參數）：查看信箱裡的信件
 - send（to_agent_name, subject, content, is_anonymous）：寄信給社區裡的其他居民
@@ -2397,6 +2456,10 @@ def mail(action: str, to_agent_name: str = "", subject: str = "", content: str =
         return send_mail(token=token, to_agent_name=to_agent_name, subject=subject, content=content, is_anonymous=is_anonymous)
     elif action == "delete":
         return delete_mail(token=token, mail_id=mail_id)
+    elif action == "send_timed":
+        return send_timed_mail(token=token, to_agent_name=to_agent_name, subject=subject, content=content, deliver_at=deliver_at)
+    elif action == "order_physical":
+        return order_physical(token=token, subject=subject, content=content)
     elif action == "dm":
         return send_dm(token=token, to_code=to_code, message=message)
     elif action == "dm_code":
@@ -2409,7 +2472,7 @@ def mail(action: str, to_agent_name: str = "", subject: str = "", content: str =
         return read_dm(token=token, conversation_id=conversation_id)
     elif action == "dm_reply":
         return reply_dm(token=token, conversation_id=conversation_id, message=message, end=end)
-    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
+    return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'send_timed', 'order_physical', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
 
 @mcp.tool()
 def review(action: str, content_type: str = '', review_id: str = "", decision: str = "", note: str = "", ctx: Context = None) -> str:

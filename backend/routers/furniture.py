@@ -66,49 +66,19 @@ def furniture_overview(
 
 # ─── 抽屜 ─────────────────────────────────────────
 
-class DrawerStoreBody(BaseModel):
-    label: str
-    content: str
-    category: str = "misc"
-
-
 @router.get("/drawer")
-def list_drawer(
-    category: str | None = None,
+def peek_drawer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """抽屜是上鎖的（2026-09-10 她定）：住戶只知道裡面有幾樣，看不到是什麼，也不能放東西進去。
+    抽屜＝室友的私密日記，只有他自己開得了（MCP home drawer_*）。"""
     agent = _get_agent(db, current_user)
     if not agent:
         raise HTTPException(status_code=403, detail="需要先有室友")
-    items = drawer_service.list_items(db, agent, category=category)
-    return {"items": [drawer_service.item_to_dict(i) for i in items]}
-
-
-@router.post("/drawer", status_code=201)
-def store_in_drawer(
-    body: DrawerStoreBody,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent(db, current_user)
-    if not agent:
-        raise HTTPException(status_code=403, detail="需要先有室友")
-    item = drawer_service.store_item(db, agent, body.label, body.content, body.category)
-    return drawer_service.item_to_dict(item)
-
-
-@router.delete("/drawer/{item_id}", status_code=204)
-def remove_from_drawer(
-    item_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    agent = _get_agent(db, current_user)
-    if not agent:
-        raise HTTPException(status_code=403, detail="需要先有室友")
-    if not drawer_service.remove_item(db, agent, item_id):
-        raise HTTPException(status_code=404, detail="找不到物品")
+    count = db.query(DiaryEntry).filter(DiaryEntry.agent_id == agent.id, DiaryEntry.private.is_(True)).count()
+    return {"locked": True, "count": count, "items": [],
+            "message": "抽屜上鎖了。這是他自己的東西，你看得到抽屜，看不到裡面。"}
 
 
 # ─── 相框 ─────────────────────────────────────────
