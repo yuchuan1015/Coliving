@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
@@ -15,6 +17,7 @@ function errorText(error: unknown, fallback: string) {
 }
 
 export function EditAgentPage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const { hash } = useLocation();
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -209,46 +212,46 @@ export function EditAgentPage() {
     <div className="agent-editor-stack">
       <section className="agent-editor-card" aria-labelledby="agent-editor-title">
         <header className="agent-editor-header">
-          <h1 id="agent-editor-title">資料更新處</h1>
-          <button className="agent-editor-back" type="button" onClick={back} disabled={saving}><span aria-hidden="true">←</span> 返回艙室</button>
+          <h1 id="agent-editor-title">{uiText("資料更新處")}</h1>
+          <button className="agent-editor-back" type="button" onClick={back} disabled={saving}><span aria-hidden="true">←</span>{uiText(" 返回艙室")}</button>
         </header>
-        {loading ? <p className="agent-editor-state" role="status">正在讀取室友資料…</p> : loadError ? <div className="agent-editor-state"><p role="alert">{loadError}</p><button onClick={() => { setLoading(true); setLoadError(""); setRetry(value => value + 1); }}>重新載入</button></div> : agent && <form onSubmit={save} aria-label="室友資料" aria-busy={saving}>
+        {loading ? <p className="agent-editor-state" role="status">{uiText("正在讀取室友資料…")}</p> : loadError ? <div className="agent-editor-state"><p role="alert">{loadError}</p><button onClick={() => { setLoading(true); setLoadError(""); setRetry(value => value + 1); }}>{uiText("重新載入")}</button></div> : agent && <form onSubmit={save} aria-label={uiText("室友資料")} aria-busy={saving}>
           <fieldset className="agent-editor-fields" disabled={saving}>
             <div className="agent-avatar-field">
               <span className="agent-editor-avatar"><AvatarContent url={photoUrl} emoji={emoji} name={name || agent.name} /></span>
               <div className="agent-editor-field">
-                <label htmlFor="editor-avatar">頭像</label>
+                <label htmlFor="editor-avatar">{uiText("頭像")}</label>
                 <select id="editor-avatar" value={avatarMode} onChange={event => changeAvatar(event.target.value as AvatarMode)}>
-                  <option value="default">預設</option><option value="preset">選擇其他預設</option><option value="photo">添加照片</option>
+                  <option value="default">{uiText("預設")}</option><option value="preset">{uiText("選擇其他預設")}</option><option value="photo">{uiText("添加照片")}</option>
                 </select>
               </div>
             </div>
-            {avatarMode === "preset" && <div className="agent-emoji-grid" role="group" aria-label="選擇預設頭像">
-              {EMOJI_OPTIONS.map((item, index) => <button type="button" key={item} aria-label={`頭像 ${index + 1}：${item}`} aria-pressed={emoji === item} onClick={() => setEmoji(item)}>{item}</button>)}
+            {avatarMode === "preset" && <div className="agent-emoji-grid" role="group" aria-label={uiText("選擇預設頭像")}>
+              {EMOJI_OPTIONS.map((item, index) => <button type="button" key={item} aria-label={uiText`頭像 ${index + 1}：${item}`} aria-pressed={emoji === item} onClick={() => setEmoji(item)}>{item}</button>)}
             </div>}
             {avatarMode === "photo" && <div className="agent-photo-picker">
-              <label htmlFor="editor-photo">{photo ? "重新選擇照片" : agent.avatar_url ? "替換照片" : "選擇照片"}</label>
+              <label htmlFor="editor-photo">{photo ? uiText("重新選擇照片") : agent.avatar_url ? uiText("替換照片") : uiText("選擇照片")}</label>
               <input ref={photoInput} id="editor-photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event => choosePhoto(event.target.files?.[0])} aria-describedby="editor-photo-help" />
-              <small id="editor-photo-help">{photo ? `已選擇：${photo.name}。保存後才會更新。` : "JPG、PNG、WebP、GIF · 上限 2MB。切回預設可移除照片。"}</small>
+              <small id="editor-photo-help">{photo ? uiText`已選擇：${photo.name}。保存後才會更新。` : uiText("JPG、PNG、WebP、GIF · 上限 2MB。切回預設可移除照片。")}</small>
             </div>}
             <div className="agent-editor-field">
-              <label htmlFor="editor-name">名字</label>
-              <input id="editor-name" value={name} onChange={event => setName(event.target.value)} placeholder="輸入修改顯示名稱" maxLength={64} required autoComplete="off" />
+              <label htmlFor="editor-name">{uiText("名字")}</label>
+              <input id="editor-name" value={name} onChange={event => setName(event.target.value)} placeholder={uiText("輸入修改顯示名稱")} maxLength={64} required autoComplete="off" />
             </div>
             <div className="agent-editor-field">
-              <label htmlFor="editor-persona">個性描述</label>
-              <textarea id="editor-persona" value={persona} onChange={event => setPersona(event.target.value)} placeholder="輸入室友的基礎個性，上限2000字" maxLength={2000} rows={2} required aria-describedby="editor-persona-count" />
+              <label htmlFor="editor-persona">{uiText("個性描述")}</label>
+              <textarea id="editor-persona" value={persona} onChange={event => setPersona(event.target.value)} placeholder={uiText("輸入室友的基礎個性，上限2000字")} maxLength={2000} rows={2} required aria-describedby="editor-persona-count" />
               <small className="agent-editor-count" id="editor-persona-count">{persona.length} / 2000</small>
             </div>
             <div className="agent-editor-field">
-              <label htmlFor="editor-note">給室友的話</label>
-              <textarea ref={noteRef} id="editor-note" value={note} onChange={event => setNote(event.target.value)} rows={4} disabled={savedNote === null} aria-invalid={noteLength > 1000} aria-describedby="editor-note-help editor-note-count" placeholder={savedNote === null ? "正在讀取留言…" : "想讓他記得的習慣、心情，或一句想說的話。"} />
-              <small id="editor-note-help">他每次醒來都會看到這段話。按下「保存資料」後更新；留空保存可清除。</small>
-              <small id="editor-note-count" className="agent-editor-count">{noteLength} / 1000{noteChanged ? " · 尚未保存" : ""}</small>
-              {noteError && <><small role="alert">{noteError}</small><button type="button" className="agent-note-retry" onClick={() => { setNoteError(""); setNoteRetry(value => value + 1); }}>重新讀取留言</button></>}
+              <label htmlFor="editor-note">{uiText("給室友的話")}</label>
+              <textarea ref={noteRef} id="editor-note" value={note} onChange={event => setNote(event.target.value)} rows={4} disabled={savedNote === null} aria-invalid={noteLength > 1000} aria-describedby="editor-note-help editor-note-count" placeholder={savedNote === null ? uiText("正在讀取留言…") : uiText("想讓他記得的習慣、心情，或一句想說的話。")} />
+              <small id="editor-note-help">{uiText("他每次醒來都會看到這段話。按下「保存資料」後更新；留空保存可清除。")}</small>
+              <small id="editor-note-count" className="agent-editor-count">{noteLength} / 1000{noteChanged ? uiText(" · 尚未保存") : ""}</small>
+              {noteError && <><small role="alert">{noteError}</small><button type="button" className="agent-note-retry" onClick={() => { setNoteError(""); setNoteRetry(value => value + 1); }}>{uiText("重新讀取留言")}</button></>}
             </div>
             <div className="agent-editor-field">
-              <label htmlFor="editor-provider">大腦</label>
+              <label htmlFor="editor-provider">{uiText("大腦")}</label>
               <select id="editor-provider" value={provider} disabled={!settings} onChange={event => {
                 const next = event.target.value as LlmProvider;
                 setProvider(next); setModel(MODEL_SUGGESTIONS[next]?.[0] ?? ""); setCustomModel(false); setApiKey("");
@@ -258,41 +261,41 @@ export function EditAgentPage() {
               </select>
             </div>
             <div className="agent-editor-field">
-              <label htmlFor="editor-model">模型</label>
+              <label htmlFor="editor-model">{uiText("模型")}</label>
               <select id="editor-model" value={customModel ? "__custom" : model} onChange={event => {
                 const custom = event.target.value === "__custom";
                 setCustomModel(custom);
                 if (!custom) setModel(event.target.value);
               }}>
                 {choices.map(item => <option key={item} value={item}>{item}</option>)}
-                <option value="__custom">自填模型</option>
+                <option value="__custom">{uiText("自填模型")}</option>
               </select>
-              {customModel && <><input aria-label="自填模型名稱" value={model} onChange={event => setModel(event.target.value)} placeholder="輸入供應商提供的模型 ID" maxLength={64} required autoCapitalize="none" autoComplete="off" spellCheck={false} /><small>請填完整模型 ID；實際可用性依供應商與帳號權限而定。</small></>}
+              {customModel && <><input aria-label={uiText("自填模型名稱")} value={model} onChange={event => setModel(event.target.value)} placeholder={uiText("輸入供應商提供的模型 ID")} maxLength={64} required autoCapitalize="none" autoComplete="off" spellCheck={false} /><small>{uiText("請填完整模型 ID；實際可用性依供應商與帳號權限而定。")}</small></>}
             </div>
             <div className="agent-editor-field">
-              <label htmlFor="editor-key">API 金鑰</label>
-              <input id="editor-key" type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={provider !== agent.llm_provider ? "更換供應商，請填入新金鑰" : "留空表示不更換"} maxLength={256} autoComplete="new-password" autoCapitalize="none" spellCheck={false} required={provider !== agent.llm_provider} />
+              <label htmlFor="editor-key">{uiText("API 金鑰")}</label>
+              <input id="editor-key" type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={provider !== agent.llm_provider ? uiText("更換供應商，請填入新金鑰") : uiText("留空表示不更換")} maxLength={256} autoComplete="new-password" autoCapitalize="none" spellCheck={false} required={provider !== agent.llm_provider} />
             </div>
-            <div className="agent-editor-field"><label htmlFor="editor-display-brain">對外顯示的大腦（選填）</label><input id="editor-display-brain" value={displayBrain} onChange={e => setDisplayBrain(e.target.value)} maxLength={64} autoComplete="off" /><small>顯示在居民名片，不會更改實際模型；留空會清除這個標籤。</small></div>
+            <div className="agent-editor-field"><label htmlFor="editor-display-brain">{uiText("對外顯示的大腦（選填）")}</label><input id="editor-display-brain" value={displayBrain} onChange={e => setDisplayBrain(e.target.value)} maxLength={64} autoComplete="off" /><small>{uiText("顯示在居民名片，不會更改實際模型；留空會清除這個標籤。")}</small></div>
             <div className="agent-dm-visibility">
               <label className="agent-dm-switch-row" htmlFor="editor-dm-code-public">
-                <span>把我的私訊碼放在名錄上</span>
+                <span>{uiText("把我的私訊碼放在名錄上")}</span>
                 <input id="editor-dm-code-public" className="agent-dm-switch" type="checkbox" role="switch" checked={dmCodePublic === true} disabled={dmCodePublic === null} onChange={event => setDmCodePublic(event.target.checked)} aria-describedby="editor-dm-code-help editor-dm-code-status" />
               </label>
-              <small id="editor-dm-code-help">關閉只會從居民名錄與名片隱藏私訊碼；已拿到碼的人仍能私訊。更改後請按「保存資料」。</small>
-              <small id="editor-dm-code-status" role="status">{dmCodePublic === null ? "目前未讀到公開設定，暫時無法調整；不會自動變更。請稍後重新進入鏡子。" : dmCodeChanged ? `尚未保存：將${dmCodePublic ? "公開" : "隱藏"}私訊碼。` : dmCodePublic ? "目前已公開。" : "目前未公開。"}</small>
+              <small id="editor-dm-code-help">{uiText("關閉只會從居民名錄與名片隱藏私訊碼；已拿到碼的人仍能私訊。更改後請按「保存資料」。")}</small>
+              <small id="editor-dm-code-status" role="status">{dmCodePublic === null ? uiText("目前未讀到公開設定，暫時無法調整；不會自動變更。請稍後重新進入鏡子。") : dmCodeChanged ? uiText`尚未保存：將${dmCodePublic ? "公開" : "隱藏"}私訊碼。` : dmCodePublic ? uiText("目前已公開。") : uiText("目前未公開。")}</small>
             </div>
-            {error && <p ref={errorRef} className="agent-editor-error" role="alert" tabIndex={-1}>{error}</p>}
+            {error && <p ref={errorRef} className="agent-editor-error" role="alert" tabIndex={-1}>{uiText(error)}</p>}
             <button className="agent-editor-save" type="submit">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 3h12l4 4v14H3V3h2Z M7 3v6h10V3 M7 21v-8h10v8" /></svg>
-              {saving ? "正在保存…" : "保存資料"}
+              {saving ? uiText("正在保存…") : uiText("保存資料")}
             </button>
           </fieldset>
         </form>}
       </section>
       <section className="agent-editor-card agent-editor-disclaimer" aria-labelledby="editor-disclaimer-title">
-        <h2 id="editor-disclaimer-title">聲明：</h2>
-        {settings ? <p>{settings.disclaimer}</p> : providerError ? <><p role="alert">{providerError}</p><button onClick={() => { setProviderError(""); setProviderRetry(value => value + 1); }}>重新載入聲明與供應商</button></> : <p role="status">正在讀取資料使用聲明…</p>}
+        <h2 id="editor-disclaimer-title">{uiText("聲明：")}</h2>
+        {settings ? <p>{settings.disclaimer}</p> : providerError ? <><p role="alert">{providerError}</p><button onClick={() => { setProviderError(""); setProviderRetry(value => value + 1); }}>{uiText("重新載入聲明與供應商")}</button></> : <p role="status">{uiText("正在讀取資料使用聲明…")}</p>}
       </section>
     </div>
   </main>;

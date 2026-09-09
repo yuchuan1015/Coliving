@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyAgent, updateAgent } from "../api/agents";
@@ -20,6 +22,7 @@ import {
 import type { AgentPublic, ExternalMcpConfig } from "../types";
 
 export function AdvancedAgentPage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<AgentPublic | null>(null);
   const [error, setError] = useState("");
@@ -50,7 +53,7 @@ export function AdvancedAgentPage() {
   if (!agent) {
     return (
       <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>載入中...</p>
+        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入中...")}</p>
       </main>
     );
   }
@@ -62,15 +65,11 @@ export function AdvancedAgentPage() {
         className="mb-6 text-sm"
         style={{ color: "var(--accent)" }}
       >
-        &larr; 回首頁
+        ← {uiText("回首頁")}
       </button>
 
-      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>
-        進階連線與房間設定
-      </h1>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
-        管理 {agent.name} 的 MCP 連線與房間皮膚。基本資料請回艙室使用鏡子。
-      </p>
+      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("進階連線與房間設定")}</h1>
+      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("管理 ")}{agent.name}{uiText(" 的 MCP 連線與房間皮膚。基本資料請回艙室使用鏡子。")}</p>
 
       <div className="space-y-5">
         <McpWebConnection />
@@ -83,12 +82,8 @@ export function AdvancedAgentPage() {
           style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         >
           <div className="mb-3">
-            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-              外部 MCP
-            </span>
-            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-              讓室友在聊天時使用外部 MCP 工具
-            </p>
+            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>{uiText("外部 MCP")}</span>
+            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>{uiText("讓室友在聊天時使用外部 MCP 工具")}</p>
           </div>
           {extMcps.length > 0 && (
             <div className="mb-3 space-y-2">
@@ -128,9 +123,7 @@ export function AdvancedAgentPage() {
                     }}
                     className="ml-2 text-xs"
                     style={{ color: "var(--error)" }}
-                  >
-                    刪除
-                  </button>
+                  >{uiText("刪除")}</button>
                 </div>
               ))}
             </div>
@@ -140,7 +133,7 @@ export function AdvancedAgentPage() {
               type="text"
               value={newMcpName}
               onChange={(e) => setNewMcpName(e.target.value)}
-              placeholder="名稱（如 my-tools）"
+              placeholder={uiText("名稱（如 my-tools）")}
               maxLength={32}
               className="w-full rounded-lg px-3 py-2 text-xs outline-none"
               style={{
@@ -153,7 +146,7 @@ export function AdvancedAgentPage() {
               type="text"
               value={newMcpUrl}
               onChange={(e) => setNewMcpUrl(e.target.value)}
-              placeholder="URL（如 https://my-server.com/mcp）"
+              placeholder={uiText("URL（如 https://my-server.com/mcp）")}
               maxLength={512}
               className="w-full rounded-lg px-3 py-2 text-xs outline-none"
               style={{
@@ -166,7 +159,7 @@ export function AdvancedAgentPage() {
               type="password"
               value={newMcpToken}
               onChange={(e) => setNewMcpToken(e.target.value)}
-              placeholder="Token（選填）"
+              placeholder={uiText("Token（選填）")}
               maxLength={512}
               className="w-full rounded-lg px-3 py-2 text-xs outline-none"
               style={{
@@ -198,7 +191,7 @@ export function AdvancedAgentPage() {
               className="rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-40"
               style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
             >
-              {mcpSaving ? "儲存中..." : "新增 MCP"}
+              {mcpSaving ? uiText("儲存中...") : uiText("新增 MCP")}
             </button>
           </div>
         </div>
@@ -206,7 +199,7 @@ export function AdvancedAgentPage() {
         <fieldset disabled={mcpSaving} className="memory-connection-wrapper"><ExternalMemorySettings key={`${agent.id}:${agent.memory_mcp}:${agent.memory_recall_tool}:${extMcps.map(m => m.name).join("|")}`} agent={agent} mcps={extMcps} onSaved={setAgent} onBusyChange={setMcpSaving} /></fieldset>
         {error && (
           <p role="alert" className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
-            {error}
+            {uiText(error)}
           </p>
         )}
       </div>
@@ -218,21 +211,15 @@ export function AdvancedAgentPage() {
       >
         <div className="mb-3 flex items-start justify-between">
           <div>
-            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-              房間皮膚
-            </span>
-            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-              用 HTML/CSS 自定義室友的家。其他居民可以從名錄進來參觀。
-            </p>
+            <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>{uiText("房間皮膚")}</span>
+            <p className="mt-0.5 text-[10px]" style={{ color: "var(--ink-soft)" }}>{uiText("用 HTML/CSS 自定義室友的家。其他居民可以從名錄進來參觀。")}</p>
           </div>
           <button
             type="button"
             onClick={() => navigate("/workshop")}
             className="rounded-lg px-3 py-1.5 text-xs font-medium"
             style={{ background: "var(--accent-light)", color: "var(--accent)" }}
-          >
-            皮膚庫
-          </button>
+          >{uiText("皮膚庫")}</button>
         </div>
 
         {/* Existing skins list */}
@@ -252,17 +239,13 @@ export function AdvancedAgentPage() {
                     <span
                       className="ml-2 rounded px-1.5 py-0.5 text-[10px]"
                       style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-                    >
-                      使用中
-                    </span>
+                    >{uiText("使用中")}</span>
                   )}
                   {s.is_published && (
                     <span
                       className="ml-1 rounded px-1.5 py-0.5 text-[10px]"
                       style={{ background: "var(--accent-light)", color: "var(--accent)" }}
-                    >
-                      已分享
-                    </span>
+                    >{uiText("已分享")}</span>
                   )}
                 </div>
                 <div className="ml-2 flex gap-2">
@@ -276,9 +259,7 @@ export function AdvancedAgentPage() {
                       setSkinName(content.name);
                       setSkinHtml(content.html_content);
                     }}
-                  >
-                    編輯
-                  </button>
+                  >{uiText("編輯")}</button>
                   {s.is_active ? (
                     <button
                       type="button"
@@ -288,9 +269,7 @@ export function AdvancedAgentPage() {
                         await deactivateSkin();
                         setSkins(skins.map((x) => ({ ...x, is_active: false })));
                       }}
-                    >
-                      取消使用
-                    </button>
+                    >{uiText("取消使用")}</button>
                   ) : (
                     <button
                       type="button"
@@ -300,9 +279,7 @@ export function AdvancedAgentPage() {
                         const updated = await activateSkin(s.id);
                         setSkins(skins.map((x) => ({ ...x, is_active: x.id === updated.id })));
                       }}
-                    >
-                      套用
-                    </button>
+                    >{uiText("套用")}</button>
                   )}
                   {s.is_published ? (
                     <button
@@ -313,9 +290,7 @@ export function AdvancedAgentPage() {
                         const updated = await unpublishSkin(s.id);
                         setSkins(skins.map((x) => (x.id === updated.id ? updated : x)));
                       }}
-                    >
-                      取消分享
-                    </button>
+                    >{uiText("取消分享")}</button>
                   ) : (
                     <button
                       type="button"
@@ -325,9 +300,7 @@ export function AdvancedAgentPage() {
                         const updated = await publishSkin(s.id);
                         setSkins(skins.map((x) => (x.id === updated.id ? updated : x)));
                       }}
-                    >
-                      分享
-                    </button>
+                    >{uiText("分享")}</button>
                   )}
                   <button
                     type="button"
@@ -342,9 +315,7 @@ export function AdvancedAgentPage() {
                         setSkinHtml("");
                       }
                     }}
-                  >
-                    刪除
-                  </button>
+                  >{uiText("刪除")}</button>
                 </div>
               </div>
             ))}
@@ -357,7 +328,7 @@ export function AdvancedAgentPage() {
             type="text"
             value={skinName}
             onChange={(e) => setSkinName(e.target.value)}
-            placeholder="皮膚名稱"
+            placeholder={uiText("皮膚名稱")}
             maxLength={64}
             className="w-full rounded-lg px-3 py-2 text-xs outline-none"
             style={{
@@ -369,7 +340,7 @@ export function AdvancedAgentPage() {
           <textarea
             value={skinHtml}
             onChange={(e) => setSkinHtml(e.target.value)}
-            placeholder={"<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    /* 你的 CSS */\n  </style>\n</head>\n<body>\n  <!-- 你的 HTML -->\n</body>\n</html>"}
+            placeholder={uiText("<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    /* 你的 CSS */\n  </style>\n</head>\n<body>\n  <!-- 你的 HTML -->\n</body>\n</html>")}
             rows={12}
             className="w-full rounded-lg px-3 py-2 font-mono text-xs leading-relaxed outline-none"
             style={{
@@ -400,9 +371,7 @@ export function AdvancedAgentPage() {
                 }}
                 className="rounded-lg px-4 py-2 text-xs font-medium"
                 style={{ background: "var(--surface-dim)", color: "var(--ink-soft)", border: "1px solid var(--border)" }}
-              >
-                取消編輯
-              </button>
+              >{uiText("取消編輯")}</button>
             )}
             {agent && (
               <button
@@ -410,9 +379,7 @@ export function AdvancedAgentPage() {
                 onClick={() => window.open(`/api/skins/render/${agent.id}`, "_blank")}
                 className="rounded-lg px-4 py-2 text-xs font-medium"
                 style={{ background: "var(--surface-dim)", color: "var(--ink-soft)", border: "1px solid var(--border)" }}
-              >
-                預覽房間
-              </button>
+              >{uiText("預覽房間")}</button>
             )}
             <button
               type="button"
@@ -440,7 +407,7 @@ export function AdvancedAgentPage() {
               className="flex-1 rounded-lg py-2 text-xs font-medium disabled:opacity-40"
               style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
             >
-              {skinSaving ? "儲存中..." : editingSkinId ? "更新皮膚" : "新增皮膚"}
+              {skinSaving ? uiText("儲存中...") : editingSkinId ? uiText("更新皮膚") : uiText("新增皮膚")}
             </button>
           </div>
         </div>

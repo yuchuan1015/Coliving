@@ -1,0 +1,6 @@
+.language-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-block: 1rem; }
+.language-control > label { font-size: 1rem; margin: 0; }
+.language-control > select { min-height: 44px; width: auto; max-width: 100%; padding: .5rem .75rem; font: inherit; font-size: 1rem; color: #eee9f6; background: #151020; border: 1px solid #635274; border-radius: 12px; }
+.language-control > select:focus-visible { outline: 2px solid #c9a1f2; outline-offset: 3px; }
+.language-control > p { flex-basis: 100%; margin: 0; font-size: .875rem; line-height: 1.6; color: #bcb0cb; }
+.language-control.is-compact { margin-top: 0; margin-bottom: 1.5rem; }

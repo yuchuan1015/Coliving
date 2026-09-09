@@ -1,3 +1,4 @@
+import { getUiLanguage } from "../i18n/core";
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { getMyAgent } from "../api/agents";
@@ -36,8 +37,8 @@ export function useRoommateName() {
 }
 export function shelfDate(value?: string | null, timezone?: string) {
   if (!value || Number.isNaN(Date.parse(value))) return "時間未提供";
-  try { return new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timezone }).format(new Date(value)).replaceAll("/", "."); }
-  catch { return new Intl.DateTimeFormat("zh-TW").format(new Date(value)); }
+  try { return new Intl.DateTimeFormat(getUiLanguage(), { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timezone }).format(new Date(value)).replaceAll("/", "."); }
+  catch { return new Intl.DateTimeFormat(getUiLanguage()).format(new Date(value)); }
 }
 export function downloadShelf(name: string, content: string, mime: string) {
   const url = URL.createObjectURL(new Blob([content], { type: mime }));

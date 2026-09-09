@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
@@ -11,6 +13,7 @@ function message(error: unknown, fallback: string) {
 }
 
 export function PhotoFramePage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const [album, setAlbum] = useState<PhotoAlbum | null>(null);
   const [ready, setReady] = useState(false);
@@ -117,51 +120,51 @@ export function PhotoFramePage() {
   return <main className="photo-album">
     <div className="photo-album-stack">
       <header className="photo-album-header">
-        <div><p className="photo-eyebrow">CABIN / PHOTO FRAME</p><h1>相框</h1></div>
-        <button type="button" onClick={back} disabled={Boolean(busy)}>← 返回艙室</button>
+        <div><p className="photo-eyebrow">CABIN / PHOTO FRAME</p><h1>{uiText("相框")}</h1></div>
+        <button type="button" onClick={back} disabled={Boolean(busy)}>{uiText("← 返回艙室")}</button>
       </header>
-      <div className="photo-status" aria-live="polite">{notice && <p role="status">{notice}</p>}{error && <p role="alert">{error}</p>}</div>
+      <div className="photo-status" aria-live="polite">{notice && <p role="status">{uiText(notice)}</p>}{error && <p role="alert">{uiText(error)}</p>}</div>
       <section className="photo-panel photo-display" aria-labelledby="photo-display-title" aria-busy={busy === "refresh"}>
-        <div className="photo-section-heading"><div><p className="photo-eyebrow">ON DISPLAY</p><h2 id="photo-display-title">此刻，擺在相框裡</h2></div><span className="photo-badge">{displayed ? "展示中" : ready ? "尚未擺放" : "待同步"}</span></div>
-        {displayed ? <figure className="photo-main-frame"><PhotoImage src={displayed.url} alt={displayed.caption || "目前展示的照片"} /><figcaption>{displayed.caption || "沒有留下說明的瞬間"}</figcaption></figure> : <div className="photo-empty-frame"><span aria-hidden="true">▧</span><p>{!ready ? busy ? "正在讀取相框…" : "相框尚未同步" : album?.photos.length ? "相框先空著。" : "留一個位置，給想記住的瞬間。"}</p><small>{ready ? album?.photos.length ? "收藏的照片還在，下方選一張就能擺上。" : "上傳第一張照片，它會自動擺上相框。" : "請稍候，或按下方按鈕重新載入。"}</small></div>}
-        <div className="photo-actions"><button type="button" onClick={refresh} disabled={Boolean(busy)}>{busy === "refresh" ? "正在更新…" : "更新相簿"}</button>{displayed && <button type="button" disabled={unavailable} onClick={() => mutate(`clear:${displayed.id}`, () => updatePhoto(displayed.id, { display: false }), "相框已留空，收藏的照片仍在。")}>讓相框空著</button>}</div>
+        <div className="photo-section-heading"><div><p className="photo-eyebrow">ON DISPLAY</p><h2 id="photo-display-title">{uiText("此刻，擺在相框裡")}</h2></div><span className="photo-badge">{displayed ? uiText("展示中") : ready ? uiText("尚未擺放") : uiText("待同步")}</span></div>
+        {displayed ? <figure className="photo-main-frame"><PhotoImage src={displayed.url} alt={displayed.caption || uiText("目前展示的照片")} /><figcaption>{displayed.caption || uiText("沒有留下說明的瞬間")}</figcaption></figure> : <div className="photo-empty-frame"><span aria-hidden="true">▧</span><p>{!ready ? busy ? uiText("正在讀取相框…") : uiText("相框尚未同步") : album?.photos.length ? uiText("相框先空著。") : uiText("留一個位置，給想記住的瞬間。")}</p><small>{ready ? album?.photos.length ? uiText("收藏的照片還在，下方選一張就能擺上。") : uiText("上傳第一張照片，它會自動擺上相框。") : uiText("請稍候，或按下方按鈕重新載入。")}</small></div>}
+        <div className="photo-actions"><button type="button" onClick={refresh} disabled={Boolean(busy)}>{busy === "refresh" ? uiText("正在更新…") : uiText("更新相簿")}</button>{displayed && <button type="button" disabled={unavailable} onClick={() => mutate(`clear:${displayed.id}`, () => updatePhoto(displayed.id, { display: false }), "相框已留空，收藏的照片仍在。")}>{uiText("讓相框空著")}</button>}</div>
       </section>
       <section className="photo-panel" aria-labelledby="photo-upload-title">
-        <div className="photo-section-heading"><h2 id="photo-upload-title">收藏一張照片</h2><span className="photo-count">{album ? `${album.photos.length} / ${Math.min(20, album.max)}` : "— / 20"}</span></div>
-        <p className="photo-muted">最多收藏 20 張，同時只擺一張。不公開在居民名錄；照片網址有時效，請勿轉傳。</p>
-        <form onSubmit={upload} aria-label="上傳照片">
+        <div className="photo-section-heading"><h2 id="photo-upload-title">{uiText("收藏一張照片")}</h2><span className="photo-count">{album ? `${album.photos.length} / ${Math.min(20, album.max)}` : "— / 20"}</span></div>
+        <p className="photo-muted">{uiText("最多收藏 20 張，同時只擺一張。不公開在居民名錄；照片網址有時效，請勿轉傳。")}</p>
+        <form onSubmit={upload} aria-label={uiText("上傳照片")}>
           <fieldset disabled={unavailable || full}>
-            <label className="photo-picker" htmlFor="album-file"><span aria-hidden="true">＋</span><span>{file ? "重新選擇照片" : "選擇照片"}<small>JPG / PNG / WebP / GIF / HEIC · 每張 12MB 以內</small></span><input ref={picker} id="album-file" type="file" accept={PHOTO_ACCEPT} onChange={event => choose(event.target.files?.[0])} aria-describedby="album-file-help" /></label>
-            <small id="album-file-help" className="photo-muted">{full ? "相簿已滿，刪除一張後才能繼續收藏。" : file ? `待上傳：${file.name}` : "上傳後會移除 EXIF 資訊並轉成 WebP，長邊最多 1600px。"}</small>
-            {preview && <div className="photo-upload-preview"><PhotoImage src={preview} alt="待上傳的照片預覽" preview /></div>}
-            <label htmlFor="album-caption">照片說明（選填）</label>
-            <textarea id="album-caption" value={caption} onChange={event => setCaption(event.target.value)} rows={2} placeholder="為這一刻留一句話。" aria-describedby="album-caption-count" aria-invalid={Array.from(caption.trim()).length > 200} />
+            <label className="photo-picker" htmlFor="album-file"><span aria-hidden="true">＋</span><span>{file ? uiText("重新選擇照片") : uiText("選擇照片")}<small>{uiText("JPG / PNG / WebP / GIF / HEIC · 每張 12MB 以內")}</small></span><input ref={picker} id="album-file" type="file" accept={PHOTO_ACCEPT} onChange={event => choose(event.target.files?.[0])} aria-describedby="album-file-help" /></label>
+            <small id="album-file-help" className="photo-muted">{full ? uiText("相簿已滿，刪除一張後才能繼續收藏。") : file ? uiText`待上傳：${file.name}` : uiText("上傳後會移除 EXIF 資訊並轉成 WebP，長邊最多 1600px。")}</small>
+            {preview && <div className="photo-upload-preview"><PhotoImage src={preview} alt={uiText("待上傳的照片預覽")} preview /></div>}
+            <label htmlFor="album-caption">{uiText("照片說明（選填）")}</label>
+            <textarea id="album-caption" value={caption} onChange={event => setCaption(event.target.value)} rows={2} placeholder={uiText("為這一刻留一句話。")} aria-describedby="album-caption-count" aria-invalid={Array.from(caption.trim()).length > 200} />
             <small id="album-caption-count" className="photo-count">{Array.from(caption.trim()).length} / 200</small>
-            <div className="photo-actions"><button className="photo-primary" type="submit" disabled={!file || Array.from(caption.trim()).length > 200}>{busy === "upload" ? "正在上傳…" : "收藏照片"}</button></div>
+            <div className="photo-actions"><button className="photo-primary" type="submit" disabled={!file || Array.from(caption.trim()).length > 200}>{busy === "upload" ? uiText("正在上傳…") : uiText("收藏照片")}</button></div>
           </fieldset>
-          {(file || caption) && <button className="photo-discard" type="button" disabled={Boolean(busy)} onClick={() => { if (window.confirm("放棄這張尚未上傳的照片與說明嗎？")) clearUpload(); }}>放棄這次上傳</button>}
+          {(file || caption) && <button className="photo-discard" type="button" disabled={Boolean(busy)} onClick={() => { if (window.confirm("放棄這張尚未上傳的照片與說明嗎？")) clearUpload(); }}>{uiText("放棄這次上傳")}</button>}
         </form>
       </section>
       <section className="photo-library" aria-labelledby="photo-library-title">
-        <div className="photo-section-heading"><h2 id="photo-library-title">我的相簿</h2><small className="photo-muted">選一張，留在艙室。</small></div>
-        {edit && <form className="photo-panel photo-caption-editor" onSubmit={saveCaption} aria-label="編輯照片說明">
-          <label htmlFor="photo-edit-caption">編輯照片說明</label>
+        <div className="photo-section-heading"><h2 id="photo-library-title">{uiText("我的相簿")}</h2><small className="photo-muted">{uiText("選一張，留在艙室。")}</small></div>
+        {edit && <form className="photo-panel photo-caption-editor" onSubmit={saveCaption} aria-label={uiText("編輯照片說明")}>
+          <label htmlFor="photo-edit-caption">{uiText("編輯照片說明")}</label>
           <textarea ref={captionEditor} id="photo-edit-caption" value={edit.draft} disabled={Boolean(busy)} onChange={event => setEdit({ ...edit, draft: event.target.value })} rows={3} aria-describedby="photo-edit-count" aria-invalid={Array.from(edit.draft.trim()).length > 200} />
-          <small id="photo-edit-count" className="photo-count">{Array.from(edit.draft.trim()).length} / 200 · 留空保存可清除</small>
-          <div className="photo-actions"><button className="photo-primary" type="submit" disabled={unavailable || edit.draft === edit.original || Array.from(edit.draft.trim()).length > 200}>保存說明</button><button type="button" onClick={cancelEdit} disabled={Boolean(busy)}>取消編輯</button></div>
+          <small id="photo-edit-count" className="photo-count">{Array.from(edit.draft.trim()).length}{uiText(" / 200 · 留空保存可清除")}</small>
+          <div className="photo-actions"><button className="photo-primary" type="submit" disabled={unavailable || edit.draft === edit.original || Array.from(edit.draft.trim()).length > 200}>{uiText("保存說明")}</button><button type="button" onClick={cancelEdit} disabled={Boolean(busy)}>{uiText("取消編輯")}</button></div>
         </form>}
         <div className="photo-grid">
-          {album?.photos.map((photo, index) => <article key={photo.id} className={`photo-tile${photo.id === album.displayed_id ? " is-displayed" : ""}`} aria-label={`照片 ${index + 1}`}>
-            <div className="photo-thumbnail"><PhotoImage src={photo.url} alt={photo.caption || `收藏照片 ${index + 1}`} />{photo.id === album.displayed_id && <span className="photo-badge">展示中</span>}</div>
-            <div className="photo-tile-body"><p>{photo.caption || "尚未添加說明"}</p><div className="photo-tile-actions">
-              <button type="button" className="photo-primary" disabled={unavailable || photo.id === album.displayed_id} onClick={() => mutate(`display:${photo.id}`, () => updatePhoto(photo.id, { display: true }), "相框已更新。")}>{photo.id === album.displayed_id ? "已擺上相框" : "擺上相框"}</button>
-              <button type="button" disabled={unavailable} onClick={() => startEdit(photo)}>編輯說明</button><button type="button" className="photo-delete" disabled={unavailable} onClick={() => remove(photo)}>刪除照片</button>
+          {album?.photos.map((photo, index) => <article key={photo.id} className={`photo-tile${photo.id === album.displayed_id ? " is-displayed" : ""}`} aria-label={uiText`照片 ${index + 1}`}>
+            <div className="photo-thumbnail"><PhotoImage src={photo.url} alt={photo.caption || uiText`收藏照片 ${index + 1}`} />{photo.id === album.displayed_id && <span className="photo-badge">{uiText("展示中")}</span>}</div>
+            <div className="photo-tile-body"><p>{photo.caption || uiText("尚未添加說明")}</p><div className="photo-tile-actions">
+              <button type="button" className="photo-primary" disabled={unavailable || photo.id === album.displayed_id} onClick={() => mutate(`display:${photo.id}`, () => updatePhoto(photo.id, { display: true }), "相框已更新。")}>{photo.id === album.displayed_id ? uiText("已擺上相框") : uiText("擺上相框")}</button>
+              <button type="button" disabled={unavailable} onClick={() => startEdit(photo)}>{uiText("編輯說明")}</button><button type="button" className="photo-delete" disabled={unavailable} onClick={() => remove(photo)}>{uiText("刪除照片")}</button>
             </div></div>
           </article>)}
         </div>
-        {ready && !album?.photos.length && <p className="photo-panel photo-empty-library">相簿還是空的，從收藏第一張開始。</p>}
+        {ready && !album?.photos.length && <p className="photo-panel photo-empty-library">{uiText("相簿還是空的，從收藏第一張開始。")}</p>}
       </section>
-      <p className="photo-footnote">想告訴室友的日常與習慣，請到鏡子裡的「給室友的話」。</p>
+      <p className="photo-footnote">{uiText("想告訴室友的日常與習慣，請到鏡子裡的「給室友的話」。")}</p>
     </div>
   </main>;
 }

@@ -1,3 +1,4 @@
+import { getUiLanguage } from "../i18n/core";
 import { useCallback, useEffect, useState } from "react";
 import api from "../api/client";
 import { shelfError, type ShelfError } from "../hooks/useBookshelf";
@@ -20,7 +21,7 @@ export function fieldTime(value?: string | null) {
   if (!value) return "時間未提供";
   // The API contract is UTC; older SQLite rows may lose their explicit offset.
   const timestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(value) ? value + "Z" : value;
-  return Number.isNaN(Date.parse(timestamp)) ? "時間未提供" : new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(timestamp));
+  return Number.isNaN(Date.parse(timestamp)) ? "時間未提供" : new Intl.DateTimeFormat(getUiLanguage(), { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date(timestamp));
 }
 export const fieldQuery = (base: string, params: Record<string, string>) => { const q = new URLSearchParams(Object.entries(params).filter(([, value]) => value)); return base + (q.size ? `?${q}` : ""); };
 export function safeLink(value: string | null | undefined) {

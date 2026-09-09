@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useNavigate, useParams } from "react-router-dom";
 
 const modules = {
@@ -8,14 +10,15 @@ const modules = {
 } as const;
 
 export function FurniturePage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const { moduleId = "sleep" } = useParams();
   const module = modules[moduleId as keyof typeof modules] ?? modules.sleep;
   return <main className="ya-module-page">
-    <button className="ya-module-back" onClick={() => navigate("/")}>← 返回艙室</button>
+    <button className="ya-module-back" onClick={() => navigate("/")}>{uiText("← 返回艙室")}</button>
     <section className="ya-module-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(2,2,8,.08), rgba(2,2,8,.85)), url(${module.image})` }}>
-      <div className="ya-module-heading"><span className="ya-kicker">{module.eyebrow}</span><h1>{module.title}</h1><p>{module.intro}</p></div>
+      <div className="ya-module-heading"><span className="ya-kicker">{module.eyebrow}</span><h1>{uiText(module.title)}</h1><p>{uiText(module.intro)}</p></div>
     </section>
-    <section className="ya-module-panel"><span className="ya-kicker">AVAILABLE MODULES</span><div className="ya-module-list">{module.items.map((item, index) => <button key={item} className="ya-module-item"><span>0{index + 1}</span>{item}<b>↗</b></button>)}</div><p className="ya-module-placeholder">功能資料將在這裡展開，目前先保留這個場域的入口。</p></section>
+    <section className="ya-module-panel"><span className="ya-kicker">AVAILABLE MODULES</span><div className="ya-module-list">{module.items.map((item, index) => <button key={item} className="ya-module-item"><span>0{index + 1}</span>{uiText(item)}<b>↗</b></button>)}</div><p className="ya-module-placeholder">{uiText("功能資料將在這裡展開，目前先保留這個場域的入口。")}</p></section>
   </main>;
 }

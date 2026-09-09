@@ -1,3 +1,5 @@
+import { uiText, getUiLanguage } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,6 +19,7 @@ const CRON_PRESETS = [
 ];
 
 export function SchedulesPage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleOut[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +90,7 @@ export function SchedulesPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>載入中...</p>
+        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入中...")}</p>
       </main>
     );
   }
@@ -99,15 +102,11 @@ export function SchedulesPage() {
         className="mb-6 text-sm"
         style={{ color: "var(--accent)" }}
       >
-        &larr; 回首頁
+        ← {uiText("回首頁")}
       </button>
 
-      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>
-        排程喚醒
-      </h1>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
-        設定定時喚醒，讓室友按時做事。Cron 依帳號設定的當地時區執行；更換時區會影響排程時間。
-      </p>
+      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("排程喚醒")}</h1>
+      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("設定定時喚醒，讓室友按時做事。Cron 依帳號設定的當地時區執行；更換時區會影響排程時間。")}</p>
 
       {/* Existing schedules */}
       {schedules.length > 0 && (
@@ -134,8 +133,7 @@ export function SchedulesPage() {
                     {s.message.length > 60 ? s.message.slice(0, 60) + "..." : s.message}
                   </div>
                   {s.next_run && (
-                    <div className="mt-1 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                      下次：{new Date(s.next_run).toLocaleString("zh-TW")}
+                    <div className="mt-1 text-[10px]" style={{ color: "var(--ink-soft)" }}>{uiText("下次：")}{new Date(s.next_run).toLocaleString(getUiLanguage())}
                     </div>
                   )}
                 </div>
@@ -148,15 +146,13 @@ export function SchedulesPage() {
                       color: s.enabled ? "var(--accent-fg)" : "var(--ink-soft)",
                     }}
                   >
-                    {s.enabled ? "啟用" : "停用"}
+                    {s.enabled ? uiText("啟用") : uiText("停用")}
                   </button>
                   <button
                     onClick={() => handleDelete(s.id)}
                     className="text-[10px]"
                     style={{ color: "var(--error)" }}
-                  >
-                    刪除
-                  </button>
+                  >{uiText("刪除")}</button>
                 </div>
               </div>
             </div>
@@ -170,15 +166,13 @@ export function SchedulesPage() {
         className="space-y-4 rounded-xl p-4"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
       >
-        <div className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-          新增排程
-        </div>
+        <div className="text-sm font-medium" style={{ color: "var(--ink)" }}>{uiText("新增排程")}</div>
 
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="排程名稱（如：每日巡邏）"
+          placeholder={uiText("排程名稱（如：每日巡邏）")}
           required
           maxLength={64}
           className="w-full rounded-lg px-3 py-2 text-sm outline-none"
@@ -212,7 +206,7 @@ export function SchedulesPage() {
               type="text"
               value={customCron}
               onChange={(e) => setCustomCron(e.target.value)}
-              placeholder="cron 表達式（如 */15 * * * *）"
+              placeholder={uiText("cron 表達式（如 */15 * * * *）")}
               className="w-full rounded-lg px-3 py-2 font-mono text-xs outline-none"
               style={{
                 background: "var(--surface-dim)",
@@ -226,7 +220,7 @@ export function SchedulesPage() {
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="喚醒訊息（室友收到後會看到這段話）"
+          placeholder={uiText("喚醒訊息（室友收到後會看到這段話）")}
           required
           maxLength={2000}
           rows={3}
@@ -242,7 +236,7 @@ export function SchedulesPage() {
           type="url"
           value={callbackUrl}
           onChange={(e) => setCallbackUrl(e.target.value)}
-          placeholder="Webhook URL（選填，到時間會 POST 過去）"
+          placeholder={uiText("Webhook URL（選填，到時間會 POST 過去）")}
           className="w-full rounded-lg px-3 py-2 text-xs outline-none"
           style={{
             background: "var(--surface-dim)",
@@ -253,7 +247,7 @@ export function SchedulesPage() {
 
         {error && (
           <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
-            {error}
+            {uiText(error)}
           </p>
         )}
 
@@ -263,7 +257,7 @@ export function SchedulesPage() {
           className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
-          {saving ? "新增中..." : "新增排程"}
+          {saving ? uiText("新增中...") : uiText("新增排程")}
         </button>
       </form>
     </main>

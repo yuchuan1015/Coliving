@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useRef, useState, type FormEvent } from "react";
 import api from "../api/client";
 import { useAuth } from "../hooks/useAuth";
@@ -5,6 +7,7 @@ import { shelfError } from "../hooks/useBookshelf";
 import { coordinateView, validMonthDay } from "../coordinates";
 
 export function CoordinateSettings({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
+  useUiLanguage();
   const { user, refreshUser } = useAuth();
   const [day, setDay] = useState(""); const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false); const [uncertain, setUncertain] = useState(false); const [notice, setNotice] = useState("");
@@ -25,11 +28,11 @@ export function CoordinateSettings({ onBusyChange }: { onBusyChange?: (busy: boo
     if (!validMonthDay(day)) { setNotice("請填有效月日，例如 10-15；不需要年份，02-29 也可以。"); return; }
     setNotice(""); setConfirming(true);
   }
-  return <form className="cabin-city-form" onSubmit={submit}><h3>我的星球座標</h3><p>{view.label} · {view.longitude} / {view.latitude}</p>
-    <label>第一個日子<input value={user?.anchor_date_1 ?? ""} readOnly placeholder="領養室友時自動記下" /></label><small>領養室友的那一天，由系統記錄，不需手動填寫。</small>
-    <label>第二個日子<input value={user?.anchor_date_2 || day} readOnly={saved || confirming || unknown || uncertain} disabled={busy} onChange={e => setDay(e.target.value)} placeholder="MM-DD，例如 10-15" maxLength={5} inputMode="text" /></label><small>{saved ? "已保存，不能再次更改。" : "等那一天真的有了再填。只填月日，保存後不能更改。"}</small>
-    {unknown && <p>帳號資料尚未完整同步，請先重新讀取。</p>}{notice && <p role="status">{notice}</p>}{uncertain && <p role="alert">請先重新讀取，確認是否已保存；不會直接重送。</p>}
-    <button type="button" disabled={busy} onClick={() => void run(true)}>重新讀取座標</button>
-    {!saved && !unknown && !uncertain && (confirming ? <><p role="alert">確認第二個日子是 {day}？保存後不能更改。</p><button type="button" disabled={busy} onClick={() => void run(false)}>確認保存第二個日子</button><button type="button" disabled={busy} onClick={() => setConfirming(false)}>返回修改</button></> : <button type="submit" disabled={busy}>檢查日子</button>)}
+  return <form className="cabin-city-form" onSubmit={submit}><h3>{uiText("我的星球座標")}</h3><p>{uiText(view.label)} · {view.longitude} / {uiText(view.latitude)}</p>
+    <label>{uiText("第一個日子")}<input value={user?.anchor_date_1 ?? ""} readOnly placeholder={uiText("領養室友時自動記下")} /></label><small>{uiText("領養室友的那一天，由系統記錄，不需手動填寫。")}</small>
+    <label>{uiText("第二個日子")}<input value={user?.anchor_date_2 || day} readOnly={saved || confirming || unknown || uncertain} disabled={busy} onChange={e => setDay(e.target.value)} placeholder={uiText("MM-DD，例如 10-15")} maxLength={5} inputMode="text" /></label><small>{saved ? uiText("已保存，不能再次更改。") : uiText("等那一天真的有了再填。只填月日，保存後不能更改。")}</small>
+    {unknown && <p>{uiText("帳號資料尚未完整同步，請先重新讀取。")}</p>}{notice && <p role="status">{uiText(notice)}</p>}{uncertain && <p role="alert">{uiText("請先重新讀取，確認是否已保存；不會直接重送。")}</p>}
+    <button type="button" disabled={busy} onClick={() => void run(true)}>{uiText("重新讀取座標")}</button>
+    {!saved && !unknown && !uncertain && (confirming ? <><p role="alert">{uiText("確認第二個日子是 ")}{day}{uiText("？保存後不能更改。")}</p><button type="button" disabled={busy} onClick={() => void run(false)}>{uiText("確認保存第二個日子")}</button><button type="button" disabled={busy} onClick={() => setConfirming(false)}>{uiText("返回修改")}</button></> : <button type="submit" disabled={busy}>{uiText("檢查日子")}</button>)}
   </form>;
 }

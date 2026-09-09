@@ -1,3 +1,5 @@
+import { uiText, getUiLanguage } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
@@ -67,6 +69,7 @@ function StatCard({
 }
 
 export function AdminPage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +92,7 @@ export function AdminPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>載入系統資料...</p>
+        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入系統資料...")}</p>
       </main>
     );
   }
@@ -97,13 +100,13 @@ export function AdminPage() {
   if (error || !stats) {
     return (
       <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--error)" }}>{error}</p>
+        <p style={{ color: "var(--error)" }}>{uiText(error)}</p>
         <button
           onClick={() => navigate("/")}
           className="mt-4 text-sm"
           style={{ color: "var(--accent)" }}
         >
-          &larr; 回首頁
+          ← {uiText("回首頁")}
         </button>
       </main>
     );
@@ -116,93 +119,79 @@ export function AdminPage() {
         className="mb-4 text-sm"
         style={{ color: "var(--accent)" }}
       >
-        &larr; 回首頁
+        ← {uiText("回首頁")}
       </button>
 
-      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>
-        系統儀表板
-      </h1>
-      <button type="button" className="mb-4" onClick={() => navigate("/admin/dm-reports")}>私訊檢舉審核 →</button>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
-        社區營運概覽
-      </p>
+      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("系統儀表板")}</h1>
+      <button type="button" className="mb-4" onClick={() => navigate("/admin/dm-reports")}>{uiText("私訊檢舉審核 →")}</button>
+      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("社區營運概覽")}</p>
 
       {/* Residents */}
       <h2
         className="mb-3 text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--ink-soft)" }}
-      >
-        居民
-      </h2>
+      >{uiText("居民")}</h2>
       <div className="mb-6 grid grid-cols-3 gap-2">
-        <StatCard label="總用戶" value={stats.residents.total_users} />
-        <StatCard label="活躍用戶" value={stats.residents.active_users} />
-        <StatCard label="AI 室友" value={stats.residents.total_agents} />
+        <StatCard label={uiText("總用戶")} value={stats.residents.total_users} />
+        <StatCard label={uiText("活躍用戶")} value={stats.residents.active_users} />
+        <StatCard label={uiText("AI 室友")} value={stats.residents.total_agents} />
       </div>
 
       {/* Today */}
       <h2
         className="mb-3 text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--ink-soft)" }}
-      >
-        今日活動
-      </h2>
+      >{uiText("今日活動")}</h2>
       <div className="mb-6 grid grid-cols-2 gap-2">
-        <StatCard label="新留言" value={stats.today.posts} />
-        <StatCard label="新作品" value={stats.today.works} />
-        <StatCard label="公園打卡" value={stats.today.park_checkins} />
-        <StatCard label="讀書會回覆" value={stats.today.club_replies} />
+        <StatCard label={uiText("新留言")} value={stats.today.posts} />
+        <StatCard label={uiText("新作品")} value={stats.today.works} />
+        <StatCard label={uiText("公園打卡")} value={stats.today.park_checkins} />
+        <StatCard label={uiText("讀書會回覆")} value={stats.today.club_replies} />
       </div>
 
       {/* Content totals */}
       <h2
         className="mb-3 text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--ink-soft)" }}
-      >
-        內容總量
-      </h2>
+      >{uiText("內容總量")}</h2>
       <div className="mb-6 grid grid-cols-2 gap-2">
         <StatCard
-          label="留言"
+          label={uiText("留言")}
           value={stats.content.posts}
           sub={`本週 +${stats.week.posts}`}
         />
         <StatCard
-          label="作品"
+          label={uiText("作品")}
           value={stats.content.works}
           sub={`本週 +${stats.week.works}`}
         />
         <StatCard
-          label="讀書會"
+          label={uiText("讀書會")}
           value={stats.content.book_clubs}
           sub={`${stats.content.book_club_replies} 則回覆`}
         />
         <StatCard
-          label="皮膚"
+          label={uiText("皮膚")}
           value={stats.content.skins}
           sub={`${stats.content.published_skins} 個已發布`}
         />
-        <StatCard label="公告" value={stats.content.announcements} />
+        <StatCard label={uiText("公告")} value={stats.content.announcements} />
       </div>
 
       {/* System */}
       <h2
         className="mb-3 text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--ink-soft)" }}
-      >
-        系統
-      </h2>
+      >{uiText("系統")}</h2>
       <div className="mb-6 grid grid-cols-2 gap-2">
-        <StatCard label="資料庫大小" value={stats.system.db_size} />
+        <StatCard label={uiText("資料庫大小")} value={stats.system.db_size} />
       </div>
 
       {/* Recent users */}
       <h2
         className="mb-3 text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--ink-soft)" }}
-      >
-        最近入住
-      </h2>
+      >{uiText("最近入住")}</h2>
       <div
         className="rounded-xl"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
@@ -223,7 +212,7 @@ export function AdminPage() {
                 {u.display_name}
               </span>
               <span className="ml-2 text-[10px]" style={{ color: "var(--ink-soft)" }}>
-                {new Date(u.created_at).toLocaleDateString("zh-TW")}
+                {new Date(u.created_at).toLocaleDateString(getUiLanguage())}
               </span>
             </div>
             <span
@@ -233,7 +222,7 @@ export function AdminPage() {
                 color: u.is_active ? "var(--accent)" : "var(--ink-soft)",
               }}
             >
-              {u.is_active ? "活躍" : "停用"}
+              {u.is_active ? uiText("活躍") : uiText("停用")}
             </span>
           </div>
         ))}

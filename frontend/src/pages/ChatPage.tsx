@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
@@ -7,11 +9,13 @@ import type { AgentPublic, ChatMessage } from "../types";
 import { ChatUsageDialog } from "../components/ChatUsageDialog";
 
 export function ChatPage() {
+  useUiLanguage();
   const { agentId } = useParams<{ agentId: string }>();
-  return agentId ? <ChatSession key={agentId} agentId={agentId} /> : <p role="alert">找不到這段對話。<Link to="/">返回艙室</Link></p>;
+  return agentId ? <ChatSession key={agentId} agentId={agentId} /> : <p role="alert">{uiText("找不到這段對話。")}<Link to="/">{uiText("返回艙室")}</Link></p>;
 }
 
 export function ChatSession({ agentId }: { agentId: string }) {
+  useUiLanguage();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<AgentPublic | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -104,7 +108,7 @@ export function ChatSession({ agentId }: { agentId: string }) {
   if (!agent) {
     return (
       <div className="cabin-chat flex min-h-dvh items-center justify-center" style={{ color: "var(--ink-soft)", background: "var(--bg)" }}>
-        {loadError ? <div><p role="alert">{loadError}</p><button type="button" onClick={() => { setLoadError(""); setRetry(value => value + 1); }}>重新讀取對話</button><p><Link to="/">返回艙室</Link></p></div> : <p role="status">載入中...</p>}
+        {loadError ? <div><p role="alert">{loadError}</p><button type="button" onClick={() => { setLoadError(""); setRetry(value => value + 1); }}>{uiText("重新讀取對話")}</button><p><Link to="/">{uiText("返回艙室")}</Link></p></div> : <p role="status">{uiText("載入中...")}</p>}
       </div>
     );
   }
@@ -118,7 +122,7 @@ export function ChatSession({ agentId }: { agentId: string }) {
       >
         <button
           onClick={() => navigate("/")}
-          aria-label="返回艙室"
+          aria-label={uiText("返回艙室")}
           className="text-lg"
           style={{ color: "var(--ink-soft)" }}
         >
@@ -128,15 +132,13 @@ export function ChatSession({ agentId }: { agentId: string }) {
         <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
           {agent.name}
         </span>
-        <button type="button" className="chat-usage-trigger" aria-haspopup="dialog" onClick={() => { usageOpenRef.current = true; setUsageOpen(true); }}>用量</button>
+        <button type="button" className="chat-usage-trigger" aria-haspopup="dialog" onClick={() => { usageOpenRef.current = true; setUsageOpen(true); }}>{uiText("用量")}</button>
       </header>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && !sending && (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--ink-soft)" }}>
-            跟 {agent.name} 說聲嗨吧
-          </div>
+          <div className="py-12 text-center text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("跟 ")}{agent.name}{uiText(" 說聲嗨吧")}</div>
         )}
 
         <div className="mx-auto flex max-w-2xl flex-col gap-3">
@@ -150,9 +152,7 @@ export function ChatSession({ agentId }: { agentId: string }) {
               <div
                 className="rounded-2xl rounded-tl-sm px-4 py-2 text-sm"
                 style={{ background: "var(--surface)", color: "var(--ink-soft)" }}
-              >
-                正在思考...
-              </div>
+              >{uiText("正在思考...")}</div>
             </div>
           )}
         </div>
@@ -167,9 +167,9 @@ export function ChatSession({ agentId }: { agentId: string }) {
           className="px-4 py-2 text-center text-xs"
           style={{ background: "var(--error)", color: "#fff" }}
         >
-          {error}
-          {needsMemory && <p><Link to="/agent/edit#editor-note">前往鏡子，寫下「給室友的話」 →</Link></p>}
-          {memoryOffline && <p>記憶庫目前連不上，請稍後再試或檢查外部記憶連線設定；不需要重寫原有記憶。</p>}
+          {uiText(error)}
+          {needsMemory && <p><Link to="/agent/edit#editor-note">{uiText("前往鏡子，寫下「給室友的話」 →")}</Link></p>}
+          {memoryOffline && <p>{uiText("記憶庫目前連不上，請稍後再試或檢查外部記憶連線設定；不需要重寫原有記憶。")}</p>}
         </div>
       )}
 
@@ -184,8 +184,8 @@ export function ChatSession({ agentId }: { agentId: string }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="說點什麼..."
-            aria-label="聊天訊息"
+            placeholder={uiText("說點什麼...")}
+            aria-label={uiText("聊天訊息")}
             rows={1}
             className="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm outline-none"
             style={{
@@ -199,9 +199,7 @@ export function ChatSession({ agentId }: { agentId: string }) {
             disabled={!input.trim() || sending}
             className="rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-30"
             style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-          >
-            送出
-          </button>
+          >{uiText("送出")}</button>
         </div>
       </div>
       {usageOpen && <ChatUsageDialog agentId={agentId} revision={usageRevision} onClose={() => { usageOpenRef.current = false; setUsageOpen(false); }} />}

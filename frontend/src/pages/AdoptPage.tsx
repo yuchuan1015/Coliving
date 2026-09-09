@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createAgent } from "../api/agents";
@@ -30,6 +32,7 @@ const MODELS: Record<string, { label: string; value: string }[]> = {
 };
 
 export function AdoptPage() {
+  useUiLanguage();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [persona, setPersona] = useState("");
@@ -81,22 +84,16 @@ export function AdoptPage() {
         className="mb-6 text-sm"
         style={{ color: "var(--accent)" }}
       >
-        &larr; 回首頁
+        ← {uiText("回首頁")}
       </button>
 
-      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>
-        領養室友
-      </h1>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>
-        給你的 AI 室友取個名字，設定個性，然後帶它回家。
-      </p>
+      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("領養室友")}</h1>
+      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("給你的 AI 室友取個名字，設定個性，然後帶它回家。")}</p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Emoji */}
         <fieldset>
-          <legend className="mb-2 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            選個頭像
-          </legend>
+          <legend className="mb-2 text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("選個頭像")}</legend>
           <div className="flex flex-wrap gap-2">
             {EMOJI_OPTIONS.map((e) => (
               <button
@@ -118,16 +115,14 @@ export function AdoptPage() {
 
         {/* Name */}
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            名字
-          </label>
+          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("名字")}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={64}
             required
-            placeholder="幫室友取個名字"
+            placeholder={uiText("幫室友取個名字")}
             className="w-full rounded-lg px-3 py-2 text-sm outline-none"
             style={{
               background: "var(--surface-dim)",
@@ -139,16 +134,14 @@ export function AdoptPage() {
 
         {/* Persona */}
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            個性描述
-          </label>
+          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("個性描述")}</label>
           <textarea
             value={persona}
             onChange={(e) => setPersona(e.target.value)}
             maxLength={2000}
             required
             rows={4}
-            placeholder="描述你的室友的個性、說話方式、背景故事..."
+            placeholder={uiText("描述你的室友的個性、說話方式、背景故事...")}
             className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
             style={{
               background: "var(--surface-dim)",
@@ -163,9 +156,7 @@ export function AdoptPage() {
 
         {/* Provider */}
         <div>
-          <label className="mb-2 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            選擇大腦
-          </label>
+          <label className="mb-2 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("選擇大腦")}</label>
           <div className="flex gap-2">
             {(["claude", "openai", "xai"] as const).map((p) => (
               <button
@@ -187,9 +178,7 @@ export function AdoptPage() {
 
         {/* Model */}
         <div>
-          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            模型
-          </label>
+          <label className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("模型")}</label>
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
@@ -202,7 +191,7 @@ export function AdoptPage() {
           >
             {MODELS[provider].map((m) => (
               <option key={m.value} value={m.value}>
-                {m.label}
+                {uiText(m.label)}
               </option>
             ))}
           </select>
@@ -210,9 +199,7 @@ export function AdoptPage() {
 
         {/* API Key */}
         <div>
-          <label htmlFor="adopt-api-key" className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>
-            API 金鑰（選填）
-          </label>
+          <label htmlFor="adopt-api-key" className="mb-1 block text-xs font-medium" style={{ color: "var(--ink-soft)" }}>{uiText("API 金鑰（選填）")}</label>
           <input
             id="adopt-api-key"
             type="password"
@@ -228,14 +215,12 @@ export function AdoptPage() {
               border: "1px solid var(--border)",
             }}
           />
-          <p id="adopt-api-key-help" className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
-            不填的話，社區不會替他說話；他從自己的 CLI 或連接器進來才會回。
-          </p>
+          <p id="adopt-api-key-help" className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("不填的話，社區不會替他說話；他從自己的 CLI 或連接器進來才會回。")}</p>
         </div>
 
         {error && (
           <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
-            {error}
+            {uiText(error)}
           </p>
         )}
 
@@ -245,7 +230,7 @@ export function AdoptPage() {
           className="w-full rounded-lg py-3 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
         >
-          {loading ? "正在領養…" : "領養室友"}
+          {loading ? uiText("正在領養…") : uiText("領養室友")}
         </button>
       </form>
     </main>

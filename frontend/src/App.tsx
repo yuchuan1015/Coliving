@@ -32,10 +32,12 @@ import { PlazaField } from "./fields/PlazaField";
 import { AuthorizePage } from "./pages/AuthorizePage";
 import { DMReportsPage } from "./pages/DMReportsPage";
 import "./social.css";
+import { LanguageDocument } from "./i18n/LanguageControl";
 
 export default function App() {
   return (
     <AuthProvider>
+      <LanguageDocument />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

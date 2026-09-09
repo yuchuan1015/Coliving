@@ -17,6 +17,7 @@ const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
 const jsxRuntime = { jsx, jsxs: jsx, Fragment: Symbol("Fragment") };
 const equalDeps = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
 const react = {
+  useSyncExternalStore(_subscribe, getSnapshot) { return getSnapshot(); },
   useState(initial) {
     const h = active, i = h.cursor++;
     if (!(i in h.slots)) h.slots[i] = typeof initial === "function" ? initial() : initial;
@@ -69,6 +70,7 @@ function load(relative) {
     if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
     if (name.endsWith("/hooks/useAuth")) return { useAuth: () => auth };
     if (name.endsWith(".css")) return {};
+    if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(path), name), "utf8"));
     if (!name.startsWith(".")) return require(name);
     const resolved = resolve(dirname(path), name);
     const filename = [resolved, resolved + ".ts", resolved + ".tsx"].find(p => existsSync(p));
@@ -123,7 +125,13 @@ const activity = load("src/fields/ActivityFields.tsx");
 const { PlazaField } = load("src/fields/PlazaField.tsx");
 const { BirthYearSettings } = load("src/components/BirthYearSettings.tsx");
 const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
+const language = load("src/i18n/core.ts");
+const languageStorage = new Map();
 beforeEach(() => {
+  languageStorage.clear();
+  windowStub.localStorage = { getItem: key => languageStorage.get(key) ?? null, setItem: (key, value) => languageStorage.set(key, value) };
+  language.setUiLanguage("zh-TW"); languageStorage.clear();
+  documentStub.documentElement = { lang: "zh-TW" };
   fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null; routeParams = {};
   sessionValues.clear();
   windowEvents.clear(); documentEvents.clear(); documentStub.hidden = false;
@@ -140,6 +148,144 @@ const guide = load("src/data/guide.ts");
 const { GuidePage } = load("src/pages/GuidePage.tsx");
 const guideEntries = h => nodes(h.tree, n => n.type === "details" && n.props.className === "photo-panel guide-entry");
 function findGuide(h, query) { nodes(h.tree, n => n.props.id === "guide-search")[0].props.onChange({ target: { value: query } }); h.render(); }
+test("language prefers explicit choice, detects Chinese scripts, and keeps non-Chinese fallback Traditional", () => {
+  for (const tag of ["zh-CN", "zh-SG", "zh-MY", "zh-Hans", "zh-Hans-HK", "zh_cn"]) assert.equal(language.resolveLanguage(null, [tag]), "zh-CN", tag);
+  for (const tag of ["zh-TW", "zh-HK", "zh-MO", "zh-Hant", "zh-Hant-CN", "en-US", "fr", "zh"]) assert.equal(language.resolveLanguage(null, [tag]), "zh-TW", tag);
+  assert.equal(language.resolveLanguage("zh-TW", ["zh-CN"]), "zh-TW");
+  assert.equal(language.resolveLanguage("zh-CN", ["zh-TW"]), "zh-CN");
+  assert.equal(language.resolveLanguage("not-a-locale", ["en", "zh-CN"]), "zh-CN");
+});
+test("language saves only its device preference, not account or authentication fields", () => {
+  assert.equal(language.setUiLanguage("zh-CN"), true);
+  assert.deepEqual([...languageStorage], [[language.LANGUAGE_KEY, "zh-CN"]]);
+  assert.equal(language.setUiLanguage("en"), false);
+  assert.equal(language.getUiLanguage(), "zh-CN");
+  assert.deepEqual(calls, []); assert.deepEqual(reads, []);
+});
+test("language subscribers update once, unsubscribe cleanly and survive blocked storage", () => {
+  let updates = 0; const stop = language.subscribeLanguage(() => updates++);
+  windowStub.localStorage = { setItem() { throw Error("blocked"); } };
+  assert.equal(language.setUiLanguage("zh-CN"), false); assert.equal(updates, 1);
+  language.setUiLanguage("zh-CN"); assert.equal(updates, 1);
+  stop(); language.setUiLanguage("zh-TW"); assert.equal(updates, 1);
+});
+test("language control keeps native self-names and announces temporary-only preference", () => {
+  const h = mount(load("src/i18n/LanguageControl.tsx").LanguageControl);
+  const select = nodes(h.tree, n => n.type === "select")[0];
+  assert.deepEqual(nodes(select, n => n.type === "option").map(n => [n.props.value, text(n)]), [["zh-TW", "繁體中文"], ["zh-CN", "简体中文"]]);
+  windowStub.localStorage = { setItem() { throw Error("blocked"); } };
+  select.props.onChange({ target: { value: "zh-CN" } }); h.render();
+  assert.match(text(h.tree), /界面语言/); assert.match(text(h.tree), /无法保存偏好/);
+  assert.deepEqual(calls, []);
+});
+test("language updates document lang without navigation or remount keys", () => {
+  const h = mount(load("src/i18n/LanguageControl.tsx").LanguageDocument); h.effects();
+  assert.equal(documentStub.documentElement.lang, "zh-TW");
+  language.setUiLanguage("zh-CN"); h.render(); h.effects();
+  assert.equal(documentStub.documentElement.lang, "zh-CN"); assert.deepEqual(calls, []); h.dispose();
+  assert.doesNotMatch(readFileSync(resolve(root, "src/App.tsx"), "utf8"), /key=\{(?:language|locale)/);
+});
+test("UI conversion uses source text, reverses exactly and preserves interpolated resident names", () => {
+  language.setUiLanguage("zh-CN");
+  assert.equal(language.uiText("回到你的艙室"), "回到你的舱室");
+  assert.equal(language.uiText("帳號"), "账号");
+  assert.equal(language.uiText("設定"), "设置");
+  const resident = "圖書館";
+  const template = Object.assign(["查看", ""], { raw: ["查看", ""] });
+  assert.equal(language.uiText(template, resident), "查看圖書館");
+  assert.equal(language.uiText(null), ""); assert.equal(language.uiText(undefined), "");
+  assert.equal(language.uiText("__proto__"), "__proto__");
+  assert.equal(language.uiText("全新未知錯誤：圖書館"), "全新未知錯誤：圖書館");
+  language.setUiLanguage("zh-TW");
+  assert.equal(language.uiText("帳號"), "帳號");
+});
+test("generated notice templates translate only surrounding UI, never resident captures", () => {
+  language.setUiLanguage("zh-CN");
+  assert.equal(language.uiText("已撤銷「圖書館」的這筆授權。"), "已撤销「圖書館」的这笔授权。");
+  assert.equal(language.uiText("已撤銷「圖書館」的這筆授權。後記"), "已撤銷「圖書館」的這筆授權。後記");
+  language.setUiLanguage("zh-TW");
+  assert.equal(language.uiText("已撤銷「圖書館」的這筆授權。"), "已撤銷「圖書館」的這筆授權。");
+});
+test("Simplified guide copies localized template and status without sending mail", async () => {
+  language.setUiLanguage("zh-CN");
+  const h = mount(GuidePage); h.effects();
+  await button(h, language.uiText("複製報錯格式")).props.onClick(); h.render();
+  assert.equal(calls.length, 1); expectCall("copy", guide.bugReportTemplate("zh-CN"));
+  assert.match(text(h.tree), /已复制报错格式，尚未寄出邮件/);
+  language.setUiLanguage("zh-TW"); h.render();
+  assert.match(text(h.tree), /已複製報錯格式，尚未寄出郵件/); h.dispose();
+});
+test("login language change preserves typed credentials and sends no request", () => {
+  const h = mount(load("src/pages/LoginPage.tsx").LoginPage);
+  const input = type => nodes(h.tree, n => n.type === "input" && n.props.autoComplete === type)[0];
+  input("username").props.onChange({ target: { value: "圖書館" } });
+  input("current-password").props.onChange({ target: { value: "test-only-繁體" } }); h.render();
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.match(text(h.tree), /回到你的舱室/);
+  assert.equal(input("username").props.value, "圖書館");
+  assert.equal(input("current-password").props.value, "test-only-繁體");
+  assert.deepEqual(calls, []);
+});
+test("registration language change preserves invite code, name, year and unsaved form", () => {
+  const h = mount(load("src/pages/RegisterPage.tsx").RegisterPage);
+  const input = id => nodes(h.tree, n => n.props.id === id)[0];
+  for (const [id, value] of [["register-invite-code", "TESTONLY"], ["register-display-name", "圖書館"], ["register-birth-year", "1999"]]) input(id).props.onChange({ target: { value } });
+  h.render(); language.setUiLanguage("zh-CN"); h.render();
+  assert.match(text(h.tree), /入住你的舱室/);
+  assert.equal(input("register-display-name").props.value, "圖書館");
+  assert.equal(input("register-invite-code").props.value, "TESTONLY");
+  assert.equal(input("register-birth-year").props.value, "1999"); assert.deepEqual(calls, []);
+});
+test("Simplified guide covers all 30 entries, searches either script and keeps planet routes", () => {
+  const cn = guide.searchGuide("", "all", "zh-CN");
+  assert.equal(cn.length, 30);
+  assert.equal(cn.find(a => a.id === "field-library").title, "Arcturus · 图书馆");
+  assert.equal(cn.find(a => a.id === "field-library").link.to, "/library");
+  assert.ok(guide.searchGuide("浏览器", "all", "zh-CN").length > 0);
+  assert.ok(guide.searchGuide("瀏覽器", "all", "zh-CN").length > 0);
+  assert.deepEqual(guide.searchGuide("相框", "all", "zh-CN").map(a => a.id), guide.searchGuide("相框", "all", "zh-TW").map(a => a.id));
+  assert.equal(guide.GUIDE_ARTICLES.find(a => a.id === "field-library").title, "Arcturus · 圖書館");
+});
+test("guide query and category stay selected across language changes", () => {
+  const h = mount(GuidePage); findGuide(h, "413");
+  const ids = guideEntries(h).map(n => n.key);
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.equal(nodes(h.tree, n => n.props.id === "guide-search")[0].props.value, "413");
+  assert.deepEqual(guideEntries(h).map(n => n.key), ids); assert.match(text(h.tree), /相关说明/);
+});
+test("Simplified bug-report draft keeps approved address and excludes automatic user data", () => {
+  const url = new URL(guide.bugReportMailto("zh-CN"));
+  assert.equal(url.pathname, "therookery1108@outlook.com");
+  assert.equal(url.searchParams.get("subject"), "鸦巢 Bug 报错");
+  assert.match(url.searchParams.get("body"), /发生时间/);
+  assert.doesNotMatch(url.searchParams.get("body"), /preview-user|test-only|coliving_access/);
+  assert.deepEqual([...url.searchParams.keys()], ["subject", "body"]);
+});
+test("Simplified navigation localizes destinations but never changes route identifiers", () => {
+  language.setUiLanguage("zh-CN");
+  const h = mount(load("src/pages/DashboardPage.tsx").DashboardPage);
+  assert.match(text(h.tree), /图书馆/); assert.match(text(h.tree), /邮驿/);
+  assert.equal(nodes(h.tree, n => n.props.className === "ya-destination-row").length, 12);
+  assert.deepEqual(calls, []);
+});
+test("UI option labels do not rewrite values or resident names", () => {
+  language.setUiLanguage("zh-CN");
+  assert.deepEqual(language.uiOptions({ library: "圖書館", mail: "郵驛" }), { library: "图书馆", mail: "邮驿" });
+  const h = mount(shared.FieldSelect, { name: "to_agent_id", label: "收件室友", options: { recipient: "圖書館" } });
+  const option = nodes(h.tree, n => n.type === "option")[0];
+  assert.equal(option.props.value, "recipient"); assert.equal(text(option), "圖書館");
+});
+test("Simplified library keeps resident-authored titles, author and source untouched", () => {
+  language.setUiLanguage("zh-CN");
+  fixture("/library/works?limit=50&offset=0", [{ id: "work", title: "圖書館", author_name: "資料更新", source: "繁體原創", category: "other", word_count: 5 }]);
+  const h = mount(content.LibraryField);
+  assert.match(text(h.tree), /圖書館/); assert.match(text(h.tree), /資料更新/); assert.match(text(h.tree), /繁體原創/);
+  assert.equal(nodes(h.tree, n => n.type === "h3")[0].props.children, "圖書館");
+});
+test("changing interface language never changes the community time zone", () => {
+  language.setUiLanguage("zh-CN");
+  assert.equal(fieldData.fieldTime("2026-09-09T18:00:00Z"), new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date("2026-09-09T18:00:00Z")));
+});
 test("guide covers each real destination exactly once without inventing paths or planet names", () => {
   const fields = guide.GUIDE_ARTICLES.filter(article => article.category === "fields");
   assert.equal(fields.length, 11);
@@ -386,6 +532,17 @@ test("only exact missing-memory 409 links to mirror; offline and NoLiveBed remai
     if (detail.includes("連不上")) assert.match(text(h.tree), /不需要重寫原有記憶/); h.dispose();
   }
 });
+test("Simplified UI preserves exact backend memory-error routing and unsent message", async () => {
+  for (const [detail, link] of [["還沒讀到記憶", true], ["還沒讀到記憶（記憶庫連不上）", false], ["室友還在睡覺", false]]) {
+    language.setUiLanguage("zh-TW");
+    const h = await openChat(); writeChat(h); calls.length = 0;
+    language.setUiLanguage("zh-CN"); h.render();
+    answer = async () => { throw { isAxiosError: true, response: { status: 409, data: { detail } } }; };
+    await button(h, language.uiText("送出")).props.onClick(); h.render();
+    assert.equal(nodes(h.tree, n => n.props.to === "/agent/edit#editor-note").length, link ? 1 : 0);
+    assert.equal(chatInput(h).props.value, "你好"); assert.equal(calls.length, 1); h.dispose();
+  }
+});
 test("chat single-flight send preserves modal focus and refreshes only mounted usage", async () => {
   const h = await openChat(); writeChat(h); calls.length = 0;
   const pending = deferred(); answer = () => pending.promise;
@@ -579,6 +736,17 @@ test("diary restyled editor saves the same trimmed payload, and removes only the
   assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
   click(h, "＋ 寫日記"); nativeInput(h, "替這一刻取個名字", "放棄"); click(h, "取消");
   click(h, "＋ 寫日記"); assert.equal(nodes(h.tree, n => n.props.placeholder === "替這一刻取個名字")[0].props.value, "");
+});
+test("Simplified diary posts original resident content and unchanged API field names", async () => {
+  language.setUiLanguage("zh-CN");
+  const h = await utilityLoaded(DiaryPage, [utilityDiary]);
+  click(h, language.uiText("＋ 寫日記"));
+  nativeInput(h, language.uiText("替這一刻取個名字"), " 圖書館 ");
+  nativeInput(h, language.uiText("寫點什麼…"), " 繁體內容：記憶與書架 ");
+  answer = async () => ({ data: { ...utilityDiary, id: "cn-diary", title: "圖書館", content: "繁體內容：記憶與書架" } });
+  await button(h, language.uiText("儲存")).props.onClick(); h.render();
+  expectCall("post", "/diary", { title: "圖書館", content: "繁體內容：記憶與書架" });
+  assert.match(text(h.tree), /圖書館/); h.dispose();
 });
 test("drawer remains its own route/API with label, content and optional category", async () => {
   const h = await utilityLoaded(DrawerPage, [utilityDrawer]);

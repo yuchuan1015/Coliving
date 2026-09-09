@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { ShelfError } from "../hooks/useBookshelf";
@@ -6,11 +8,12 @@ import "../bookshelf.css";
 export function ShelfShell({ children }: { children: ReactNode }) {
   return <main className="bookshelf-ui"><div className="shell">{children}</div></main>;
 }
-export function ShelfHeader({ title, to = "/home/library", label = "返回書架" }: { title: string; to?: string; label?: string }) {
+export function ShelfHeader({ title, to = "/home/library", label = uiText("返回書架") }: { title: string; to?: string; label?: string }) {
   return <header className="heading"><h1>{title}</h1><Link className="back" to={to}>← {label}</Link></header>;
 }
 export function ShelfProblem({ error, onRetry }: { error: ShelfError; onRetry?: () => void }) {
-  return <div className="shelf-error" role="alert"><p>{error.message}</p>{error.status === 403 && <Link to="/adopt">先連結室友 →</Link>}{onRetry && <button type="button" onClick={onRetry}>重新載入</button>}</div>;
+  useUiLanguage();
+  return <div className="shelf-error" role="alert"><p>{uiText(error.message)}</p>{error.status === 403 && <Link to="/adopt">{uiText("先連結室友 →")}</Link>}{onRetry && <button type="button" onClick={onRetry}>{uiText("重新載入")}</button>}</div>;
 }
 export function ShelfDialog({ title, busy = false, children, onClose }: { title: string; busy?: boolean; children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);

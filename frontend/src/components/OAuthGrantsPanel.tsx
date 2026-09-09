@@ -1,9 +1,12 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, useState } from "react";
 import { listOAuthGrants, revokeOAuthGrant, type OAuthGrant } from "../api/oauth";
 import { oauthError, oauthTime } from "../oauth-navigation";
 import "../mcp-keys.css";
 
 export function OAuthGrantsPanel() {
+  useUiLanguage();
   const [grants, setGrants] = useState<OAuthGrant[]>([]);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -46,23 +49,23 @@ export function OAuthGrantsPanel() {
   }
 
   return <section className="mcp-keys oauth-grants" aria-labelledby="oauth-grants-title">
-    <div className="mcp-key-heading"><div><span className="mcp-eyebrow">AUTHORIZED APPS</span><h2 id="oauth-grants-title">已授權的 app</h2></div>
+    <div className="mcp-key-heading"><div><span className="mcp-eyebrow">AUTHORIZED APPS</span><h2 id="oauth-grants-title">{uiText("已授權的 app")}</h2></div>
       <button type="button" disabled={loading || !!pending} onClick={() => {
         setLoading(true); setGrants([]); setError(""); setNotice(""); setConfirmId(null); setRevision(n => n + 1);
-      }}>更新授權清單</button>
+      }}>{uiText("更新授權清單")}</button>
     </div>
-    <p className="mcp-key-note">這裡管理 OAuth 授權。撤銷只影響這筆授權，不會作廢你的 CLI 鑰匙。</p>
-    {loading && <p role="status">正在讀取授權…</p>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
-    {!loading && !error && grants.length === 0 && <p>還沒有已授權的 app。從上方複製網址，完成登入與同意後，就會出現在這裡。</p>}
+    <p className="mcp-key-note">{uiText("這裡管理 OAuth 授權。撤銷只影響這筆授權，不會作廢你的 CLI 鑰匙。")}</p>
+    {loading && <p role="status">{uiText("正在讀取授權…")}</p>}
+    {error && <p role="alert">{uiText(error)}</p>}
+    {notice && <p role="status">{uiText(notice)}</p>}
+    {!loading && !error && grants.length === 0 && <p>{uiText("還沒有已授權的 app。從上方複製網址，完成登入與同意後，就會出現在這裡。")}</p>}
     {!loading && <div className="mcp-key-list">{grants.map(grant => <article className="mcp-key-row" key={grant.id}>
-      <h3>{grant.client_name || "未命名 app"}<span className="mcp-grant-status">{grant.revoked_at ? "已撤銷" : "已授權"}</span></h3>
-      <dl className="mcp-key-dates"><div><dt>建立時間</dt><dd>{oauthTime(grant.created_at)}</dd></div><div><dt>最後使用</dt><dd>{oauthTime(grant.last_used_at)}</dd></div></dl>
-      {grant.revoked_at ? <p className="mcp-key-note">撤銷於 {oauthTime(grant.revoked_at)}。這筆授權已無法使用。</p> : confirmId === grant.id ? <div className="mcp-revoke" role="group" aria-label={`確認撤銷 ${grant.client_name || "未命名 app"}`}>
-        <p>確定撤銷「{grant.client_name || "未命名 app"}」？使用這筆授權的 app 將無法再以室友身分操作，需要重新連線並取得你的同意。</p>
-        <div className="mcp-key-actions"><button type="button" disabled={!!pending} onClick={() => setConfirmId(null)}>取消</button><button type="button" disabled={!!pending || uncertain} onClick={() => revoke(grant)}>{pending === grant.id ? "撤銷中…" : "確認撤銷授權"}</button></div>
-      </div> : <button type="button" disabled={!!pending || uncertain} onClick={() => setConfirmId(grant.id)}>撤銷授權</button>}
+      <h3>{grant.client_name || uiText("未命名 app")}<span className="mcp-grant-status">{grant.revoked_at ? uiText("已撤銷") : uiText("已授權")}</span></h3>
+      <dl className="mcp-key-dates"><div><dt>{uiText("建立時間")}</dt><dd>{oauthTime(grant.created_at)}</dd></div><div><dt>{uiText("最後使用")}</dt><dd>{oauthTime(grant.last_used_at)}</dd></div></dl>
+      {grant.revoked_at ? <p className="mcp-key-note">{uiText("撤銷於 ")}{oauthTime(grant.revoked_at)}{uiText("。這筆授權已無法使用。")}</p> : confirmId === grant.id ? <div className="mcp-revoke" role="group" aria-label={uiText`確認撤銷 ${grant.client_name || "未命名 app"}`}>
+        <p>{uiText("確定撤銷「")}{grant.client_name || uiText("未命名 app")}{uiText("」？使用這筆授權的 app 將無法再以室友身分操作，需要重新連線並取得你的同意。")}</p>
+        <div className="mcp-key-actions"><button type="button" disabled={!!pending} onClick={() => setConfirmId(null)}>{uiText("取消")}</button><button type="button" disabled={!!pending || uncertain} onClick={() => revoke(grant)}>{pending === grant.id ? uiText("撤銷中…") : uiText("確認撤銷授權")}</button></div>
+      </div> : <button type="button" disabled={!!pending || uncertain} onClick={() => setConfirmId(grant.id)}>{uiText("撤銷授權")}</button>}
     </article>)}</div>}
   </section>;
 }

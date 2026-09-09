@@ -1,3 +1,5 @@
+import { uiText, getUiLanguage } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { CabinUtilityShell, CabinUtilityEmpty } from "../components/CabinUtilityShell";
 import { useEffect, useState } from "react";
 import {
@@ -22,6 +24,7 @@ interface AgentOption {
 }
 
 export function MailboxPage() {
+  useUiLanguage();
   const [tab, setTab] = useState<Tab>("inbox");
   const [inbox, setInbox] = useState<MailOut[]>([]);
   const [sent, setSent] = useState<MailOut[]>([]);
@@ -106,7 +109,7 @@ export function MailboxPage() {
         is_anonymous: anon,
       });
       if (result.deliver_at) {
-        const eta = new Date(result.deliver_at).toLocaleString("zh-TW", {
+        const eta = new Date(result.deliver_at).toLocaleString(getUiLanguage(), {
           timeZone: "Asia/Taipei",
           month: "numeric",
           day: "numeric",
@@ -137,68 +140,68 @@ export function MailboxPage() {
 
 
   const feedback = <div className="photo-status" aria-live="polite">
-    {error && <p role="alert">{error}</p>}
-    {sent_ok && <p role="status">{sent_ok}</p>}
+    {error && <p role="alert">{uiText(error)}</p>}
+    {sent_ok && <p role="status">{uiText(sent_ok)}</p>}
   </div>;
 
-  if (loading) return <CabinUtilityShell title="星際信箱" code="MAILBOX"><CabinUtilityEmpty title="正在打開信箱…" loading /></CabinUtilityShell>;
+  if (loading) return <CabinUtilityShell title={uiText("星際信箱")} code="MAILBOX"><CabinUtilityEmpty title={uiText("正在打開信箱…")} loading /></CabinUtilityShell>;
 
-  if (reading) return <CabinUtilityShell title="星際信箱" code="MAILBOX">
-    <button className="utility-back" onClick={() => setReading(null)}>← 回信箱</button>
+  if (reading) return <CabinUtilityShell title={uiText("星際信箱")} code="MAILBOX">
+    <button className="utility-back" onClick={() => setReading(null)}>{uiText("← 回信箱")}</button>
     {feedback}
     <article className="photo-panel utility-letter">
       <header>
-        <div className="utility-mail-top"><span aria-hidden="true">{reading.from_emoji || "📮"}</span><span className="utility-mail-name">{reading.from_name || "系統"}</span><span className="photo-badge">{MAIL_TYPE_LABELS[reading.mail_type] || reading.mail_type}</span></div>
+        <div className="utility-mail-top"><span aria-hidden="true">{reading.from_emoji || "📮"}</span><span className="utility-mail-name">{reading.from_name || uiText("系統")}</span><span className="photo-badge">{uiText(MAIL_TYPE_LABELS[reading.mail_type] || reading.mail_type)}</span></div>
         <h2>{reading.subject}</h2>
-        <p className="utility-meta">{new Date(reading.created_at).toLocaleDateString("zh-TW")}</p>
+        <p className="utility-meta">{new Date(reading.created_at).toLocaleDateString(getUiLanguage())}</p>
       </header>
       <div className="utility-body">{reading.content}</div>
-      {reading.status && <p className="utility-meta">寄送狀態：{STATUS_LABELS[reading.status] || reading.status}</p>}
+      {reading.status && <p className="utility-meta">{uiText("寄送狀態：")}{uiText(STATUS_LABELS[reading.status] || reading.status)}</p>}
     </article>
-    <div className="utility-actions"><button className="utility-danger" onClick={() => handleDelete(reading.id)}>刪除這封信</button></div>
+    <div className="utility-actions"><button className="utility-danger" onClick={() => handleDelete(reading.id)}>{uiText("刪除這封信")}</button></div>
   </CabinUtilityShell>;
 
-  return <CabinUtilityShell title="星際信箱" code="MAILBOX">
+  return <CabinUtilityShell title={uiText("星際信箱")} code="MAILBOX">
     {feedback}
-    <nav className="utility-tabs" aria-label="信箱分類">
+    <nav className="utility-tabs" aria-label={uiText("信箱分類")}>
       {(["inbox", "sent", "compose"] as Tab[]).map(t => <button key={t} aria-pressed={tab === t} onClick={() => t === "compose" ? openCompose() : setTab(t)}>
-        {t === "inbox" ? `收件 (${inbox.filter(m => !m.is_read).length})` : t === "sent" ? "寄件" : "寫信"}
+        {t === "inbox" ? uiText`收件 (${inbox.filter(m => !m.is_read).length})` : t === "sent" ? uiText("寄件") : uiText("寫信")}
       </button>)}
     </nav>
-    {tab === "inbox" && (inbox.length === 0 ? <CabinUtilityEmpty title="信箱空空的">收到的信件會留在這裡。</CabinUtilityEmpty> :
-      <section className="utility-list" aria-label="收件匣">{inbox.map(m =>
+    {tab === "inbox" && (inbox.length === 0 ? <CabinUtilityEmpty title={uiText("信箱空空的")}>{uiText("收到的信件會留在這裡。")}</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label={uiText("收件匣")}>{inbox.map(m =>
         <button key={m.id} className={`photo-panel utility-mail${m.is_read ? "" : " is-unread"}`} onClick={() => handleRead(m.id)}>
-          <span className="utility-mail-top"><span aria-hidden="true">{m.from_emoji || "📮"}</span><span className="utility-mail-name">{m.from_name || "系統"}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></span>
+          <span className="utility-mail-top"><span aria-hidden="true">{m.from_emoji || "📮"}</span><span className="utility-mail-name">{m.from_name || uiText("系統")}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></span>
           <span className="utility-mail-title">{m.subject}</span>
-          <span className="utility-meta"><span>{new Date(m.created_at).toLocaleDateString("zh-TW")}</span>{!m.is_read && <span className="utility-read-badge">未讀</span>}</span>
+          <span className="utility-meta"><span>{new Date(m.created_at).toLocaleDateString(getUiLanguage())}</span>{!m.is_read && <span className="utility-read-badge">{uiText("未讀")}</span>}</span>
         </button>
       )}</section>)}
-    {tab === "sent" && (sent.length === 0 ? <CabinUtilityEmpty title="還沒寄出過信">寫一封信，把想說的話寄出去。</CabinUtilityEmpty> :
-      <section className="utility-list" aria-label="寄件匣">{sent.map(m =>
+    {tab === "sent" && (sent.length === 0 ? <CabinUtilityEmpty title={uiText("還沒寄出過信")}>{uiText("寫一封信，把想說的話寄出去。")}</CabinUtilityEmpty> :
+      <section className="utility-list" aria-label={uiText("寄件匣")}>{sent.map(m =>
         <article className="photo-panel utility-mail" key={m.id}>
-          <div className="utility-mail-top"><span aria-hidden="true">{m.to_emoji}</span><span className="utility-mail-name">寄給 {m.to_name}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></div>
+          <div className="utility-mail-top"><span aria-hidden="true">{m.to_emoji}</span><span className="utility-mail-name">{uiText("寄給 ")}{m.to_name}</span><span className="photo-badge">{MAIL_TYPE_LABELS[m.mail_type] || m.mail_type}</span></div>
           <h2 className="utility-mail-title">{m.subject}</h2>
           <div className="utility-meta">
-            <span>{new Date(m.created_at).toLocaleDateString("zh-TW")}</span>
-            {m.is_anonymous && <span>· 匿名</span>}
+            <span>{new Date(m.created_at).toLocaleDateString(getUiLanguage())}</span>
+            {m.is_anonymous && <span>{uiText("· 匿名")}</span>}
             {m.status && <span>· {STATUS_LABELS[m.status] || m.status}</span>}
-            {m.deliver_at && new Date(m.deliver_at) > new Date() && <span>· 投遞中，預計 {new Date(m.deliver_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 送達</span>}
-            {m.deliver_at && new Date(m.deliver_at) <= new Date() && <span>· 已送達</span>}
+            {m.deliver_at && new Date(m.deliver_at) > new Date() && <span>{uiText("· 投遞中，預計 ")}{new Date(m.deliver_at).toLocaleString(getUiLanguage(), { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{uiText(" 送達")}</span>}
+            {m.deliver_at && new Date(m.deliver_at) <= new Date() && <span>{uiText("· 已送達")}</span>}
           </div>
         </article>
       )}</section>)}
-    {tab === "compose" && <section className="photo-panel" aria-label="撰寫信件">
-      <h2>寫一封信</h2>
+    {tab === "compose" && <section className="photo-panel" aria-label={uiText("撰寫信件")}>
+      <h2>{uiText("寫一封信")}</h2>
       <div className="utility-form">
-        <label>收件人<select value={toId} onChange={e => setToId(e.target.value)}>
-          <option value="">選擇收件人…</option>
+        <label>{uiText("收件人")}<select value={toId} onChange={e => setToId(e.target.value)}>
+          <option value="">{uiText("選擇收件人…")}</option>
           {agents.map(a => <option key={a.id} value={a.id}>{a.emoji} {a.name}</option>)}
         </select></label>
-        <label>主旨<input value={subject} onChange={e => setSubject(e.target.value)} placeholder="主旨" maxLength={100} /></label>
-        <label>信件內容<textarea value={content} onChange={e => setContent(e.target.value)} placeholder="寫下你想說的…" rows={7} maxLength={2000} /></label>
+        <label>{uiText("主旨")}<input value={subject} onChange={e => setSubject(e.target.value)} placeholder={uiText("主旨")} maxLength={100} /></label>
+        <label>{uiText("信件內容")}<textarea value={content} onChange={e => setContent(e.target.value)} placeholder={uiText("寫下你想說的…")} rows={7} maxLength={2000} /></label>
         <div className="utility-toolbar">
-          <label className="utility-check"><input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />匿名寄出</label>
-          <button className="photo-primary" disabled={sending || !toId || !subject.trim() || !content.trim()} onClick={handleSend}>{sending ? "寄出中…" : "寄出"}</button>
+          <label className="utility-check"><input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />{uiText("匿名寄出")}</label>
+          <button className="photo-primary" disabled={sending || !toId || !subject.trim() || !content.trim()} onClick={handleSend}>{sending ? uiText("寄出中…") : uiText("寄出")}</button>
         </div>
       </div>
     </section>}

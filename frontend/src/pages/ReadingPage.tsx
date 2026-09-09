@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { addHighlight, addReadingNote, readBook, removeHighlight, removeReadingNote, type Highlight, type ReadingNote } from "../api/bookshelf";
@@ -21,21 +23,23 @@ function markedParagraph(text: string, highlights: Highlight[]): ReactNode[] {
   return boundaries.slice(0, -1).map((start, i) => {
     const end = boundaries[i + 1], active = ranges.filter(range => range.start <= start && range.end >= end);
     const kinds = [...new Set(active.map(range => range.kind))];
-    return active.length ? <mark key={start} className={kinds.length > 1 ? "both" : kinds[0]} title={kinds.length > 1 ? "你與室友的劃線" : kinds[0] === "agent" ? "室友的劃線" : "你的劃線"}>{text.slice(start, end)}</mark> : text.slice(start, end);
+    return active.length ? <mark key={start} className={kinds.length > 1 ? "both" : kinds[0]} title={kinds.length > 1 ? uiText("你與室友的劃線") : kinds[0] === "agent" ? uiText("室友的劃線") : uiText("你的劃線")}>{text.slice(start, end)}</mark> : text.slice(start, end);
   });
 }
 
 export function ReadingPage() {
+  useUiLanguage();
   const { bookId = "" } = useParams();
   const [params] = useSearchParams();
   const value = params.get("page");
   const page = value === null ? undefined : Number(value);
-  if (page !== undefined && (!Number.isInteger(page) || page < 1)) return <ShelfShell><section className="card"><ShelfHeader title="一起讀書" to="/reading" /><ShelfProblem error={{ message: "頁碼無效，請返回書架重新開啟。" }} /></section></ShelfShell>;
+  if (page !== undefined && (!Number.isInteger(page) || page < 1)) return <ShelfShell><section className="card"><ShelfHeader title={uiText("一起讀書")} to="/reading" /><ShelfProblem error={{ message: "頁碼無效，請返回書架重新開啟。" }} /></section></ShelfShell>;
   // Remount per book/page so a stale response or selection cannot annotate another page.
   return <ReaderContent key={bookId + ":" + (page ?? "resume")} bookId={bookId} requestedPage={page} />;
 }
 
 function ReaderContent({ bookId, requestedPage }: { bookId: string; requestedPage?: number }) {
+  useUiLanguage();
   const [, setParams] = useSearchParams();
   const { user } = useAuth();
   const name = useRoommateName();
@@ -120,50 +124,50 @@ function ReaderContent({ bookId, requestedPage }: { bookId: string; requestedPag
   const authorLabel = (kind: string) => kind === "agent" ? name : "你";
   const displayNote = (note: ReadingNote) => <aside key={note.id} className={"annotation " + note.author_kind}>
     <header><span>{authorLabel(note.author_kind)} · {shelfDate(note.created_at, user?.timezone)}</span>
-      {note.author_kind === "human" && <button disabled={busy} aria-label="刪除你的批注" onClick={() => { setError(null); setDeleting({ kind: "note", id: note.id, text: note.content }); }}>刪除</button>}
-    </header>{note.highlight_id && <small>回應劃線：{data?.highlights.find(item => item.id === note.highlight_id)?.text ?? "原劃線已移除"}</small>}<p>{note.content}</p>
+      {note.author_kind === "human" && <button disabled={busy} aria-label={uiText("刪除你的批注")} onClick={() => { setError(null); setDeleting({ kind: "note", id: note.id, text: note.content }); }}>{uiText("刪除")}</button>}
+    </header>{note.highlight_id && <small>{uiText("回應劃線：")}{data?.highlights.find(item => item.id === note.highlight_id)?.text ?? uiText("原劃線已移除")}</small>}<p>{note.content}</p>
   </aside>;
   return <ShelfShell>
     <section className="card reader-card">
-      <div ref={titleRef} tabIndex={-1}><ShelfHeader title="一起讀書" to="/reading" /></div>
-      {resource.loading && <p className="shelf-status" role="status">正在打開書頁…</p>}
+      <div ref={titleRef} tabIndex={-1}><ShelfHeader title={uiText("一起讀書")} to="/reading" /></div>
+      {resource.loading && <p className="shelf-status" role="status">{uiText("正在打開書頁…")}</p>}
       {resource.error && <ShelfProblem error={resource.error} onRetry={resource.refresh} />}
       {available && data && <>
-        <div className="reader-title"><span className="eyebrow">正在共讀</span><h2>{data.title}</h2></div>
-        <div className="reading-legend"><span className="human-dot">● 你</span><span className="agent-dot">● {name}</span></div>
-        <p className="read-hint">選取同一段中的 2～2000 字，再按「劃線」。</p>
-        {selection && <div className="selection-bar"><span title={selection.text}>「{selection.text}」{selection.repeated && <small>相同片段重複時會一併標示。</small>}</span><button disabled={busy} onClick={highlight}>劃線</button><button disabled={busy} aria-label="取消選字" onClick={() => { setSelection(null); window.getSelection()?.removeAllRanges(); }}>×</button></div>}
-        {message && <p className="shelf-status" role="status">{message}</p>}
+        <div className="reader-title"><span className="eyebrow">{uiText("正在共讀")}</span><h2>{data.title}</h2></div>
+        <div className="reading-legend"><span className="human-dot">{uiText("● 你")}</span><span className="agent-dot">● {name}</span></div>
+        <p className="read-hint">{uiText("選取同一段中的 2～2000 字，再按「劃線」。")}</p>
+        {selection && <div className="selection-bar"><span title={selection.text}>「{selection.text}」{selection.repeated && <small>{uiText("相同片段重複時會一併標示。")}</small>}</span><button disabled={busy} onClick={highlight}>{uiText("劃線")}</button><button disabled={busy} aria-label={uiText("取消選字")} onClick={() => { setSelection(null); window.getSelection()?.removeAllRanges(); }}>×</button></div>}
+        {message && <p className="shelf-status" role="status">{uiText(message)}</p>}
         {error && !noteTarget && !deleting && <ShelfProblem error={error} />}
-        <article ref={contentRef} aria-label="書籍內容">
-          {data.paragraphs.length === 0 && <p className="empty">這頁沒有可讀取的段落。</p>}
+        <article ref={contentRef} aria-label={uiText("書籍內容")}>
+          {data.paragraphs.length === 0 && <p className="empty">{uiText("這頁沒有可讀取的段落。")}</p>}
           {data.paragraphs.map(paragraph => {
             const highlights = data.highlights.filter(item => item.paragraph_idx === paragraph.idx);
             return <section className="paragraph" key={paragraph.idx}>
               <p className="paragraph-text" data-idx={paragraph.idx}>{markedParagraph(paragraph.text, highlights)}</p>
               {data.notes.filter(item => item.paragraph_idx === paragraph.idx).map(displayNote)}
-              {highlights.length > 0 && <details className="annotation-tools"><summary>{highlights.length} 處劃線</summary>{highlights.map(item => <div key={item.id}>
-                <span className={item.author_kind === "agent" ? "agent-dot" : "human-dot"}>{authorLabel(item.author_kind)}的劃線</span><blockquote>{item.text}</blockquote>
-                <div className="annotation-actions"><button disabled={busy} onClick={() => openNote(paragraph.idx, item.text, item.id)}>批注這段劃線</button>{item.author_kind === "human" && <button disabled={busy} onClick={() => { setError(null); setDeleting({ kind: "highlight", id: item.id, text: item.text }); }}>取消我的劃線</button>}</div>
+              {highlights.length > 0 && <details className="annotation-tools"><summary>{highlights.length}{uiText(" 處劃線")}</summary>{highlights.map(item => <div key={item.id}>
+                <span className={item.author_kind === "agent" ? "agent-dot" : "human-dot"}>{authorLabel(item.author_kind)}{uiText("的劃線")}</span><blockquote>{item.text}</blockquote>
+                <div className="annotation-actions"><button disabled={busy} onClick={() => openNote(paragraph.idx, item.text, item.id)}>{uiText("批注這段劃線")}</button>{item.author_kind === "human" && <button disabled={busy} onClick={() => { setError(null); setDeleting({ kind: "highlight", id: item.id, text: item.text }); }}>{uiText("取消我的劃線")}</button>}</div>
               </div>)}</details>}
-              <div className="paragraph-actions"><button disabled={busy} aria-label={`為第 ${paragraph.idx} 段批注`} onClick={() => openNote(paragraph.idx, paragraph.text)}>＋ 批注</button></div>
+              <div className="paragraph-actions"><button disabled={busy} aria-label={uiText`為第 ${paragraph.idx} 段批注`} onClick={() => openNote(paragraph.idx, paragraph.text)}>{uiText("＋ 批注")}</button></div>
             </section>;
           })}
         </article>
-        <nav className="pagination" aria-label="翻頁"><button disabled={busy || data.page <= 1} onClick={() => turn(data.page - 1)}>← 上一頁</button><span aria-live="polite">{data.page} / {data.total_pages}</span><button disabled={busy || data.page >= data.total_pages} onClick={() => turn(data.page + 1)}>下一頁 →</button></nav>
-        <small className="reader-note">翻頁時自動記錄進度，下次從這裡接著讀。</small>
+        <nav className="pagination" aria-label={uiText("翻頁")}><button disabled={busy || data.page <= 1} onClick={() => turn(data.page - 1)}>{uiText("← 上一頁")}</button><span aria-live="polite">{data.page} / {data.total_pages}</span><button disabled={busy || data.page >= data.total_pages} onClick={() => turn(data.page + 1)}>{uiText("下一頁 →")}</button></nav>
+        <small className="reader-note">{uiText("翻頁時自動記錄進度，下次從這裡接著讀。")}</small>
       </>}
     </section>
-    {noteTarget && <ShelfDialog title="留一則批注" busy={busy} onClose={() => setNoteTarget(null)}><form onSubmit={saveNote}>
+    {noteTarget && <ShelfDialog title={uiText("留一則批注")} busy={busy} onClose={() => setNoteTarget(null)}><form onSubmit={saveNote}>
       <p>「{noteTarget.quote.slice(0, 160)}{noteTarget.quote.length > 160 ? "…" : ""}」</p>
-      <label className="field"><span>你的批注</span><textarea autoFocus rows={4} maxLength={4000} value={noteText} onChange={event => setNoteText(event.target.value)} required disabled={busy} placeholder="這一段讓你想到什麼？" /></label>
+      <label className="field"><span>{uiText("你的批注")}</span><textarea autoFocus rows={4} maxLength={4000} value={noteText} onChange={event => setNoteText(event.target.value)} required disabled={busy} placeholder={uiText("這一段讓你想到什麼？")} /></label>
       {error && <ShelfProblem error={error} />}
-      <div className="dialog-actions"><button type="button" disabled={busy} onClick={() => setNoteTarget(null)}>取消</button><button className="primary" disabled={busy || !noteText.trim()} type="submit">{busy ? "保存中…" : "保存批注"}</button></div>
+      <div className="dialog-actions"><button type="button" disabled={busy} onClick={() => setNoteTarget(null)}>{uiText("取消")}</button><button className="primary" disabled={busy || !noteText.trim()} type="submit">{busy ? uiText("保存中…") : uiText("保存批注")}</button></div>
     </form></ShelfDialog>}
-    {deleting && <ShelfDialog title={deleting.kind === "highlight" ? "取消這條劃線？" : "刪除這則批注？"} busy={busy} onClose={() => setDeleting(null)}>
-      <p>{deleting.text}</p><p>{deleting.kind === "highlight" ? "只移除劃線，已有的批注會保留。" : "刪除後無法復原。"}</p>
+    {deleting && <ShelfDialog title={deleting.kind === "highlight" ? uiText("取消這條劃線？") : uiText("刪除這則批注？")} busy={busy} onClose={() => setDeleting(null)}>
+      <p>{deleting.text}</p><p>{deleting.kind === "highlight" ? uiText("只移除劃線，已有的批注會保留。") : uiText("刪除後無法復原。")}</p>
       {error && <ShelfProblem error={error} />}
-      <div className="dialog-actions"><button disabled={busy} onClick={() => setDeleting(null)}>保留</button><button className="primary" disabled={busy} onClick={remove}>{busy ? "刪除中…" : "確認刪除"}</button></div>
+      <div className="dialog-actions"><button disabled={busy} onClick={() => setDeleting(null)}>{uiText("保留")}</button><button className="primary" disabled={busy} onClick={remove}>{busy ? uiText("刪除中…") : uiText("確認刪除")}</button></div>
     </ShelfDialog>}
   </ShelfShell>;
 }

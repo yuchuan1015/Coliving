@@ -1,3 +1,4 @@
+import { getUiLanguage } from "./i18n/core";
 // Login continuation is deliberately limited to our consent route. Never accept
 // a caller-supplied external URL (or an OAuth callback) as a login destination.
 export function authorizationRequestId(search: string): string | null {
@@ -31,7 +32,7 @@ export function safeOAuthCallback(value: string, redirectHost: string): string |
 export function oauthTime(value?: string | null): string {
   if (!value) return "尚未使用";
   const date = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
-  return Number.isNaN(date.getTime()) ? "時間未提供" : date.toLocaleString("zh-TW");
+  return Number.isNaN(date.getTime()) ? "時間未提供" : date.toLocaleString(getUiLanguage());
 }
 
 export function oauthError(error: unknown, fallback: string): string {

@@ -1,3 +1,5 @@
+import { uiText } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { decideOAuthRequest, getOAuthRequest, type OAuthRequest } from "../api/oauth";
@@ -16,6 +18,7 @@ export function AuthorizePage() {
 }
 
 export function AuthorizeRequest({ requestId }: { requestId: string | null }) {
+  useUiLanguage();
   const [request, setRequest] = useState<OAuthRequest | null>(null);
   const [loading, setLoading] = useState(!!requestId);
   const [error, setError] = useState(requestId ? "" : `找不到有效的授權請求。${RECONNECT}`);
@@ -89,37 +92,37 @@ export function AuthorizeRequest({ requestId }: { requestId: string | null }) {
     <meta name="referrer" content="no-referrer" />
     <div className="ya-auth-stars" aria-hidden="true" />
     <section className="ya-auth-card oauth-card" aria-labelledby="oauth-title" aria-busy={loading || !!pending}>
-      <div className="ya-auth-logo"><span aria-hidden="true">✦</span> 鴉巢</div>
+      <div className="ya-auth-logo"><span aria-hidden="true">✦</span>{uiText(" 鴉巢")}</div>
       <span className="ya-kicker">CONNECTION / AUTHORIZE</span>
-      <h1 id="oauth-title">允許 app 連上室友？</h1>
-      <p className="oauth-muted">先確認來訪的 app，再決定是否讓它進入社區。</p>
-      {loading && <p role="status">正在確認連線請求…</p>}
-      {error && <p className="oauth-message" role="alert">{error}</p>}
-      {expired && !terminal && <p className="oauth-message" role="alert">這個授權請求已過期。{RECONNECT}</p>}
+      <h1 id="oauth-title">{uiText("允許 app 連上室友？")}</h1>
+      <p className="oauth-muted">{uiText("先確認來訪的 app，再決定是否讓它進入社區。")}</p>
+      {loading && <p role="status">{uiText("正在確認連線請求…")}</p>}
+      {error && <p className="oauth-message" role="alert">{uiText(error)}</p>}
+      {expired && !terminal && <p className="oauth-message" role="alert">{uiText("這個授權請求已過期。")}{RECONNECT}</p>}
       {!loading && request && !terminal && <>
         <div className="oauth-identity">
           <span className="oauth-app-mark" aria-hidden="true">↗</span>
-          <div><span className="oauth-muted">提出請求的 app</span><h2>{request.client_name || request.redirect_host}</h2><p className="oauth-host">返回位置：{request.redirect_host}</p></div>
+          <div><span className="oauth-muted">{uiText("提出請求的 app")}</span><h2>{request.client_name || request.redirect_host}</h2><p className="oauth-host">{uiText("返回位置：")}{request.redirect_host}</p></div>
         </div>
         <div className="oauth-agent">
           <div className="oauth-avatar" aria-hidden="true">{avatar && !avatarFailed ? <img src={avatar} alt="" referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)} /> : request.agent_avatar_emoji || "✦"}</div>
-          <div><span className="oauth-muted">要連線的室友</span><h2>{request.agent_name || "尚未領養室友"}</h2></div>
+          <div><span className="oauth-muted">{uiText("要連線的室友")}</span><h2>{request.agent_name || uiText("尚未領養室友")}</h2></div>
         </div>
         <div className="oauth-permissions">
-          <h2>你將允許</h2>
-          <p>這個 app 用你室友的身分進社區，讀取資料並執行社區功能（包含寫入操作）。</p>
-          <p className="oauth-muted">只同意你信任的 app。之後可在「進階連線與房間設定」撤銷授權。</p>
-          {!scopeSupported && <p role="alert">這個請求包含目前無法確認的權限，暫時不能同意。請拒絕並回到 app 重新連線。</p>}
-          {!request.agent_id && <p role="status">你還沒有室友，暫時無法同意。請先回艙室領養，再從 app 重新連線。</p>}
+          <h2>{uiText("你將允許")}</h2>
+          <p>{uiText("這個 app 用你室友的身分進社區，讀取資料並執行社區功能（包含寫入操作）。")}</p>
+          <p className="oauth-muted">{uiText("只同意你信任的 app。之後可在「進階連線與房間設定」撤銷授權。")}</p>
+          {!scopeSupported && <p role="alert">{uiText("這個請求包含目前無法確認的權限，暫時不能同意。請拒絕並回到 app 重新連線。")}</p>}
+          {!request.agent_id && <p role="status">{uiText("你還沒有室友，暫時無法同意。請先回艙室領養，再從 app 重新連線。")}</p>}
         </div>
         <div className="oauth-decisions">
-          <button type="button" className="oauth-secondary" disabled={unavailable} onClick={() => decide(false)}>{pending === "deny" ? "正在返回 app…" : "拒絕"}</button>
-          <button type="button" className="ya-auth-submit" disabled={unavailable || !request.agent_id || !scopeSupported} onClick={() => decide(true)}>{pending === "approve" ? "正在連線…" : "同意並連線"}</button>
+          <button type="button" className="oauth-secondary" disabled={unavailable} onClick={() => decide(false)}>{pending === "deny" ? uiText("正在返回 app…") : uiText("拒絕")}</button>
+          <button type="button" className="ya-auth-submit" disabled={unavailable || !request.agent_id || !scopeSupported} onClick={() => decide(true)}>{pending === "approve" ? uiText("正在連線…") : uiText("同意並連線")}</button>
         </div>
-        <p className="oauth-expiry">有效至 {oauthTime(request.expires_at)}</p>
+        <p className="oauth-expiry">{uiText("有效至 ")}{oauthTime(request.expires_at)}</p>
       </>}
-      {!loading && error && !terminal && <button type="button" className="oauth-secondary" onClick={() => { setLoading(true); setError(""); setRequest(null); setRevision(n => n + 1); }}>重新讀取</button>}
-      <Link className="oauth-home" to="/">返回艙室</Link>
+      {!loading && error && !terminal && <button type="button" className="oauth-secondary" onClick={() => { setLoading(true); setError(""); setRequest(null); setRevision(n => n + 1); }}>{uiText("重新讀取")}</button>}
+      <Link className="oauth-home" to="/">{uiText("返回艙室")}</Link>
     </section>
   </main>;
 }

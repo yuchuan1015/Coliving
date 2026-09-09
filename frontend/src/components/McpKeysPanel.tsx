@@ -1,3 +1,5 @@
+import { uiText, getUiLanguage } from "../i18n/core";
+import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useEffect, useRef, useState } from "react";
 import { generateMcpToken, listMcpTokens, revokeMcpToken } from "../api/agents";
 import type { McpKey } from "../types";
@@ -7,7 +9,7 @@ import "../mcp-keys.css";
 function keyTime(value?: string | null) {
   if (!value) return "尚未使用";
   const date = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
-  return Number.isNaN(date.getTime()) ? "時間未提供" : date.toLocaleString("zh-TW");
+  return Number.isNaN(date.getTime()) ? "時間未提供" : date.toLocaleString(getUiLanguage());
 }
 
 function detail(error: unknown, fallback: string) {
@@ -16,6 +18,7 @@ function detail(error: unknown, fallback: string) {
 }
 
 export function McpKeysPanel() {
+  useUiLanguage();
   const [keys, setKeys] = useState<McpKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -82,37 +85,37 @@ export function McpKeysPanel() {
 
   return <section className="mcp-keys" aria-labelledby="mcp-keys-title">
     <div className="mcp-key-heading">
-      <h2 id="mcp-keys-title">CLI 與進階鑰匙</h2>
+      <h2 id="mcp-keys-title">{uiText("CLI 與進階鑰匙")}</h2>
       <button type="button" disabled={loading || !!pending} onClick={() => {
         setLoading(true); setKeys([]); setError("");
         setConfirmId(null); setNotice(""); setRevision(n => n + 1);
-      }}>更新清單</button>
+      }}>{uiText("更新清單")}</button>
     </div>
-    <p>給 Claude Code 等客戶端使用。現有鑰匙可以重複複製，不必每次產生新的；網頁連接器請優先使用上方的登入授權。</p>
-    <p className="mcp-key-note">指令與進階網址內含你的鑰匙，請勿公開、截圖分享或貼進聊天。Claude Code 指令目前依客戶端的預設專案範圍設定，不保證所有專案共用。</p>
-    {loading && <p role="status">正在讀取鑰匙…</p>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
-    {!loading && !error && keys.length === 0 && <p>還沒有鑰匙。可以在下方命名並建立第一把。</p>}
+    <p>{uiText("給 Claude Code 等客戶端使用。現有鑰匙可以重複複製，不必每次產生新的；網頁連接器請優先使用上方的登入授權。")}</p>
+    <p className="mcp-key-note">{uiText("指令與進階網址內含你的鑰匙，請勿公開、截圖分享或貼進聊天。Claude Code 指令目前依客戶端的預設專案範圍設定，不保證所有專案共用。")}</p>
+    {loading && <p role="status">{uiText("正在讀取鑰匙…")}</p>}
+    {error && <p role="alert">{uiText(error)}</p>}
+    {notice && <p role="status">{uiText(notice)}</p>}
+    {!loading && !error && keys.length === 0 && <p>{uiText("還沒有鑰匙。可以在下方命名並建立第一把。")}</p>}
     {!loading && <div className="mcp-key-list">{keys.map(key => <article className="mcp-key-row" key={key.token_id}>
-      <h3>{key.label || "未命名鑰匙"}{key.revoked_at ? " · 已作廢" : ""}</h3>
+      <h3>{key.label || uiText("未命名鑰匙")}{key.revoked_at ? uiText(" · 已作廢") : ""}</h3>
       <dl className="mcp-key-dates">
-        <div><dt>建立時間</dt><dd>{key.created_at ? keyTime(key.created_at) : "剛剛建立"}</dd></div>
-        <div><dt>最後使用</dt><dd>{keyTime(key.last_used_at)}</dd></div>
+        <div><dt>{uiText("建立時間")}</dt><dd>{key.created_at ? keyTime(key.created_at) : uiText("剛剛建立")}</dd></div>
+        <div><dt>{uiText("最後使用")}</dt><dd>{keyTime(key.last_used_at)}</dd></div>
       </dl>
       <McpConnectionActions key={`${key.token_id}:${key.revoked_at ?? "active"}`} connection={key} disabled={!!pending} />
       {!key.revoked_at && (confirmId === key.token_id ? <div className="mcp-revoke">
-        <p>確定作廢「{key.label || "未命名鑰匙"}」？使用這把鑰匙的連接器會立即失去連線。</p>
+        <p>{uiText("確定作廢「")}{key.label || uiText("未命名鑰匙")}{uiText("」？使用這把鑰匙的連接器會立即失去連線。")}</p>
         <div className="mcp-key-actions">
-          <button type="button" disabled={!!pending} onClick={() => setConfirmId(null)}>取消</button>
-          <button type="button" disabled={!!pending} onClick={() => revoke(key)}>{pending === key.token_id ? "作廢中…" : "確認作廢"}</button>
+          <button type="button" disabled={!!pending} onClick={() => setConfirmId(null)}>{uiText("取消")}</button>
+          <button type="button" disabled={!!pending} onClick={() => revoke(key)}>{pending === key.token_id ? uiText("作廢中…") : uiText("確認作廢")}</button>
         </div>
-      </div> : <button className="mcp-revoke-button" type="button" disabled={!!pending} onClick={() => setConfirmId(key.token_id)}>作廢</button>)}
+      </div> : <button className="mcp-revoke-button" type="button" disabled={!!pending} onClick={() => setConfirmId(key.token_id)}>{uiText("作廢")}</button>)}
     </article>)}</div>}
     <div className="mcp-key-create">
-      <label htmlFor="mcp-key-label">新鑰匙名稱</label>
-      <input id="mcp-key-label" value={label} maxLength={32} disabled={!!pending} onChange={e => setLabel(e.target.value)} placeholder="例如：Claude 主窗" autoComplete="off" />
-      <button type="button" disabled={loading || !!pending || !label.trim() || label.trim().length > 32} onClick={generate}>{pending === "generate" ? "產生中…" : "產生 MCP Token"}</button>
+      <label htmlFor="mcp-key-label">{uiText("新鑰匙名稱")}</label>
+      <input id="mcp-key-label" value={label} maxLength={32} disabled={!!pending} onChange={e => setLabel(e.target.value)} placeholder={uiText("例如：Claude 主窗")} autoComplete="off" />
+      <button type="button" disabled={loading || !!pending || !label.trim() || label.trim().length > 32} onClick={generate}>{pending === "generate" ? uiText("產生中…") : uiText("產生 MCP Token")}</button>
     </div>
   </section>;
 }

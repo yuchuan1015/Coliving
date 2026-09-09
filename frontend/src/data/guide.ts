@@ -1,4 +1,5 @@
 import { FIELDS, type FieldId } from "../fields/fieldData";
+import { getUiLanguage, translateUi, type UiLanguage } from "../i18n/core";
 
 export const SUPPORT_EMAIL = "therookery1108@outlook.com";
 export const GUIDE_UPDATED = "2026-09-10";
@@ -580,13 +581,22 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
   ...articles.filter(article => article.category !== "basics"),
 ];
 export function normalizeGuideText(value: string) { return value.normalize("NFKC").toLocaleLowerCase("zh-TW").trim(); }
-export function searchGuide(query: string, category: GuideFilter = "all"): GuideArticle[] {
+export function localizeGuideArticle(article: GuideArticle, locale: UiLanguage): GuideArticle {
+  const t = (value: string) => translateUi(value, locale);
+  const field = FIELDS.find(([id]) => article.id === `field-${id}`);
+  return { ...article, title: field ? `${field[1]} · ${t(field[2])}` : t(article.title),
+    summary: t(article.summary), keywords: article.keywords.map(t), paragraphs: article.paragraphs.map(t),
+    notice: article.notice ? t(article.notice) : undefined,
+    link: article.link ? { ...article.link, label: field ? t("前往 ") + t(field[2]) : t(article.link.label) } : undefined };
+}
+export function searchGuide(query: string, category: GuideFilter = "all", locale: UiLanguage = getUiLanguage()): GuideArticle[] {
   const terms = normalizeGuideText(query).split(/\s+/u).filter(Boolean);
   return GUIDE_ARTICLES.filter(article => {
     if (category !== "all" && article.category !== category) return false;
-    const text = normalizeGuideText([article.title, article.summary, ...article.keywords, ...article.paragraphs, article.notice ?? "", GUIDE_CATEGORIES[article.category]].join(" "));
+    const cn = localizeGuideArticle(article, "zh-CN");
+    const text = normalizeGuideText([article.title, article.summary, ...article.keywords, ...article.paragraphs, article.notice ?? "", GUIDE_CATEGORIES[article.category], cn.title, cn.summary, ...cn.keywords, ...cn.paragraphs, cn.notice ?? ""].join(" "));
     return terms.every(term => text.includes(term));
-  });
+  }).map(article => localizeGuideArticle(article, locale));
 }
 export function guideExcerpt(article: GuideArticle, query: string): string {
   const terms = normalizeGuideText(query).split(/\s+/u).filter(Boolean);
@@ -595,3 +605,5 @@ export function guideExcerpt(article: GuideArticle, query: string): string {
 }
 export const BUG_REPORT_TEMPLATE = ["【鴉巢 Bug 報錯】", "發生時間（含時區）：", "出錯頁面／場域（請勿附帶 token 的網址）：", "裝置與瀏覽器：", "操作步驟：", "1. ", "2. ", "預期會發生什麼：", "實際發生什麼／錯誤文字：", "是否能重現：", "截圖：請自行附上，先遮蔽個資。", "", "請勿附上密碼、API 金鑰、MCP token、完整邀請碼或私人對話。"].join("\n");
 export const BUG_REPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("鴉巢 Bug 報錯")}&body=${encodeURIComponent(BUG_REPORT_TEMPLATE)}`;
+export function bugReportTemplate(locale: UiLanguage) { return BUG_REPORT_TEMPLATE.split("\n").map(line => translateUi(line, locale)).join("\n"); }
+export function bugReportMailto(locale: UiLanguage) { return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(translateUi("鴉巢 Bug 報錯", locale))}&body=${encodeURIComponent(bugReportTemplate(locale))}`; }
