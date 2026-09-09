@@ -7,6 +7,8 @@ import api from "../../src/api/client";
 import { AuthContext } from "../../src/contexts/AuthContext";
 import { PhotoFramePage } from "../../src/pages/PhotoFramePage";
 import { EditAgentPage } from "../../src/pages/EditAgentPage";
+import { ChatPage } from "../../src/pages/ChatPage";
+import type { ChatUsage, UsageTotals } from "../../src/api/chat";
 import { HomePage } from "../../src/pages/HomePage";
 import { DiaryPage } from "../../src/pages/DiaryPage";
 import { DrawerPage } from "../../src/pages/DrawerPage";
@@ -18,6 +20,18 @@ import type { MailDetail } from "../../src/api/mail";
 import "../../src/index.css";
 
 const created = "2026-09-09T03:00:00Z";
+const params = new URLSearchParams(location.search);
+const usageCase = params.get("usage") ?? "unknown";
+const total: UsageTotals = { calls: 3, input_tokens: 12840, output_tokens: 860, total_tokens: 13700, usage_partial: false, missing_usage: 0, cost_usd: .004321, cost_partial: false };
+const empty: UsageTotals = { calls: 0, input_tokens: null, output_tokens: null, total_tokens: null, usage_partial: false, missing_usage: 0, cost_usd: null, cost_partial: false };
+const usageFixture: ChatUsage = {
+  model: "本地範例模型", provider: "PREVIEW", price_known: usageCase !== "unknown", prices_as_of: "2026-09-09",
+  current_context_tokens: usageCase === "empty" ? null : usageCase === "zero" ? 0 : 6840,
+  this_reply: usageCase === "empty" ? empty : usageCase === "zero" ? { ...total, input_tokens: 0, output_tokens: 0, total_tokens: 0, cost_usd: 0 } : usageCase === "partial" ? { ...total, input_tokens: 120, output_tokens: null, total_tokens: 120, usage_partial: true, missing_usage: 2, cost_partial: true } : total,
+  conversation_total: usageCase === "empty" ? empty : { ...total, calls: 10, total_tokens: 42680, input_tokens: 40100, output_tokens: 2580, cost_usd: .024321 },
+  this_month: usageCase === "empty" ? empty : { ...total, calls: 22, total_tokens: 91580, input_tokens: 86400, output_tokens: 5180, cost_usd: .054321 },
+};
+let chatMessages = [{ id: "chat-1", role: "assistant", content: "這是本地聊天預覽。右上角可以查看用量面板；範例數字不是正式帳單。", created_at: created }];
 const user: UserMe = { id: "preview-user", username: "preview", display_name: "星際旅人", role: "resident", created_at: created, is_active: true, last_login_at: null, timezone: "Asia/Taipei", note_to_agent: "每次醒來，先看看窗外。\n有喜歡的風景，就帶回來給我看看。" };
 let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "僅供本地展示，不是真實帳號。", llm_provider: "claude", llm_model: "claude-opus-4-6", has_api_key: false, avatar_emoji: "☾", status: "active", ob_enabled: false, external_mcps: [], active_skin_id: null, created_at: created, updated_at: null, dm_code_public: true };
 let photos: CabinPhoto[] = ["life", "memory", "shared"].map((zone, i) => ({ id: String(i), caption: ["範例照片 · 出發前的艙室", "範例照片 · 留下文字的角落", "範例照片 · 等你一起吃飯"][i], url: "/ya-chao-assets/cabin-" + zone + "-v1.webp", is_displayed: i === 0, width: 792, height: 1124, bytes: 100000, created_at: created }));
@@ -41,7 +55,18 @@ api.defaults.adapter = async config => {
   const path = config.url ?? "", method = config.method ?? "get";
   const payload = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
   let data: unknown;
-  if (method === "get" && path === "/home/furniture/photos") data = { photos: photos.map(p => ({ ...p, is_displayed: p.id === displayedId })), max: 20, displayed_id: displayedId };
+  if (method === "get" && path === "/chat/preview-agent/usage") {
+    if (usageCase === "error") throw new AxiosError("Preview read failed", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例：用量暫時無法讀取，聊天仍可繼續。" } });
+    data = usageFixture;
+  }
+  else if (path === "/chat/preview-agent/messages" && method === "get") data = { messages: chatMessages, has_more: false };
+  else if (path === "/chat/preview-agent/messages" && method === "post") {
+    if (usageCase === "memory" || usageCase === "offline") throw new AxiosError("Preview memory gate", "ERR_BAD_REQUEST", config, undefined, { config, status: 409, statusText: "Preview", headers: {}, data: { detail: usageCase === "memory" ? "還沒讀到記憶" : "還沒讀到記憶（記憶庫連不上）" } });
+    const user_message = { id: "chat-" + sequence++, role: "user", content: payload.content, created_at: new Date().toISOString() };
+    const assistant_message = { id: "chat-" + sequence++, role: "assistant", content: "收到。這是固定的本地範例回覆，沒有呼叫模型或產生費用。", created_at: new Date().toISOString() };
+    chatMessages = [...chatMessages, user_message, assistant_message]; data = { user_message, assistant_message };
+  }
+  else if (method === "get" && path === "/home/furniture/photos") data = { photos: photos.map(p => ({ ...p, is_displayed: p.id === displayedId })), max: 20, displayed_id: displayedId };
   else if (method === "get" && path === "/home/furniture") data = { window: { temperature: 23, description: "晴朗的夜", weather: "sunny", is_day: false }, clock: { timezone: "Asia/Taipei", utc: created }, photo_frame: { photo: photos.find(p => p.id === displayedId) ?? null, photo_count: photos.length }, diary: { count: diaries.length }, drawer: { count: drawer.length }, mirror: {}, door: {}, bed: { has_agent: true, is_sleeping: false } };
   else if (method === "get" && path === "/home/dashboard") data = { agents: [agent], community_status: { message: "本地範例，沒有連上正式帳號" } };
   else if (method === "get" && path === "/community/announcements") data = [];
@@ -80,12 +105,12 @@ api.defaults.adapter = async config => {
   return { config, status: method === "post" ? 201 : 200, statusText: "Mock", headers: {}, data };
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
-const params = new URLSearchParams(location.search);
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
+  {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link></nav>
-  <Routes><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <Routes><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);

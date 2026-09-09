@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { deleteAgentAvatar, getMyAgent, getProviderSettings, updateAgent, uploadAgentAvatar, type ProviderSettings } from "../api/agents";
 import { AvatarContent } from "../components/AvatarContent";
@@ -16,6 +16,9 @@ function errorText(error: unknown, fallback: string) {
 
 export function EditAgentPage() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const noteFocused = useRef(false);
   const [agent, setAgent] = useState<AgentPublic | null>(null);
   const [settings, setSettings] = useState<ProviderSettings | null>(null);
   const [name, setName] = useState("");
@@ -101,6 +104,13 @@ export function EditAgentPage() {
     return () => { window.removeEventListener("beforeunload", warn); };
   }, [dirty, saving]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
+  useEffect(() => {
+    if (hash !== "#editor-note") { noteFocused.current = false; return; }
+    if (loading || savedNote === null || !noteRef.current || noteFocused.current) return;
+    noteFocused.current = true;
+    noteRef.current.scrollIntoView({ block: "center" });
+    noteRef.current.focus({ preventScroll: true });
+  }, [hash, loading, savedNote]);
 
   function back() {
     if (savingRef.current) return;
@@ -232,7 +242,7 @@ export function EditAgentPage() {
             </div>
             <div className="agent-editor-field">
               <label htmlFor="editor-note">給室友的話</label>
-              <textarea id="editor-note" value={note} onChange={event => setNote(event.target.value)} rows={4} disabled={savedNote === null} aria-invalid={noteLength > 1000} aria-describedby="editor-note-help editor-note-count" placeholder={savedNote === null ? "正在讀取留言…" : "想讓他記得的習慣、心情，或一句想說的話。"} />
+              <textarea ref={noteRef} id="editor-note" value={note} onChange={event => setNote(event.target.value)} rows={4} disabled={savedNote === null} aria-invalid={noteLength > 1000} aria-describedby="editor-note-help editor-note-count" placeholder={savedNote === null ? "正在讀取留言…" : "想讓他記得的習慣、心情，或一句想說的話。"} />
               <small id="editor-note-help">他每次醒來都會看到這段話。按下「保存資料」後更新；留空保存可清除。</small>
               <small id="editor-note-count" className="agent-editor-count">{noteLength} / 1000{noteChanged ? " · 尚未保存" : ""}</small>
               {noteError && <><small role="alert">{noteError}</small><button type="button" className="agent-note-retry" onClick={() => { setNoteError(""); setNoteRetry(value => value + 1); }}>重新讀取留言</button></>}

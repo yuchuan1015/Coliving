@@ -11,7 +11,8 @@ import { createRequire } from "node:module";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
-let active, fixtures, reads, calls, auth, answer, writeResult, tokens;
+let active, fixtures, reads, calls, auth, answer, writeResult, tokens, routeParams;
+const navigateStub = (...args) => calls.push({ method: "navigate", args });
 const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
 const jsxRuntime = { jsx, jsxs: jsx, Fragment: Symbol("Fragment") };
 const equalDeps = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
@@ -64,7 +65,7 @@ function load(relative) {
   function localRequire(name) {
     if (name === "react") return react;
     if (name === "react/jsx-runtime") return jsxRuntime;
-    if (name === "react-router-dom") return { Link: function Link() {}, Navigate: function Navigate() {}, Outlet: function Outlet() {}, useLocation: () => windowStub.location, useNavigate: () => (...args) => calls.push({ method: "navigate", args }) };
+    if (name === "react-router-dom") return { Link: function Link() {}, Navigate: function Navigate() {}, Outlet: function Outlet() {}, useLocation: () => windowStub.location, useNavigate: () => navigateStub, useParams: () => routeParams };
     if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
     if (name.endsWith("/hooks/useAuth")) return { useAuth: () => auth };
     if (name.endsWith(".css")) return {};
@@ -123,10 +124,10 @@ const { PlazaField } = load("src/fields/PlazaField.tsx");
 const { BirthYearSettings } = load("src/components/BirthYearSettings.tsx");
 const { buildGameAction, ACTION_LABELS } = load("src/fields/gameActions.ts");
 beforeEach(() => {
-  fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null;
+  fixtures = new Map(); reads = []; calls = []; writeResult = {}; answer = null; tokens = null; routeParams = {};
   sessionValues.clear();
   windowEvents.clear(); documentEvents.clear(); documentStub.hidden = false;
-  timers.clear(); windowStub.location.pathname = "/"; windowStub.location.search = ""; delete windowStub.location.href;
+  timers.clear(); windowStub.location.pathname = "/"; windowStub.location.search = ""; windowStub.location.hash = ""; documentStub.activeElement = null; delete windowStub.location.href;
   navigatorStub.clipboard = { writeText: async value => { calls.push({ method: "copy", args: [value] }); } };
   auth = { user: { id: "me", role: "resident", birth_year: null },
     updateBirthYear: async year => { calls.push({ method: "birth", args: [year] }); auth.user.birth_year = year; },
@@ -135,6 +136,152 @@ beforeEach(() => {
 });
 
 const { clockHandAngles, clockDialSize } = load("src/data/cabin-clock.ts");
+const chatApi = load("src/api/chat.ts");
+const { ChatUsageDialog, UsageSummary, UsageTotalCard } = load("src/components/ChatUsageDialog.tsx");
+const { ChatPage, ChatSession } = load("src/pages/ChatPage.tsx");
+const usageTotal = (overrides = {}) => ({ calls: 2, input_tokens: 1000, output_tokens: 100, total_tokens: 1100, missing_usage: 0, usage_partial: false, cost_usd: .001234, cost_partial: false, ...overrides });
+const usageFixture = (overrides = {}) => ({ model: "fixture-model", provider: "test", prices_as_of: "2026-09-09", price_known: true, current_context_tokens: 400, this_reply: usageTotal(), conversation_total: usageTotal({ total_tokens: 3210 }), this_month: usageTotal({ total_tokens: 5550 }), ...overrides });
+
+test("usage API reads only the selected agent, supports cancellation and preserves nullable zero", async () => {
+  const value = usageFixture({ current_context_tokens: 0, conversation_total: null });
+  answer = async () => ({ data: value }); const signal = new AbortController().signal;
+  assert.deepEqual(await chatApi.getChatUsage("a/b", signal), value);
+  assert.deepEqual(calls, [{ method: "get", args: ["/chat/a%2Fb/usage", { signal }] }]);
+});
+test("usage rejects malformed or outdated partial flags instead of inventing a complete estimate", async () => {
+  for (const value of [null, {}, usageFixture({ current_context_tokens: undefined }), usageFixture({ price_known: null }), usageFixture({ this_reply: usageTotal({ usage_partial: undefined }) }), usageFixture({ this_month: usageTotal({ cost_partial: undefined }) }), usageFixture({ this_reply: usageTotal({ total_tokens: -1 }) }), usageFixture({ this_reply: usageTotal({ cost_usd: Infinity }) })]) {
+    answer = async () => ({ data: value }); await assert.rejects(chatApi.getChatUsage("a"), /格式尚未同步/);
+  }
+});
+test("three usage concepts stay separate; frontend never sums, subtracts or guesses capacity", () => {
+  const h = mount(UsageSummary, { usage: usageFixture() });
+  assert.match(text(h.tree), /目前上下文400 tokens/);
+  assert.match(text(h.tree), /不是容量百分比/);
+  const cards = components(h, "UsageTotalCard");
+  assert.deepEqual(cards.map(c => [c.props.title, c.props.totals.total_tokens]), [["本次消耗", 1100], ["整窗累計", 3210], ["本月累計", 5550]]);
+  assert.equal(nodes(h.tree, n => n.type === "progress").length, 0);
+  const inconsistent = mount(UsageTotalCard, { title: "測試", totals: usageTotal({ input_tokens: 1, output_tokens: 2, total_tokens: 777 }), priceKnown: true });
+  assert.match(text(inconsistent.tree), /777 tokens/);
+});
+test("unknown price hides all money even if a historical subtotal exists", () => {
+  const h = mount(UsageTotalCard, { title: "本次消耗", totals: usageTotal({ cost_usd: 999 }), priceKnown: false });
+  assert.match(text(h.tree), /模型單價未確認，暫不估算/);
+  assert.ok(!text(h.tree).includes("999")); assert.ok(!text(h.tree).includes("USD $"));
+});
+test("partial tokens and partial costs have independent explicit labels", () => {
+  const props = { title: "本次消耗", totals: usageTotal({ output_tokens: null, total_tokens: 1000, usage_partial: true, missing_usage: 1, cost_partial: true }), priceKnown: true };
+  const h = mount(UsageTotalCard, props);
+  assert.match(text(h.tree), /用量不完整 · 已知小計/); assert.match(text(h.tree), /輸出 tokens未取得/);
+  assert.match(text(h.tree), /USD \$0\.001234/); assert.match(text(h.tree), /費用不完整 · 已知費用小計/);
+  props.totals = usageTotal({ cost_usd: null, cost_partial: true }); h.render();
+  assert.ok(!text(h.tree).includes("用量不完整")); assert.match(text(h.tree), /費用不完整/);
+});
+test("null is unavailable, real zero is zero, and tiny costs do not round down to zero", () => {
+  const props = { title: "測試", totals: null, priceKnown: true }; const h = mount(UsageTotalCard, props);
+  assert.match(text(h.tree), /未取得/); assert.ok(!text(h.tree).includes("0 tokens"));
+  props.totals = usageTotal({ input_tokens: 0, output_tokens: 0, total_tokens: 0, cost_usd: 0 }); h.render();
+  assert.match(text(h.tree), /0 tokens/); assert.match(text(h.tree), /USD \$0\.00/); assert.ok(!text(h.tree).includes("未取得"));
+  props.totals = usageTotal({ cost_usd: .000001 }); h.render(); assert.match(text(h.tree), /USD \$0\.000001/);
+  props.totals = usageTotal({ calls: 0, input_tokens: null, output_tokens: null, total_tokens: null, cost_usd: null }); h.render();
+  assert.match(text(h.tree), /尚無已記錄的呼叫/); assert.ok(!text(h.tree).includes("USD $0"));
+});
+test("usage dialog loads once, explicitly refreshes and never polls or writes", async () => {
+  answer = async () => ({ data: usageFixture() });
+  const props = { agentId: "a", revision: 0, onClose() {} }; const h = mount(ChatUsageDialog, props);
+  assert.equal(calls.length, 0); h.effects(); await tick(); h.render();
+  assert.equal(one(h, "UsageSummary").props.usage.current_context_tokens, 400);
+  h.effects(); assert.equal(calls.length, 1); assert.equal(timers.size, 0);
+  click(h, "重新讀取"); h.effects(); await tick(); h.render(); assert.equal(calls.length, 2);
+  props.revision = 1; h.render(); h.effects(); await tick(); h.render(); assert.equal(calls.length, 3);
+  assert.ok(calls.every(c => c.method === "get" && c.args[0] === "/chat/a/usage")); h.dispose();
+});
+test("usage read errors clear stale amounts, show server detail and permit retry", async () => {
+  answer = async () => ({ data: usageFixture() }); const h = mount(ChatUsageDialog, { agentId: "a", revision: 0, onClose() {} });
+  h.effects(); await tick(); h.render();
+  answer = async () => { throw { isAxiosError: true, response: { status: 503, data: { detail: "統計暫時無法取得" } } }; };
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /統計暫時無法取得/); assert.equal(components(h, "UsageSummary").length, 0);
+  assert.equal(button(h, "重新讀取").props.disabled, false);
+  answer = async () => ({ data: usageFixture() }); click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.equal(components(h, "UsageSummary").length, 1); h.dispose();
+});
+test("closing usage cancels its request; stale response never repopulates after close or agent switch", async () => {
+  const a = deferred(), b = deferred(); answer = (_m, path) => path === "/chat/a/usage" ? a.promise : b.promise;
+  const props = { agentId: "a", revision: 0, onClose() {} }, h = mount(ChatUsageDialog, props);
+  h.effects(); const firstSignal = calls.at(-1).args[1].signal;
+  props.agentId = "b"; h.render(); h.effects(); assert.equal(firstSignal.aborted, true);
+  b.resolve({ data: usageFixture({ model: "second" }) }); await tick(); h.render();
+  a.resolve({ data: usageFixture({ model: "stale" }) }); await tick(); h.render();
+  assert.equal(one(h, "UsageSummary").props.usage.model, "second"); h.dispose();
+  assert.equal(calls.at(-1).args[1].signal.aborted, true);
+  const late = deferred(); answer = () => late.promise; const closed = mount(ChatUsageDialog, props);
+  closed.effects(); closed.dispose(); late.resolve({ data: usageFixture() }); await tick(); closed.render();
+  assert.equal(components(closed, "UsageSummary").length, 0);
+});
+test("usage native modal offers Escape, close button and backdrop dismissal, restores focus", () => {
+  let opened = 0, restored = 0, closed = 0; documentStub.activeElement = { focus() { restored++; } };
+  const h = mount(ChatUsageDialog, { agentId: "a", revision: 0, onClose() { closed++; } });
+  answer = () => deferred().promise;
+  h.tree.props.ref.current = { showModal() { opened++; } }; h.effects(); assert.equal(opened, 1);
+  assert.equal(h.tree.type, "dialog"); assert.equal(h.tree.props["aria-labelledby"], "chat-usage-title");
+  let prevented = false; h.tree.props.onCancel({ preventDefault() { prevented = true; } }); assert.equal(prevented, true);
+  nodes(h.tree, n => n.props["aria-label"] === "關閉用量面板")[0].props.onClick();
+  const target = { getBoundingClientRect: () => ({ left: 10, right: 200, top: 10, bottom: 200 }) };
+  h.tree.props.onClick({ target, currentTarget: target, clientX: 30, clientY: 30 }); assert.equal(closed, 2);
+  h.tree.props.onClick({ target, currentTarget: target, clientX: 0, clientY: 0 }); assert.equal(closed, 3);
+  h.dispose(); assert.equal(restored, 1);
+});
+async function openChat() {
+  answer = async (_m, url) => ({ data: url === "/agents/mine" ? { id: "a", name: "測試室友", avatar_emoji: "✦" } : { messages: [] } });
+  const h = mount(ChatSession, { agentId: "a" }); h.effects(); await tick(); await tick(); h.render(); return h;
+}
+const chatInput = h => nodes(h.tree, n => n.type === "textarea")[0];
+const writeChat = (h, value = "你好") => { chatInput(h).props.onChange({ target: { value } }); h.render(); };
+const replyFixture = { user_message: { id: "u", role: "user", content: "你好" }, assistant_message: { id: "r", role: "assistant", content: "測試回覆" } };
+test("chat route keys sessions by agent, and usage is absent until clicked", async () => {
+  routeParams = { agentId: "a" }; const route = mount(ChatPage); assert.equal(route.tree.key, "a");
+  routeParams = { agentId: "b" }; route.render(); assert.equal(route.tree.key, "b");
+  const h = await openChat(); assert.equal(components(h, "ChatUsageDialog").length, 0);
+  assert.ok(!calls.some(c => c.args[0].endsWith("/usage"))); click(h, "用量");
+  assert.equal(one(h, "ChatUsageDialog").props.agentId, "a");
+  one(h, "ChatUsageDialog").props.onClose(); h.render(); assert.equal(components(h, "ChatUsageDialog").length, 0); h.dispose();
+});
+test("failed chat load is retryable, and unauthorized agents cannot load messages", async () => {
+  answer = async () => { throw Error("offline"); }; const h = mount(ChatSession, { agentId: "a" }); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /對話暫時無法載入/);
+  answer = async () => ({ data: { id: "different" } }); click(h, "重新讀取對話"); h.effects(); await tick(); h.render();
+  assert.ok(!calls.some(c => c.args[0] === "/chat/a/messages")); expectCall("navigate", "/"); h.dispose();
+});
+test("only exact missing-memory 409 links to mirror; offline and NoLiveBed remain distinct", async () => {
+  for (const [status, detail, link] of [[409, "還沒讀到記憶", true], [409, "還沒讀到記憶（記憶庫連不上）", false], [409, "室友還在睡覺", false], [503, "還沒讀到記憶", false]]) {
+    const h = await openChat(); writeChat(h); calls.length = 0;
+    answer = async () => { throw { isAxiosError: true, response: { status, data: { detail } } }; };
+    await button(h, "送出").props.onClick(); h.render();
+    assert.match(text(h.tree), new RegExp(detail.replace(/[（）]/g, ".")));
+    assert.equal(nodes(h.tree, n => n.props.to === "/agent/edit#editor-note").length, link ? 1 : 0);
+    assert.equal(nodes(h.tree, n => n.props.to === "/home/photos").length, 0);
+    assert.equal(chatInput(h).props.value, "你好"); assert.equal(calls.length, 1);
+    if (detail.includes("連不上")) assert.match(text(h.tree), /不需要重寫原有記憶/); h.dispose();
+  }
+});
+test("chat single-flight send preserves modal focus and refreshes only mounted usage", async () => {
+  const h = await openChat(); writeChat(h); calls.length = 0;
+  const pending = deferred(); answer = () => pending.promise;
+  let focused = 0; chatInput(h).props.ref.current = { focus() { focused++; } };
+  const send = button(h, "送出").props.onClick; const a = send(), b = send(); assert.equal(calls.length, 1);
+  h.render(); click(h, "用量"); pending.resolve({ data: replyFixture }); await Promise.all([a, b]); h.render();
+  assert.equal(one(h, "ChatUsageDialog").props.revision, 1); assert.equal(focused, 0);
+  assert.equal(components(h, "MessageBubble").length, 2); assert.equal(calls.length, 1); h.dispose();
+});
+test("IME Enter does not send; normal Enter does, and late replies cannot update an unmounted session", async () => {
+  const h = await openChat(); writeChat(h); calls.length = 0; const pending = deferred(); answer = () => pending.promise;
+  chatInput(h).props.onKeyDown({ key: "Enter", shiftKey: false, nativeEvent: { isComposing: true }, preventDefault() {} }); assert.equal(calls.length, 0);
+  chatInput(h).props.onKeyDown({ key: "Enter", shiftKey: false, nativeEvent: { isComposing: false, keyCode: 229 }, preventDefault() {} }); assert.equal(calls.length, 0);
+  chatInput(h).props.onKeyDown({ key: "Enter", shiftKey: false, nativeEvent: { isComposing: false }, preventDefault() {} }); assert.equal(calls.length, 1);
+  h.dispose(); pending.resolve({ data: replyFixture }); await tick(); h.render();
+  assert.equal(components(h, "MessageBubble").filter(n => n.props.msg.role === "assistant").length, 0);
+});
+
 const { CabinClockFace } = load("src/components/CabinClockFace.tsx");
 const { useCabinTime } = load("src/hooks/useCabinTime.ts");
 test("clock hands include fractional hour and minute movement from real seconds", () => {
@@ -927,6 +1074,29 @@ test("note dirty state protects return and repeated save is single-flight", asyn
   delete windowStub.confirm;
 });
 
+test("memory recovery deep link focuses the loaded note once without saving or erasing it", async () => {
+  windowStub.location.hash = "#editor-note";
+  const h = await openNoteEditor("保留這段話");
+  let focused = 0, scrolled = 0;
+  byId(h, "editor-note").props.ref.current = { focus() { focused++; }, scrollIntoView() { scrolled++; } };
+  h.effects(); assert.equal(focused, 1); assert.equal(scrolled, 1);
+  changeValue(h, "editor-note", "新草稿"); h.effects(); assert.equal(focused, 1);
+  assert.ok(calls.every(c => c.method === "get")); assert.equal(byId(h, "editor-note").props.value, "新草稿"); h.dispose();
+});
+for (const status of [400, 413]) {
+  test(`avatar HTTP ${status} displays server detail and preserves staged file for explicit retry`, async () => {
+    const h = await openNoteEditor(""); changeValue(h, "editor-avatar", "photo");
+    byId(h, "editor-photo").props.onChange({ target: { files: [new File(["fixture"], "keep-avatar.png", { type: "image/png" })] } }); h.render(); calls.length = 0;
+    answer = async () => { throw { isAxiosError: true, response: { status, data: { detail: "頭像檔案太大，最多 2MB" } } }; };
+    await saveEditor(h); h.render();
+    assert.match(text(h.tree), /頭像檔案太大，最多 2MB/); assert.match(text(h.tree), /keep-avatar.png/);
+    assert.equal(nodes(h.tree, n => n.props.role === "alert").length, 1);
+    assert.equal(calls.length, 1); assert.equal(calls[0].method, "post"); assert.equal(calls[0].args[0], "/agents/mine/avatar");
+    answer = async () => ({ data: { avatar_url: "/uploads/test-retry.png" } }); await saveEditor(h);
+    assert.equal(calls.filter(c => c.method === "post").length, 2); assert.equal(calls.filter(c => c.method === "navigate").length, 1); h.dispose();
+  });
+}
+
 const photoApi = load("src/api/furniture.ts");
 const { PhotoFramePage } = load("src/pages/PhotoFramePage.tsx");
 const { PhotoImage } = load("src/components/PhotoImage.tsx");
@@ -1113,6 +1283,19 @@ test("photo upload sends file and caption as multipart fields, with no caption q
   await assert.rejects(photoApi.uploadPhoto(f, "字".repeat(201))); await assert.rejects(photoApi.updatePhoto("a", { caption: "字".repeat(201) }));
   assert.equal(calls.length, 1);
 });
+for (const status of [400, 413]) {
+  test(`album HTTP ${status} displays server detail and keeps file and caption without auto-retry`, async () => {
+    const h = await openAlbum();
+    byId(h, "album-file").props.onChange({ target: { files: [new File(["ok"], "keep-photo.png", { type: "image/png" })] } }); h.render();
+    changeValue(h, "album-caption", "保留說明"); calls.length = 0;
+    answer = async () => { throw { isAxiosError: true, response: { status, data: { detail: "檔案太大，最多 12MB" } } }; };
+    await nativeSubmit(h, "上傳照片"); h.render();
+    assert.match(text(h.tree), /檔案太大，最多 12MB/); assert.match(text(h.tree), /keep-photo.png/);
+    assert.equal(byId(h, "album-caption").props.value, "保留說明"); assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, "post"); assert.equal(button(h, "收藏照片").props.disabled, false);
+    assert.ok(nodes(h.tree, n => n.props.role === "alert").some(n => text(n).includes("檔案太大"))); h.dispose();
+  });
+}
 test("empty album, empty display and failed read are distinct; no old text endpoint", async () => {
   const empty = await openAlbum(albumFixture([], null)); assert.match(text(empty.tree), /相簿還是空的/); empty.dispose();
   const h = await openAlbum(albumFixture(["a"], null)); assert.match(text(h.tree), /相框先空著/); assert.ok(!text(h.tree).includes("相簿還是空的"));
@@ -1634,7 +1817,7 @@ async function loadedAdvanced(agent = settingsAgent) {
   h.effects(); await tick(); h.render(); return h;
 }
 
-test("mirror is the only source navigation to the existing protected editor route", () => {
+test("mirror remains the normal editor entry; only memory-recovery deep link is added", () => {
   const matches = [];
   function scan(dir) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -1644,7 +1827,7 @@ test("mirror is the only source navigation to the existing protected editor rout
     }
   }
   scan(resolve(root, "src"));
-  assert.deepEqual(matches.sort(), ["src/App.tsx", "src/data/cabin.ts"]);
+  assert.deepEqual(matches.sort(), ["src/App.tsx", "src/data/cabin.ts", "src/pages/ChatPage.tsx"]);
   const { cabinZones } = load("src/data/cabin.ts");
   assert.deepEqual(cabinZones.flatMap(z => z.furniture).filter(f => f.path === "/agent/edit").map(f => f.id), ["mirror"]);
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");

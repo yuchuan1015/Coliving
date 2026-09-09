@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { getMyAgent } from "../api/agents";
 import { getMessages, sendMessage } from "../api/chat";
 import type { AgentPublic, ChatMessage } from "../types";
+import { ChatUsageDialog } from "../components/ChatUsageDialog";
 
 export function ChatPage() {
   const { agentId } = useParams<{ agentId: string }>();
+  return agentId ? <ChatSession key={agentId} agentId={agentId} /> : <p role="alert">找不到這段對話。<Link to="/">返回艙室</Link></p>;
+}
+
+export function ChatSession({ agentId }: { agentId: string }) {
   const navigate = useNavigate();
   const [agent, setAgent] = useState<AgentPublic | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -13,32 +19,47 @@ export function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [needsMemory, setNeedsMemory] = useState(false);
+  const [memoryOffline, setMemoryOffline] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const [usageOpen, setUsageOpen] = useState(false);
+  const usageOpenRef = useRef(false);
+  const [usageRevision, setUsageRevision] = useState(0);
+  const sendingRef = useRef(false);
+  const mountedRef = useRef(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!agentId) return;
-    getMyAgent().then((a) => {
+    let cancelled = false;
+    mountedRef.current = true;
+    getMyAgent().then(async (a) => {
+      if (cancelled) return;
       if (!a || a.id !== agentId) {
         navigate("/");
         return;
       }
+      const res = await getMessages(agentId);
+      if (cancelled) return;
       setAgent(a);
-    });
-    getMessages(agentId).then((res) => setMessages(res.messages));
-  }, [agentId, navigate]);
+      setMessages(res.messages);
+    }).catch(() => { if (!cancelled) setLoadError("對話暫時無法載入，請重新讀取。"); });
+    return () => { cancelled = true; mountedRef.current = false; };
+  }, [agentId, navigate, retry]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   async function handleSend() {
-    if (!input.trim() || !agentId || sending) return;
+    if (!input.trim() || !agent || sendingRef.current) return;
+    sendingRef.current = true;
     const content = input.trim();
     setInput("");
     setSending(true);
     setError("");
     setNeedsMemory(false);
+    setMemoryOffline(false);
 
     setMessages((prev) => [
       ...prev,
@@ -47,24 +68,34 @@ export function ChatPage() {
 
     try {
       const res = await sendMessage(agentId, content);
+      if (!mountedRef.current) return;
       setMessages((prev) => [
         ...prev.filter((m) => m.id !== "temp-user"),
         res.user_message,
         res.assistant_message,
       ]);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "發送失敗");
-      setNeedsMemory(err.response?.status === 409 && err.response?.data?.detail === "還沒讀到記憶");
+      setUsageRevision(value => value + 1);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      const detail = isAxiosError(err) ? err.response?.data?.detail : undefined;
+      const conflict = isAxiosError(err) && err.response?.status === 409;
+      setError(typeof detail === "string" ? detail : "發送失敗");
+      setNeedsMemory(conflict && detail === "還沒讀到記憶");
+      setMemoryOffline(conflict && detail === "還沒讀到記憶（記憶庫連不上）");
       setMessages((prev) => prev.filter((m) => m.id !== "temp-user"));
       setInput(content);
     } finally {
-      setSending(false);
-      inputRef.current?.focus();
+      sendingRef.current = false;
+      if (mountedRef.current) {
+        setSending(false);
+        // Do not steal focus from the modal when a reply finishes behind it.
+        if (!usageOpenRef.current) inputRef.current?.focus();
+      }
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
       e.preventDefault();
       handleSend();
     }
@@ -72,14 +103,14 @@ export function ChatPage() {
 
   if (!agent) {
     return (
-      <div className="flex min-h-dvh items-center justify-center" style={{ color: "var(--ink-soft)" }}>
-        載入中...
+      <div className="cabin-chat flex min-h-dvh items-center justify-center" style={{ color: "var(--ink-soft)", background: "var(--bg)" }}>
+        {loadError ? <div><p role="alert">{loadError}</p><button type="button" onClick={() => { setLoadError(""); setRetry(value => value + 1); }}>重新讀取對話</button><p><Link to="/">返回艙室</Link></p></div> : <p role="status">載入中...</p>}
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-dvh flex-col" style={{ background: "var(--bg)" }}>
+    <div className="cabin-chat flex min-h-dvh flex-col" style={{ background: "var(--bg)" }}>
       {/* Chat header */}
       <header
         className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3"
@@ -87,6 +118,7 @@ export function ChatPage() {
       >
         <button
           onClick={() => navigate("/")}
+          aria-label="返回艙室"
           className="text-lg"
           style={{ color: "var(--ink-soft)" }}
         >
@@ -96,6 +128,7 @@ export function ChatPage() {
         <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
           {agent.name}
         </span>
+        <button type="button" className="chat-usage-trigger" aria-haspopup="dialog" onClick={() => { usageOpenRef.current = true; setUsageOpen(true); }}>用量</button>
       </header>
 
       {/* Messages */}
@@ -130,11 +163,13 @@ export function ChatPage() {
       {/* Error */}
       {error && (
         <div
+          role="alert"
           className="px-4 py-2 text-center text-xs"
           style={{ background: "var(--error)", color: "#fff" }}
         >
           {error}
-          {needsMemory && <p><Link to="/home/photos">去相框放入一些回憶 →</Link></p>}
+          {needsMemory && <p><Link to="/agent/edit#editor-note">前往鏡子，寫下「給室友的話」 →</Link></p>}
+          {memoryOffline && <p>記憶庫目前連不上，請稍後再試或檢查外部記憶連線設定；不需要重寫原有記憶。</p>}
         </div>
       )}
 
@@ -150,6 +185,7 @@ export function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="說點什麼..."
+            aria-label="聊天訊息"
             rows={1}
             className="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm outline-none"
             style={{
@@ -168,6 +204,7 @@ export function ChatPage() {
           </button>
         </div>
       </div>
+      {usageOpen && <ChatUsageDialog agentId={agentId} revision={usageRevision} onClose={() => { usageOpenRef.current = false; setUsageOpen(false); }} />}
     </div>
   );
 }
