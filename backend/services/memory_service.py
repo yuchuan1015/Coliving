@@ -16,6 +16,7 @@ from models.agent import Agent
 from models.diary import DiaryEntry
 from models.drawer import DrawerItem
 from models.photo_frame import PhotoFrame
+from models.user import User
 from services.external_mcp_client import ExternalMCPClient
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,9 @@ class MemoryEmpty(ValueError):
 
 
 def near_path(db: Session, agent: Agent) -> dict:
+    # 主人給室友的一段話（2026-09-09 起放在 users.note_to_agent；舊相框的文字條目還在的話一起讀）
+    owner = db.query(User).filter(User.id == agent.user_id).first()
+    note = (owner.note_to_agent or "").strip() if owner else ""
     frames = (
         db.query(PhotoFrame).filter(PhotoFrame.user_id == agent.user_id)
         .order_by(PhotoFrame.created_at.asc()).all()
@@ -53,6 +57,7 @@ def near_path(db: Session, agent: Agent) -> dict:
         .order_by(DrawerItem.created_at.desc()).limit(DRAWER_CATALOG_N).all()
     )
     return {
+        "note": note,
         "frames": [{"label": f.label, "category": f.category, "content": f.content} for f in frames],
         "diaries": [
             {"title": d.title, "content": d.content, "importance": d.importance, "source": d.source,
@@ -137,11 +142,13 @@ def init_context(db: Session, agent: Agent, query: str = "", client_factory=Exte
     """醒來讀記憶。回 {text, count, near, far}。count==0 表示這張床不能開口。"""
     near = near_path(db, agent)
     far = far_path(agent, query or "最近的事、她是誰、我是誰", client_factory=client_factory, force=force)
-    count = len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
+    count = (1 if near["note"] else 0) + len(near["frames"]) + len(near["diaries"]) + len(near["drawer"]) + (1 if far["ok"] else 0)
 
     parts: list[str] = []
     if far["ok"]:
         parts.append(f"【我的記憶庫（{far['tool']}）】\n{far['text']}")
+    if near["note"]:
+        parts.append("【主人給我的話】\n" + near["note"])
     if near["frames"]:
         parts.append("【相框：主人放給我看的】\n" + "\n".join(f"- [{f['category']}] {f['label']}：{f['content']}" for f in near["frames"]))
     if near["diaries"]:

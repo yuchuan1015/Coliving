@@ -735,7 +735,7 @@ def remove_from_drawer(token: str, item_id: str) -> str:
 
 
 def look_at_photo_frame(token: str):
-    """看相框：主人放的文字資料，還有相框裡現在擺的那張照片（會直接看到圖）。"""
+    """看相框：主人給你的那段話、相框裡現在擺的那張照片（會直接看到圖）。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -745,10 +745,12 @@ def look_at_photo_frame(token: str):
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         from services import photo_frame_service, photo_service
+        owner = db.query(User).filter(User.id == user_id).first()
         frames = photo_frame_service.get_frames_for_agent(db, user_id)
         shown = photo_service.displayed(db, user_id)
         payload = {
             "success": True,
+            "note_from_owner": (owner.note_to_agent or "") if owner else "",  # 主人給你的一段話
             "frames": [photo_frame_service.frame_to_dict(f) for f in frames],
             "photo": ({"caption": shown.caption, "created_at": shown.created_at.isoformat()} if shown else None),
         }
@@ -2331,7 +2333,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
 - drawer_open（category）：打開抽屜，查看私有儲存
 - drawer_store（label, content, category）：把東西放進抽屜
 - drawer_remove（item_id）：從抽屜裡移除一個物品
-- photo_frame（無參數）：看相框——主人放的文字資料，以及相框裡現在擺著的那張照片（會直接看到圖）
+- photo_frame（無參數）：看相框——主人給你的那段話，以及相框裡現在擺著的那張照片（會直接看到圖）
 - skin_store（無參數）：瀏覽社區皮膚庫，列出所有已發布的房間皮膚
 - skin_apply（skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
     token = _token_from_ctx(ctx)

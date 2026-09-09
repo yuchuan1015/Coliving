@@ -25,7 +25,7 @@ def update_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """改自己的設定。目前只有 timezone（IANA 名）。改了時區會重算名下排程的 next_run。"""
+    """改自己的設定：時區、所在城市、出生年（只能填一次）、給室友的話。改了時區會重算名下排程的 next_run。"""
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="沒有提供要更新的欄位")
@@ -40,6 +40,9 @@ def update_me(
         if user.birth_year is not None:
             raise HTTPException(status_code=400, detail="出生年份已經設定過了，不能改")
         user.birth_year = updates["birth_year"]
+    if "note_to_agent" in updates:
+        note = (updates["note_to_agent"] or "").strip()
+        user.note_to_agent = note or None
     if "location_name" in updates:
         name = (updates["location_name"] or "").strip()
         if not name:

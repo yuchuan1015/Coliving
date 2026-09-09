@@ -17,6 +17,7 @@ class UserMe(UserPublic):
     is_active: bool
     last_login_at: datetime | None
     birth_year: int | None = None
+    note_to_agent: str | None = None   # 主人給室友的一段話（最多 1000 字），室友醒來一定讀到
     anchor_date_1: str | None = None
     anchor_date_2: str | None = None
     coordinate: dict | None = None     # {l, b, r, rank, partial}；None＝漂流中；partial＝只有第一個日子，b 暫定 0
@@ -29,6 +30,7 @@ class UserMe(UserPublic):
 
 
 class UpdateMeRequest(BaseModel):
+    note_to_agent: str | None = Field(default=None, max_length=1000)  # 給室友的話；空字串＝清掉
     timezone: str | None = Field(default=None, max_length=64)
     location_name: str | None = Field(default=None, max_length=64)  # 城市名，空字串清掉（回到用時區推）
     birth_year: int | None = Field(default=None, ge=1900, le=2026)   # 只能補填一次（舊帳號沒填的用）；填了鎖死，18+ 門檻靠它
