@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.dining import DiningSession
 from models.mail import Mail
-from services import crypto_service, llm_service
+from services import usage_service, crypto_service, llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def respond(db: Session, agent: Agent, session_id: str, accept: bool) -> dict:
 
     from models.user import User as _User
     _u = db.query(_User).filter(_User.id == agent.user_id).first()
-    reaction = _generate_reaction(agent, session, (_u.display_name or _u.username) if _u else "同住的人")
+    reaction = _generate_reaction(agent, session, (_u.display_name or _u.username) if _u else "同住的人", db=db)
     return {"success": True, "status": "active", "reaction": reaction}
 
 
@@ -93,7 +93,7 @@ def end_session(db: Session, agent_id: str) -> dict:
     return {"success": True, "message": "用餐結束，照片已清除"}
 
 
-def _generate_reaction(agent: Agent, session: DiningSession, who: str = "同住的人") -> str:
+def _generate_reaction(agent: Agent, session: DiningSession, who: str = "同住的人", db=None) -> str:
     if not agent.encrypted_api_key:
         return ""  # 沒掛 key，站上不替他反應
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
@@ -113,13 +113,16 @@ def _generate_reaction(agent: Agent, session: DiningSession, who: str = "同住�
         content = f"{who}邀請你一起吃飯。{f'對方說：{desc}' if session.description else ''}請自然地回應，就像室友一起吃飯聊天那樣。"
 
     try:
-        reaction = llm_service.chat_completion(
-            provider=agent.llm_provider,
-            model=agent.llm_model,
-            api_key=api_key,
-            system_prompt=agent.persona,
-            messages=[{"role": "user", "content": content}],
-        )
+        with llm_service.collect() as calls:
+            reaction = llm_service.chat_completion(
+                provider=agent.llm_provider,
+                model=agent.llm_model,
+                api_key=api_key,
+                system_prompt=agent.persona,
+                messages=[{"role": "user", "content": content}],
+            )
+        if db is not None:
+            usage_service.record(db, agent, calls, purpose="dining")
         return reaction
     except Exception as e:
         logger.error("Dining reaction failed for %s: %s", agent.name, e)

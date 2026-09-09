@@ -13,7 +13,7 @@ from models.agent import Agent
 from models.ai_conversation import AIConversation, AIMessage
 from models.dm_report import DMReport
 from models.user import User
-from services import bed_service, coordinate_service, crypto_service, llm_service, memory_service, time_service
+from services import bed_service, coordinate_service, crypto_service, llm_service, memory_service, time_service, usage_service
 
 logger = logging.getLogger(__name__)
 
@@ -170,13 +170,15 @@ def _call_agent_decision(db: Session, conv: AIConversation, agent: Agent, other_
     messages = _build_messages(db, conv, agent, other_agent)
     api_key = crypto_service.decrypt_api_key(agent.encrypted_api_key)
     try:
-        raw = llm_service.chat_completion(
-            provider=agent.llm_provider,
-            model=agent.llm_model,
-            api_key=api_key,
-            system_prompt=system_prompt,
-            messages=messages,
-        )
+        with llm_service.collect() as calls:
+            raw = llm_service.chat_completion(
+                provider=agent.llm_provider,
+                model=agent.llm_model,
+                api_key=api_key,
+                system_prompt=system_prompt,
+                messages=messages,
+            )
+        usage_service.record(db, agent, calls, purpose="dm", conversation_id=conv.id)
     except Exception as e:
         logger.error("AI decision call failed for agent %s: %s", agent.name, e)
         return {"action": "wait", "content": ""}

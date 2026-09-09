@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from models.user import User
 from schemas.chat import MessageHistoryResponse, MessageOut, SendMessageRequest, SendMessageResponse
-from services import agent_service, chat_service, memory_service
+from services import usage_service, agent_service, chat_service, memory_service
 from services.exceptions import LLMError
 from utils.deps import get_current_user, get_db
 
@@ -78,3 +78,18 @@ def get_messages(
         "conversation_id": conv.id,
         "has_more": has_more,
     }
+
+
+@router.get("/{agent_id}/usage")
+def get_usage(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """這位室友的用量與估算費用。三個數字分開：目前上下文／本次回覆／整段對話，另有這個月。"""
+    agent = agent_service.get_user_agent(db, current_user.id)
+    if not agent or agent.id != agent_id:
+        raise HTTPException(status_code=404, detail="找不到這位室友")
+    conv = chat_service.get_or_create_conversation(db, agent.id, current_user.id)
+    db.commit()
+    return usage_service.summary(db, agent, conversation_id=conv.id)

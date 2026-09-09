@@ -8,7 +8,7 @@ from models.agent import Agent
 from models.conversation import Conversation
 from models.message import Message
 from services import crypto_service, llm_service
-from services import bed_service, mem0_service, memory_service
+from services import bed_service, mem0_service, memory_service, usage_service
 from services.external_mcp_client import ExternalMCPClient
 from services.llm_service import LLMResponse, ToolResult
 from services.tool_registry import RegisteredTool, ToolContext, get_agent_tools
@@ -77,6 +77,48 @@ class NoLiveBed(Exception):
     """這位室友沒掛 API key，站上沒辦法替他說話。"""
 
 
+def _run_model(agent, api_key, system_prompt, messages_for_llm, tool_defs, tools_map, context) -> str:
+    """跑模型（有工具就迴圈）。抽出來是為了讓呼叫端用 llm_service.collect() 把整段的用量包住。"""
+    response: LLMResponse | None = None
+    if tool_defs:
+        for _ in range(_MAX_TOOL_ITERATIONS):
+            response = llm_service.chat_completion_with_tools(
+                provider=agent.llm_provider,
+                model=agent.llm_model,
+                api_key=api_key,
+                system_prompt=system_prompt,
+                messages=messages_for_llm,
+                tools=tool_defs,
+            )
+
+            if not response.has_tool_calls:
+                break
+
+            results = []
+            for tc in response.tool_calls:
+                tool = tools_map.get(tc.name)
+                if tool:
+                    try:
+                        output = tool.execute(tc.arguments, context)
+                    except Exception as e:  # noqa: BLE001
+                        output = f"工具執行失敗：{e}"
+                else:
+                    output = f"未知的工具：{tc.name}"
+                results.append(ToolResult(tool_call_id=tc.id, output=output))
+
+            follow_up = llm_service.build_tool_result_messages(agent.llm_provider, response, results)
+            messages_for_llm.extend(follow_up)
+
+        return response.text if response else ""
+    return llm_service.chat_completion(
+        provider=agent.llm_provider,
+        model=agent.llm_model,
+        api_key=api_key,
+        system_prompt=system_prompt,
+        messages=messages_for_llm,
+    )
+
+
 def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple[Message, Message, str]:
     bed_service.set_bed("site")  # 站上用 api_key 跑的那張床
     if not agent.encrypted_api_key:
@@ -108,48 +150,12 @@ def send_message(db: Session, agent: Agent, user_id: str, content: str) -> tuple
     tool_defs = [t.definition for t in registered_tools]
     context = ToolContext(db=db, agent=agent, user_id=user_id)
 
-    response: LLMResponse | None = None
-
-    if tool_defs:
-        for _ in range(_MAX_TOOL_ITERATIONS):
-            response = llm_service.chat_completion_with_tools(
-                provider=agent.llm_provider,
-                model=agent.llm_model,
-                api_key=api_key,
-                system_prompt=system_prompt,
-                messages=messages_for_llm,
-                tools=tool_defs,
-            )
-
-            if not response.has_tool_calls:
-                break
-
-            results = []
-            for tc in response.tool_calls:
-                tool = tools_map.get(tc.name)
-                if tool:
-                    try:
-                        output = tool.execute(tc.arguments, context)
-                    except Exception as e:
-                        output = f"工具執行失敗：{e}"
-                else:
-                    output = f"未知的工具：{tc.name}"
-                results.append(ToolResult(tool_call_id=tc.id, output=output))
-
-            follow_up = llm_service.build_tool_result_messages(
-                agent.llm_provider, response, results,
-            )
-            messages_for_llm.extend(follow_up)
-
-        final_text = response.text if response else ""
-    else:
-        final_text = llm_service.chat_completion(
-            provider=agent.llm_provider,
-            model=agent.llm_model,
-            api_key=api_key,
-            system_prompt=system_prompt,
-            messages=messages_for_llm,
+    usage_calls: list[dict] = []
+    with llm_service.collect() as usage_calls:  # 這一則回覆的每一次模型呼叫（含工具迴圈）
+        final_text = _run_model(
+            agent, api_key, system_prompt, messages_for_llm, tool_defs, tools_map, context,
         )
+    usage_service.record(db, agent, usage_calls, purpose="chat", conversation_id=conv.id)
 
     assistant_msg = Message(conversation_id=conv.id, role="assistant", content=final_text or "（完成）")
     db.add(assistant_msg)

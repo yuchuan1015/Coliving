@@ -43,6 +43,65 @@ class LLMResponse:
 # Image content helpers (vision)
 # ---------------------------------------------------------------------------
 
+# ───────── 用量收集（2026-09-09 她定）─────────
+# 不改任何函式簽名：呼叫端用 collect() 包起來，這一段期間所有模型呼叫的用量都會被接住。
+# 一則回覆跑幾輪工具就會有幾筆。供應商沒回報就存 None，不要當 0。
+
+import contextlib  # noqa: E402
+from contextvars import ContextVar  # noqa: E402
+
+_usage_sink: ContextVar[list | None] = ContextVar("llm_usage_sink", default=None)
+
+
+@contextlib.contextmanager
+def collect():
+    """with llm_service.collect() as calls: ... 之後 calls 裡是這段期間每一次呼叫的用量。"""
+    calls: list[dict] = []
+    token = _usage_sink.set(calls)
+    try:
+        yield calls
+    finally:
+        _usage_sink.reset(token)
+
+
+def _record(provider: str, model: str, data: dict) -> None:
+    sink = _usage_sink.get()
+    if sink is None:
+        return
+    sink.append({"provider": provider, "model": model, **_extract_usage(provider, data)})
+
+
+def _extract_usage(provider: str, data: dict) -> dict:
+    """把各家的用量欄位收斂成同一組。抓不到就 None（未取得），不要填 0。
+    快取與思考是明細，已經含在 input／output 裡，不另外加總。"""
+    out = {"input_tokens": None, "output_tokens": None, "cached_input_tokens": None, "reasoning_tokens": None}
+    if not isinstance(data, dict):
+        return out
+    if provider == "claude":
+        u = data.get("usage") or {}
+        out["input_tokens"] = u.get("input_tokens")
+        out["output_tokens"] = u.get("output_tokens")
+        cached = u.get("cache_read_input_tokens")
+        created = u.get("cache_creation_input_tokens")
+        if cached is not None or created is not None:
+            out["cached_input_tokens"] = (cached or 0) + (created or 0)
+        return out
+    if provider == "gemini":
+        u = data.get("usageMetadata") or {}
+        out["input_tokens"] = u.get("promptTokenCount")
+        out["output_tokens"] = u.get("candidatesTokenCount")
+        out["cached_input_tokens"] = u.get("cachedContentTokenCount")
+        out["reasoning_tokens"] = u.get("thoughtsTokenCount")
+        return out
+    # OpenAI 相容（openai / xai / deepseek）
+    u = data.get("usage") or {}
+    out["input_tokens"] = u.get("prompt_tokens")
+    out["output_tokens"] = u.get("completion_tokens")
+    out["cached_input_tokens"] = (u.get("prompt_tokens_details") or {}).get("cached_tokens")
+    out["reasoning_tokens"] = (u.get("completion_tokens_details") or {}).get("reasoning_tokens")
+    return out
+
+
 # ── 供應商列表與免責 ──
 
 PROVIDERS = {
@@ -217,6 +276,7 @@ def _call_claude(model: str, api_key: str, system_prompt: str, messages: list[di
         raise LLMError("claude", resp.status_code, detail)
 
     data = resp.json()
+    _record("claude", model, data)
     return data["content"][0]["text"]
 
 
@@ -258,6 +318,7 @@ def _call_claude_with_tools(
         raise LLMError("claude", resp.status_code, detail)
 
     data = resp.json()
+    _record("claude", model, data)
     content_blocks = data.get("content", [])
     stop_reason = data.get("stop_reason", "end_turn")
 
@@ -306,7 +367,9 @@ def _call_openai_compat(
         detail = resp.json().get("error", {}).get("message", resp.text)
         raise LLMError(provider_name, resp.status_code, detail)
 
-    return resp.json()["choices"][0]["message"]["content"]
+    data = resp.json()
+    _record(provider_name, model, data)
+    return data["choices"][0]["message"]["content"]
 
 
 def _call_openai(model: str, api_key: str, system_prompt: str, messages: list[dict]) -> str:
@@ -348,6 +411,7 @@ def _call_openai_with_tools(
         raise LLMError(provider_name, resp.status_code, detail)
 
     data = resp.json()
+    _record(provider_name, model, data)
     choice = data["choices"][0]
     msg = choice["message"]
     finish_reason = choice.get("finish_reason", "stop")
@@ -417,6 +481,7 @@ def _call_gemini_with_tools(
     if resp.status_code >= 400:
         raise LLMError("gemini", resp.status_code, resp.text[:200])
     data = resp.json()
+    _record("gemini", model, data)
     try:
         parts = data["candidates"][0]["content"]["parts"]
     except (KeyError, IndexError):
