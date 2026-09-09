@@ -1,14 +1,11 @@
 import { uiText, getUiLanguage } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  createSchedule,
-  deleteSchedule,
-  listSchedules,
-  updateSchedule,
-  type ScheduleOut,
-} from "../api/schedules";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { isAxiosError } from "axios";
+import { useAuth } from "../hooks/useAuth";
+import { CabinUtilityShell } from "../components/CabinUtilityShell";
+import { createSchedule, deleteSchedule, listSchedules, updateSchedule, type ScheduleOut } from "../api/schedules";
+import "../schedules.css";
 
 const CRON_PRESETS = [
   { label: "每小時", value: "0 * * * *" },
@@ -18,248 +15,155 @@ const CRON_PRESETS = [
   { label: "自訂", value: "" },
 ];
 
+function errorMessage(error: unknown, fallback: string) {
+  const detail = isAxiosError(error) ? error.response?.data?.detail : undefined;
+  return typeof detail === "string" ? detail : fallback;
+}
+
+function scheduleNextRun(value: string | null, timezone: string) {
+  if (!value) return uiText("尚未排定");
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return uiText("時間未取得");
+  try { return date.toLocaleString(getUiLanguage(), { timeZone: timezone }); }
+  catch { return uiText("時間未取得"); }
+}
+
 export function SchedulesPage() {
   useUiLanguage();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const timezone = user?.timezone || "UTC";
   const [schedules, setSchedules] = useState<ScheduleOut[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
-
+  const [notice, setNotice] = useState("");
   const [name, setName] = useState("");
   const [cronExpr, setCronExpr] = useState("0 * * * *");
   const [customCron, setCustomCron] = useState("");
   const [message, setMessage] = useState("");
   const [callbackUrl, setCallbackUrl] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const pending = useRef(false);
 
   useEffect(() => {
-    listSchedules()
-      .then(setSchedules)
-      .catch(() => setError("載入失敗"))
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true;
+    setLoading(true); setLoadError(false);
+    listSchedules().then(value => { if (active) setSchedules(value); })
+      .catch(() => { if (active) setLoadError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [revision]);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSaving(true);
-    const cron = cronExpr || customCron;
-    if (!cron) {
-      setError("請選擇或輸入排程時間");
-      setSaving(false);
-      return;
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    if (pending.current || loading || loadError) return;
+    const cron = cronExpr || customCron.trim();
+    if (!name.trim() || !message.trim() || !cron) {
+      setError("請填寫名稱、喚醒訊息與排程時間"); return;
     }
+    pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
-      const s = await createSchedule({
-        name,
-        cron_expr: cron,
-        message,
-        callback_url: callbackUrl || undefined,
-      });
-      setSchedules([...schedules, s]);
-      setName("");
-      setCronExpr("0 * * * *");
-      setCustomCron("");
-      setMessage("");
-      setCallbackUrl("");
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "新增失敗");
-    } finally {
-      setSaving(false);
-    }
+      const schedule = await createSchedule({ name, cron_expr: cron, message, callback_url: callbackUrl || undefined });
+      setSchedules(previous => [...previous, schedule]);
+      setName(""); setCronExpr("0 * * * *"); setCustomCron(""); setMessage(""); setCallbackUrl("");
+      setNotice("排程已新增");
+    } catch (err) { setError(errorMessage(err, "新增失敗，輸入的內容已保留。")); }
+    finally { pending.current = false; setBusy(false); }
   }
 
-  async function handleToggle(s: ScheduleOut) {
+  async function handleToggle(schedule: ScheduleOut) {
+    if (pending.current || loading || loadError) return;
+    pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
-      const updated = await updateSchedule(s.id, { enabled: !s.enabled });
-      setSchedules(schedules.map((x) => (x.id === s.id ? updated : x)));
-    } catch {
-      setError("更新失敗");
-    }
+      const updated = await updateSchedule(schedule.id, { enabled: !schedule.enabled });
+      setSchedules(previous => previous.map(item => item.id === schedule.id ? updated : item));
+      setNotice(updated.enabled ? "排程已啟用" : "排程已暫停");
+    } catch (err) { setError(errorMessage(err, "更新失敗，排程狀態未變更。")); }
+    finally { pending.current = false; setBusy(false); }
   }
 
   async function handleDelete(id: string) {
+    if (pending.current || loading || loadError) return;
+    pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
       await deleteSchedule(id);
-      setSchedules(schedules.filter((x) => x.id !== id));
-    } catch {
-      setError("刪除失敗");
-    }
+      setSchedules(previous => previous.filter(item => item.id !== id));
+      setDeleting(null); setNotice("排程已刪除");
+    } catch (err) { setError(errorMessage(err, "刪除失敗，請稍後再試。")); }
+    finally { pending.current = false; setBusy(false); }
   }
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-lg px-5 py-8">
-        <p style={{ color: "var(--ink-soft)" }}>{uiText("載入中...")}</p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="mx-auto max-w-lg px-5 py-8 pb-40">
-      <button
-        onClick={() => navigate("/")}
-        className="mb-6 text-sm"
-        style={{ color: "var(--accent)" }}
-      >
-        ← {uiText("回首頁")}
-      </button>
-
-      <h1 className="mb-2 text-xl font-semibold" style={{ color: "var(--ink)" }}>{uiText("排程喚醒")}</h1>
-      <p className="mb-6 text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("設定定時喚醒，讓室友按時做事。Cron 依帳號設定的當地時區執行；更換時區會影響排程時間。")}</p>
-
-      {/* Existing schedules */}
-      {schedules.length > 0 && (
-        <div className="mb-6 space-y-3">
-          {schedules.map((s) => (
-            <div
-              key={s.id}
-              className="rounded-xl p-4"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                opacity: s.enabled ? 1 : 0.5,
-              }}
-            >
-              <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-                    {s.name}
-                  </div>
-                  <div className="mt-1 text-[10px] font-mono" style={{ color: "var(--ink-soft)" }}>
-                    {s.cron_expr}
-                  </div>
-                  <div className="mt-1 text-xs" style={{ color: "var(--ink-soft)" }}>
-                    {s.message.length > 60 ? s.message.slice(0, 60) + "..." : s.message}
-                  </div>
-                  {s.next_run && (
-                    <div className="mt-1 text-[10px]" style={{ color: "var(--ink-soft)" }}>{uiText("下次：")}{new Date(s.next_run).toLocaleString(getUiLanguage())}
-                    </div>
-                  )}
-                </div>
-                <div className="ml-3 flex gap-2">
-                  <button
-                    onClick={() => handleToggle(s)}
-                    className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{
-                      background: s.enabled ? "var(--accent)" : "var(--surface-dim)",
-                      color: s.enabled ? "var(--accent-fg)" : "var(--ink-soft)",
-                    }}
-                  >
-                    {s.enabled ? uiText("啟用") : uiText("停用")}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(s.id)}
-                    className="text-[10px]"
-                    style={{ color: "var(--error)" }}
-                  >{uiText("刪除")}</button>
-                </div>
-              </div>
+  return <CabinUtilityShell title={uiText("排程喚醒")} code="SCHEDULES">
+    <div className="schedule-page">
+      <section className="photo-panel schedule-context">
+        <p>{uiText("設定定時喚醒，讓室友按時做事。")}</p>
+        <div className="utility-meta"><span>{uiText("執行時區")}</span><code>{timezone}</code></div>
+        <p className="schedule-hint">{uiText("Cron 依帳號設定的當地時區執行；更換時區會影響排程時間。")}</p>
+      </section>
+      <form className="photo-panel schedule-form" onSubmit={handleCreate}>
+        <h2>{uiText("新增排程")}</h2>
+        <fieldset disabled={busy || loading || loadError}>
+          <label htmlFor="schedule-name">{uiText("排程名稱")}
+            <input id="schedule-name" type="text" value={name} onChange={e => setName(e.target.value)}
+              placeholder={uiText("例如：每日巡邏")} required maxLength={64} />
+          </label>
+          <fieldset className="schedule-frequency">
+            <legend>{uiText("喚醒頻率")}</legend>
+            <div className="schedule-presets">
+              {CRON_PRESETS.map(p => <button key={p.label} type="button" aria-pressed={cronExpr === p.value}
+                onClick={() => setCronExpr(p.value)}>{uiText(p.label)}</button>)}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Create form */}
-      <form
-        onSubmit={handleCreate}
-        className="space-y-4 rounded-xl p-4"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-      >
-        <div className="text-sm font-medium" style={{ color: "var(--ink)" }}>{uiText("新增排程")}</div>
-
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={uiText("排程名稱（如：每日巡邏）")}
-          required
-          maxLength={64}
-          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-dim)",
-            color: "var(--ink)",
-            border: "1px solid var(--border)",
-          }}
-        />
-
-        <div>
-          <div className="mb-2 flex flex-wrap gap-2">
-            {CRON_PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => setCronExpr(p.value)}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium"
-                style={{
-                  background: cronExpr === p.value ? "var(--accent)" : "var(--surface-dim)",
-                  color: cronExpr === p.value ? "var(--accent-fg)" : "var(--ink-soft)",
-                  border: "1px solid " + (cronExpr === p.value ? "var(--accent)" : "var(--border)"),
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          {cronExpr === "" && (
-            <input
-              type="text"
-              value={customCron}
-              onChange={(e) => setCustomCron(e.target.value)}
-              placeholder={uiText("cron 表達式（如 */15 * * * *）")}
-              className="w-full rounded-lg px-3 py-2 font-mono text-xs outline-none"
-              style={{
-                background: "var(--surface-dim)",
-                color: "var(--ink)",
-                border: "1px solid var(--border)",
-              }}
-            />
-          )}
-        </div>
-
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={uiText("喚醒訊息（室友收到後會看到這段話）")}
-          required
-          maxLength={2000}
-          rows={3}
-          className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--surface-dim)",
-            color: "var(--ink)",
-            border: "1px solid var(--border)",
-          }}
-        />
-
-        <input
-          type="url"
-          value={callbackUrl}
-          onChange={(e) => setCallbackUrl(e.target.value)}
-          placeholder={uiText("Webhook URL（選填，到時間會 POST 過去）")}
-          className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-          style={{
-            background: "var(--surface-dim)",
-            color: "var(--ink)",
-            border: "1px solid var(--border)",
-          }}
-        />
-
-        {error && (
-          <p className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--error)", color: "#fff" }}>
-            {uiText(error)}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={saving || !name || !message}
-          className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
-          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-        >
-          {saving ? uiText("新增中...") : uiText("新增排程")}
-        </button>
+            {cronExpr === "" && <label htmlFor="schedule-cron">{uiText("Cron 表達式")}
+              <input id="schedule-cron" type="text" value={customCron} onChange={e => setCustomCron(e.target.value)}
+                placeholder="*/15 * * * *" required maxLength={64} autoCapitalize="none" spellCheck={false} />
+            </label>}
+          </fieldset>
+          <label htmlFor="schedule-message">{uiText("喚醒訊息")}
+            <textarea id="schedule-message" value={message} onChange={e => setMessage(e.target.value)}
+              placeholder={uiText("室友收到後會看到這段話")} required maxLength={2000} rows={4} />
+          </label>
+          <label htmlFor="schedule-webhook">{uiText("Webhook URL（選填）")}
+            <input id="schedule-webhook" type="url" value={callbackUrl} onChange={e => setCallbackUrl(e.target.value)}
+              placeholder="https://" maxLength={512} autoCapitalize="none" spellCheck={false} aria-describedby="schedule-webhook-help" />
+            <span id="schedule-webhook-help" className="schedule-hint">{uiText("到時間會向這個網址傳送 POST 請求。")}</span>
+          </label>
+          <button className="photo-primary schedule-submit" type="submit"
+            disabled={busy || !name.trim() || !message.trim() || !(cronExpr || customCron.trim())}>
+            {busy ? uiText("處理中…") : uiText("新增排程")}
+          </button>
+        </fieldset>
       </form>
-    </main>
-  );
+      <div className="photo-status" aria-live="polite">
+        {error && <p role="alert">{uiText(error)}</p>}
+        {notice && <p role="status">{uiText(notice)}</p>}
+      </div>
+      <section className="schedule-list" aria-labelledby="schedule-list-title" aria-busy={loading}>
+        <div className="utility-toolbar"><h2 id="schedule-list-title">{uiText("我的排程")}</h2>
+          {!loading && !loadError && <span className="photo-badge">{uiText`${schedules.length} 個排程`}</span>}
+        </div>
+        {loading ? <div className="photo-panel"><p role="status">{uiText("正在讀取排程…")}</p></div>
+          : loadError ? <div className="photo-panel"><p role="alert">{uiText("暫時無法讀取排程，請稍後再試。")}</p>
+            <button type="button" disabled={busy} onClick={() => setRevision(value => value + 1)}>{uiText("重新讀取")}</button></div>
+          : schedules.length === 0 ? <div className="photo-panel schedule-empty"><span aria-hidden="true">◷</span>
+            <h3>{uiText("還沒有排程")}</h3><p>{uiText("新增一個喚醒時間，讓室友在約好的時候收到訊息。")}</p></div>
+          : schedules.map(schedule => <article className="photo-panel schedule-entry" key={schedule.id}>
+            <header className="schedule-entry-head"><h3>{schedule.name}</h3>
+              <span className="photo-badge">{schedule.enabled ? uiText("啟用中") : uiText("已暫停")}</span></header>
+            <p className="schedule-cron"><span>{uiText("喚醒頻率")}</span><code>{schedule.cron_expr}</code></p>
+            <p className="utility-body">{schedule.message}</p>
+            <p className="schedule-hint">{uiText("下次喚醒：")}{scheduleNextRun(schedule.next_run, timezone)}</p>
+            {deleting === schedule.id ? <div className="schedule-confirm" role="group" aria-label={uiText("刪除排程確認")}>
+              <p>{uiText("刪除後無法復原，確定移除這個排程？")}</p>
+              <div className="utility-actions"><button type="button" disabled={busy} onClick={() => setDeleting(null)}>{uiText("取消")}</button>
+                <button type="button" className="utility-danger" disabled={busy} onClick={() => handleDelete(schedule.id)}>{uiText("確認刪除")}</button></div>
+            </div> : <div className="utility-actions">
+              <button type="button" disabled={busy} onClick={() => handleToggle(schedule)}>{schedule.enabled ? uiText("暫停") : uiText("啟用")}</button>
+              <button type="button" className="utility-danger" disabled={busy} onClick={() => setDeleting(schedule.id)}>{uiText("刪除")}</button>
+            </div>}
+          </article>)}
+      </section>
+    </div>
+  </CabinUtilityShell>;
 }

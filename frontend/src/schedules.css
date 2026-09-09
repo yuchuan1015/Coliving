@@ -1,0 +1,28 @@
+/* Only the schedule surface; reuse the approved cabin palette and safe areas. */
+.schedule-page { display: grid; gap: 24px; min-width: 0; }
+.schedule-page h3 { margin: 0; font-size: 1.125rem; font-weight: 400; overflow-wrap: anywhere; }
+.schedule-page .schedule-context { gap: 8px; }
+.schedule-page .schedule-hint { color: var(--album-muted); font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.schedule-page .utility-meta { font-size: .875rem; }
+.schedule-page code { font-size: .875rem; overflow-wrap: anywhere; }
+.schedule-page .schedule-form, .schedule-page .schedule-form > fieldset { gap: 24px; }
+.schedule-page .schedule-frequency { min-width: 0; display: block; }
+.schedule-frequency legend { margin-bottom: 8px; color: var(--album-muted); font-size: .875rem; }
+.schedule-frequency > label { margin-top: 16px; }
+.schedule-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.schedule-presets button { min-width: 0; min-height: 48px; white-space: normal; }
+.schedule-presets button[aria-pressed="true"] { background: #30203f; color: #e6caff; border-color: var(--album-accent); }
+.schedule-page .schedule-submit { min-height: 48px; width: 100%; }
+.schedule-page .schedule-list { display: grid; gap: 16px; min-width: 0; }
+.schedule-entry-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.schedule-entry-head h3 { flex: 1; min-width: min(100%, 10rem); }
+.schedule-page .schedule-cron { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; color: var(--album-muted); font-size: .875rem; }
+.schedule-page .schedule-cron code { color: var(--album-ink); }
+.schedule-entry > .utility-actions { justify-content: flex-end; }
+.schedule-page .schedule-empty { text-align: center; color: var(--album-muted); }
+.schedule-empty > span { color: var(--album-accent); font-size: 2rem; }
+.schedule-empty > p { font-size: .875rem; }
+.schedule-confirm { display: grid; gap: 16px; padding-top: 16px; border-top: 1px solid var(--album-line); }
+.schedule-confirm p { font-size: .875rem; }
+.schedule-confirm .utility-actions { justify-content: flex-end; }
+@media (min-width: 650px) { .schedule-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

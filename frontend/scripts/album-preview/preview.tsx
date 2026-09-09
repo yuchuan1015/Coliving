@@ -14,6 +14,8 @@ import { HomePage } from "../../src/pages/HomePage";
 import { DiaryPage } from "../../src/pages/DiaryPage";
 import { DrawerPage } from "../../src/pages/DrawerPage";
 import { MailboxPage } from "../../src/pages/MailboxPage";
+import { SchedulesPage } from "../../src/pages/SchedulesPage";
+import type { ScheduleOut } from "../../src/api/schedules";
 import { FrameDetail } from "./FrameDetail";
 import type { AgentPublic, UserMe } from "../../src/types";
 import type { CabinPhoto, DiaryEntry } from "../../src/api/furniture";
@@ -39,6 +41,7 @@ let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "
 let photos: CabinPhoto[] = ["life", "memory", "shared"].map((zone, i) => ({ id: String(i), caption: ["範例照片 · 出發前的艙室", "範例照片 · 留下文字的角落", "範例照片 · 等你一起吃飯"][i], url: "/ya-chao-assets/cabin-" + zone + "-v1.webp", is_displayed: i === 0, width: 792, height: 1124, bytes: 100000, created_at: created }));
 let displayedId: string | null = "0";
 let sequence = 3;
+let schedules: ScheduleOut[] = params.get("schedule-state") === "empty" ? [] : [{ id: "schedule-preview", name: "每日巡邏 · 本地範例", cron_expr: "0 9 * * *", message: "醒來後去公園看看，再把今天的發現記下來。", callback_url: null, enabled: true, last_run: null, next_run: "2026-09-11T01:00:00Z", created_at: created }];
 const diaries: DiaryEntry[] = [
   { id: "diary-1", agent_id: agent.id, title: "把今天的星光收進來", content: "今天留在艙室，整理了一些舊照片。\n\n那些沒說出口的小事，也想慢慢記下來。", source: "manual", importance: 3, created_at: created, updated_at: null },
   { id: "diary-2", agent_id: agent.id, title: "一封還沒寄出的信", content: "先把想說的話寫好，明天再寄出去。", source: "manual", importance: 3, created_at: "2026-09-08T12:00:00Z", updated_at: null },
@@ -54,7 +57,13 @@ api.defaults.adapter = async config => {
   const path = config.url ?? "", method = config.method ?? "get";
   const payload = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
   let data: unknown;
-  if (method === "get" && path === "/chat/preview-agent/usage") {
+  if (path === "/schedules" && method === "get") {
+    if (params.get("schedule-state") === "error") throw new AxiosError("Preview schedule failure", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例讀取失敗" } });
+    data = schedules;
+  }
+  else if (path === "/schedules" && method === "post") { const schedule: ScheduleOut = { ...payload, id: "schedule-" + sequence++, callback_url: payload.callback_url || null, enabled: true, next_run: null, last_run: null, created_at: created }; schedules = [...schedules, schedule]; data = schedule; }
+  else if (path.startsWith("/schedules/") && (method === "patch" || method === "delete")) { const id = path.split("/").at(-1); schedules = method === "delete" ? schedules.filter(row => row.id !== id) : schedules.map(row => row.id === id ? { ...row, enabled: payload.enabled } : row); data = schedules.find(row => row.id === id) ?? null; }
+  else if (method === "get" && path === "/chat/preview-agent/usage") {
     if (usageCase === "error") throw new AxiosError("Preview read failed", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例：用量暫時無法讀取，聊天仍可繼續。" } });
     data = usageFixture;
   }
@@ -99,11 +108,11 @@ api.defaults.adapter = async config => {
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><LanguageDocument /><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link></nav>
-  <Routes><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <Routes><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);

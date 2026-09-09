@@ -678,6 +678,163 @@ test("clock keeps the touch area and reduced-motion preference without backwards
 
 const { CabinUtilityShell, CabinUtilityEmpty } = load("src/components/CabinUtilityShell.tsx");
 const { DiaryPage } = load("src/pages/DiaryPage.tsx");
+
+const { SchedulesPage } = load("src/pages/SchedulesPage.tsx");
+test("every current page route is registered in the interface inventory", () => {
+  const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  const inventory = readFileSync(resolve(root, "../docs/介面盤點.md"), "utf8");
+  const paths = [...app.matchAll(/<Route path="([^"]+)" element=/g)].map(match => match[1]).filter(path => path !== "*");
+  const recorded = [...inventory.matchAll(/^\| \x60([^\x60]+)\x60 \|/gm)].map(match => match[1]);
+  assert.deepEqual(recorded.sort(), paths.sort(), "Add the route to the inventory with its theme status.");
+});
+const scheduleFixture = { id: "wake-1", name: "圖書館巡邏", cron_expr: "0 9 * * *", message: "繁體訊息：看看書架。", callback_url: null, enabled: true, next_run: "2026-09-11T01:00:00Z", last_run: null, created_at: "2026-09-10T01:00:00Z" };
+function scheduleInput(h, id, value) {
+  const input = nodes(h.tree, n => n.props.id === id)[0];
+  assert.ok(input, id); input.props.onChange({ target: { value } }); h.render();
+}
+const scheduleForm = h => nodes(h.tree, n => n.type === "form")[0];
+const scheduleSubmit = h => scheduleForm(h).props.onSubmit({ preventDefault() {} });
+
+test("schedule shell stays purple in loading, empty and failure states with labelled controls", async () => {
+  const h = mount(SchedulesPage);
+  assert.equal(one(h, "CabinUtilityShell").props.code, "SCHEDULES");
+  assert.equal(one(h, "CabinUtilityShell").props.title, "排程喚醒");
+  assert.match(text(h.tree), /正在讀取排程/);
+  assert.ok(nodes(h.tree, n => n.type === "fieldset" && n.props.disabled).length);
+  const fields = nodes(h.tree, n => ["input", "textarea"].includes(n.type));
+  for (const field of fields) assert.equal(nodes(h.tree, n => n.type === "label" && n.props.htmlFor === field.props.id).length, 1);
+  assert.equal(fields.find(f => f.props.id === "schedule-name").props.maxLength, 64);
+  assert.equal(fields.find(f => f.props.id === "schedule-message").props.maxLength, 2000);
+  assert.equal(fields.find(f => f.props.id === "schedule-webhook").props.maxLength, 512);
+  const loaded = await utilityLoaded(SchedulesPage, []);
+  assert.match(text(loaded.tree), /還沒有排程/);
+  assert.equal(one(loaded, "CabinUtilityShell").props.code, "SCHEDULES");
+  assert.ok(calls.every(call => call.method === "get"));
+});
+
+test("schedule presets translate without changing Cron values or resident drafts", async () => {
+  const h = await utilityLoaded(SchedulesPage, []);
+  scheduleInput(h, "schedule-name", "圖書館巡邏");
+  scheduleInput(h, "schedule-message", "繁體訊息：記得回家。");
+  const expected = [["每小時", "0 * * * *"], ["每天 9:00", "0 9 * * *"], ["每天 21:00", "0 21 * * *"], ["每 30 分鐘", "*/30 * * * *"]];
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    language.setUiLanguage(locale); h.render();
+    for (const [label, cron] of expected) {
+      click(h, language.uiText(label));
+      assert.equal(button(h, language.uiText(label)).props["aria-pressed"], true);
+      writeResult = { ...scheduleFixture, cron_expr: cron };
+      await scheduleSubmit(h); h.render();
+      expectCall("post", "/schedules", { name: "圖書館巡邏", cron_expr: cron, message: "繁體訊息：記得回家。", callback_url: undefined });
+      scheduleInput(h, "schedule-name", "圖書館巡邏");
+      scheduleInput(h, "schedule-message", "繁體訊息：記得回家。");
+    }
+    click(h, language.uiText("自訂")); scheduleInput(h, "schedule-cron", "*/15 * * * *");
+    assert.equal(nodes(h.tree, n => n.props.id === "schedule-cron")[0].props.maxLength, 64);
+  }
+});
+
+test("schedule custom create keeps exact payload and guards rapid double submission", async () => {
+  const h = await utilityLoaded(SchedulesPage, []);
+  click(h, "自訂");
+  scheduleInput(h, "schedule-name", "圖書館巡邏");
+  scheduleInput(h, "schedule-message", "繁體訊息：記得回家。");
+  scheduleInput(h, "schedule-cron", "*/15 * * * *");
+  scheduleInput(h, "schedule-webhook", "https://example.test/wake?label=圖書館");
+  const job = deferred(); answer = () => job.promise;
+  const submit = scheduleForm(h).props.onSubmit;
+  const request = submit({ preventDefault() {} }); await submit({ preventDefault() {} });
+  assert.equal(calls.filter(call => call.method === "post").length, 1);
+  expectCall("post", "/schedules", { name: "圖書館巡邏", cron_expr: "*/15 * * * *", message: "繁體訊息：記得回家。", callback_url: "https://example.test/wake?label=圖書館" });
+  job.resolve({ data: scheduleFixture }); await request; h.render();
+  assert.equal(nodes(h.tree, n => n.props.id === "schedule-name")[0].props.value, "");
+  assert.match(text(h.tree), /排程已新增/);
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
+});
+
+test("schedule create failure keeps drafts and shows backend validation detail", async () => {
+  const h = await utilityLoaded(SchedulesPage, []);
+  click(h, "自訂"); scheduleInput(h, "schedule-name", "試試看"); scheduleInput(h, "schedule-message", "保留這段話"); scheduleInput(h, "schedule-cron", "invalid");
+  answer = async () => { throw { isAxiosError: true, response: { data: { detail: "無效的 cron 表達式" } } }; };
+  await scheduleSubmit(h); h.render();
+  assert.match(text(h.tree), /無效的 cron 表達式/);
+  assert.equal(nodes(h.tree, n => n.props.id === "schedule-message")[0].props.value, "保留這段話");
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 0);
+  assert.equal(nodes(h.tree, n => n.type === "fieldset" && n.props.disabled).length, 0);
+});
+
+test("schedule pause changes only enabled and failure preserves the displayed state", async () => {
+  const h = await utilityLoaded(SchedulesPage, [scheduleFixture]);
+  answer = async () => { throw Error("failed"); };
+  await button(h, "暫停").props.onClick(); h.render();
+  expectCall("patch", "/schedules/wake-1", { enabled: false });
+  assert.match(text(h.tree), /更新失敗，排程狀態未變更。/);
+  assert.match(text(h.tree), /啟用中/);
+  answer = async () => ({ data: { ...scheduleFixture, enabled: false } });
+  await button(h, "暫停").props.onClick(); h.render();
+  assert.match(text(h.tree), /已暫停/);
+  answer = async () => ({ data: scheduleFixture });
+  await button(h, "啟用").props.onClick(); h.render();
+  expectCall("patch", "/schedules/wake-1", { enabled: true });
+});
+
+test("schedule deletion requires confirmation; cancellation and failures preserve the record", async () => {
+  const h = await utilityLoaded(SchedulesPage, [scheduleFixture]);
+  click(h, "刪除"); assert.ok(calls.every(call => call.method === "get"));
+  click(h, "取消"); assert.ok(calls.every(call => call.method === "get"));
+  click(h, "刪除"); answer = async () => { throw Error("failed"); };
+  await button(h, "確認刪除").props.onClick(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 1);
+  assert.match(text(h.tree), /刪除失敗/);
+  answer = async () => ({ data: undefined });
+  await button(h, "確認刪除").props.onClick(); h.render();
+  expectCall("delete", "/schedules/wake-1");
+  assert.match(text(h.tree), /排程已刪除/);
+  assert.equal(nodes(h.tree, n => n.type === "article").length, 0);
+});
+
+test("schedule list failure cannot look empty, retries once and ignores disposed responses", async () => {
+  answer = async () => { throw Error("offline"); };
+  const h = mount(SchedulesPage); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /暫時無法讀取排程/);
+  assert.doesNotMatch(text(h.tree), /還沒有排程/);
+  assert.ok(nodes(h.tree, n => n.type === "fieldset" && n.props.disabled).length);
+  answer = async () => ({ data: [scheduleFixture] });
+  click(h, "重新讀取"); h.effects(); await tick(); h.render();
+  assert.match(text(h.tree), /圖書館巡邏/);
+  const job = deferred(); answer = () => job.promise;
+  const gone = mount(SchedulesPage); gone.effects(); gone.dispose(); job.resolve({ data: [scheduleFixture] }); await tick(); gone.render();
+  assert.doesNotMatch(text(gone.tree), /圖書館巡邏/);
+});
+
+test("schedule next run follows account time zone and UI locale, never rewrites Cron", async () => {
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    language.setUiLanguage(locale);
+    for (const zone of ["Asia/Taipei", "America/New_York", "UTC"]) {
+      auth.user.timezone = zone;
+      const h = await utilityLoaded(SchedulesPage, [scheduleFixture]);
+      assert.ok(text(h.tree).includes(new Date(scheduleFixture.next_run).toLocaleString(locale, { timeZone: zone })));
+      assert.ok(text(h.tree).includes(scheduleFixture.cron_expr));
+    }
+    const emptyTime = await utilityLoaded(SchedulesPage, [{ ...scheduleFixture, next_run: null }]);
+    assert.ok(text(emptyTime.tree).includes(language.uiText("尚未排定")));
+    const invalidDate = await utilityLoaded(SchedulesPage, [{ ...scheduleFixture, next_run: "not a date" }]);
+    assert.ok(text(invalidDate.tree).includes(language.uiText("時間未取得")));
+    auth.user.timezone = "invalid";
+    const invalidZone = await utilityLoaded(SchedulesPage, [scheduleFixture]);
+    assert.ok(text(invalidZone.tree).includes(language.uiText("時間未取得")));
+  }
+});
+
+test("schedule page has explicit responsive purple styles and no legacy surface variables", () => {
+  const source = readFileSync(resolve(root, "src/pages/SchedulesPage.tsx"), "utf8");
+  const css = readFileSync(resolve(root, "src/schedules.css"), "utf8");
+  assert.match(source, /CabinUtilityShell/);
+  assert.doesNotMatch(source, /var\(--(?:bg|surface|ink|accent)\)|mx-auto|text-\[10px\]/);
+  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /min-height: 48px/);
+  assert.match(css, /aria-pressed="true"/);
+  assert.match(source, /uiText\(p.label\)/);
+});
 const { DrawerPage } = load("src/pages/DrawerPage.tsx");
 const { MailboxPage } = load("src/pages/MailboxPage.tsx");
 const utilityDiary = { id: "diary-1", agent_id: "me", title: "日記標題", content: "第一行\n第二行", source: "manual", importance: 3, created_at: "2026-09-09T00:00:00Z", updated_at: null };
