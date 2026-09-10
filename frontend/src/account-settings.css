@@ -1,0 +1,12 @@
+/* Account settings belong to the cabin, not the public navigation theme. */
+.account-settings {
+  --c-sky: #0a081c;
+  --c-frost: var(--album-ink); --c-muted: var(--album-muted);
+  --c-snow: var(--album-line); --c-moon: var(--album-accent);
+}
+.account-settings .account-settings-sections { gap: 24px; }
+.account-settings .account-settings-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--album-line); border-radius: 24px; color: var(--album-ink); background: rgb(194 165 233 / .07); font-size: 14px; text-decoration: none; white-space: nowrap; }
+.account-settings .cabin-city-form { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+.account-settings .cabin-city-form > small { font-size: 14px; color: var(--album-muted); }
+.account-settings .cabin-city-form h3 { margin: 0; font-size: 18px; font-weight: 400; }
+.account-settings .cabin-city-form p { overflow-wrap: anywhere; }

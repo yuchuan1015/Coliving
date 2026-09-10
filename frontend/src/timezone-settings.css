@@ -1,0 +1,27 @@
+/* Both settings surfaces stay within the approved purple cabin palette. */
+.timezone-settings.timezone-settings {
+  --tz-bg: var(--c-sky, #0a081c);
+  --tz-ink: var(--c-frost, var(--album-ink, #f4f0ff));
+  --tz-muted: var(--c-muted, var(--album-muted, #a9a1c7));
+  --tz-line: var(--c-snow, var(--album-line, rgb(226 219 255 / .22)));
+  --tz-accent: var(--c-moon, var(--album-accent, #c9a7ff));
+  display: grid; gap: 12px; min-width: 0; color: var(--tz-ink);
+  border-bottom-color: var(--tz-line); color-scheme: dark;
+}
+.timezone-settings .timezone-selection { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--tz-line); border-radius: 12px; background: var(--tz-bg); }
+.timezone-settings .timezone-selection strong { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 18px; font-weight: 400; }
+.timezone-settings .timezone-selection > span, .timezone-settings small, .timezone-settings .timezone-count { font-size: 14px; color: var(--tz-muted); overflow-wrap: anywhere; }
+.timezone-settings .timezone-common { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.timezone-settings.timezone-settings .timezone-common button { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 8px; padding: 8px 12px; min-width: 0; min-height: 48px; font-size: 16px; color: var(--tz-ink); background: var(--tz-bg); border: 1px solid var(--tz-line); border-radius: 12px; }
+.timezone-settings.timezone-settings .timezone-common button[aria-pressed="true"] { border-color: var(--tz-accent); color: var(--tz-accent); }
+.timezone-settings time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.timezone-settings.timezone-settings :is(input, select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px; padding: 12px; border: 1px solid var(--tz-line); border-radius: 12px; background-color: var(--tz-bg); color: var(--tz-ink); -webkit-text-fill-color: var(--tz-ink); color-scheme: dark; font: inherit; font-size: 16px; }
+.timezone-settings.timezone-settings select option { background-color: var(--tz-bg); color: var(--tz-ink); }
+.timezone-settings.timezone-settings input::placeholder { color: var(--tz-muted); -webkit-text-fill-color: var(--tz-muted); opacity: 1; }
+.timezone-settings.timezone-settings button { font: inherit; min-height: 48px; color: var(--tz-accent); border: 1px solid var(--tz-line); border-radius: 12px; }
+.timezone-settings.timezone-settings :is(input, select, button):focus-visible { outline: 2px solid var(--tz-accent); outline-offset: 2px; }
+.timezone-settings.timezone-settings :is(input, select, button):disabled { opacity: 1; color: var(--tz-muted); -webkit-text-fill-color: var(--tz-muted); cursor: default; }
+.timezone-settings .timezone-results { display: grid; gap: 8px; min-width: 0; }
+@media (max-width: 360px) {
+  .timezone-settings.timezone-settings .timezone-common button { flex-direction: column; align-items: flex-start; }
+}

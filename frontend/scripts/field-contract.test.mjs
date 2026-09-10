@@ -685,9 +685,12 @@ test("timezone presentation retains the selected IANA identifier and exact save 
   auth.user.timezone = "Asia/Kathmandu";
   const busy = [];
   const h = mount(load("src/components/TimezoneSettings.tsx").TimezoneSettings, { onBusyChange: value => busy.push(value) });
+  assert.match(text(h.tree), /Asia\/Kathmandu/);
+  assert.equal(nodes(h.tree, n => n.type === "select").length, 0);
+  click(h, "其他城市／完整清單");
   let select = nodes(h.tree, n => n.type === "select")[0];
   assert.equal(select.props.value, "Asia/Kathmandu");
-  assert.equal(nodes(h.tree, n => n.type === "label")[0].props.htmlFor, select.props.id);
+  assert.ok(nodes(h.tree, n => n.type === "label").some(n => n.props.htmlFor === select.props.id));
   assert.ok(nodes(select, n => n.type === "option").some(n => n.props.value === "Asia/Kathmandu"));
   assert.equal(calls.length, 0);
   select.props.onChange({ target: { value: "America/New_York" } }); h.render();
@@ -704,6 +707,7 @@ test("timezone presentation retains the selected IANA identifier and exact save 
 test("timezone failed saves preserve the selection and prevent duplicate pending requests", async () => {
   auth.user.timezone = "Asia/Taipei";
   const h = mount(load("src/components/TimezoneSettings.tsx").TimezoneSettings);
+  click(h, "其他城市／完整清單");
   nodes(h.tree, n => n.type === "select")[0].props.onChange({ target: { value: "Europe/London" } }); h.render();
   const job = deferred(); answer = () => job.promise;
   const submit = h.tree.props.onSubmit;
@@ -717,6 +721,195 @@ test("timezone failed saves preserve the selection and prevent duplicate pending
   assert.equal(nodes(h.tree, n => n.type === "select")[0].props.disabled, false);
   assert.ok(!calls.some(c => c.method === "profile"));
   assert.equal(auth.user.timezone, "Asia/Taipei");
+});
+
+const timezoneData = load("src/data/timezones.ts");
+const { TimezoneSettings } = load("src/components/TimezoneSettings.tsx");
+const searchTimezone = (h, query) => { nodes(h.tree, n => n.type === "input" && n.props.type === "search")[0].props.onChange({ target: { value: query } }); h.render(); };
+test("timezone defaults respect saved values and only detect a missing or invalid saved zone", () => {
+  const { initialTimezone, browserTimezone } = timezoneData;
+  for (const saved of ["UTC", "Asia/Calcutta", "Asia/Kathmandu", "America/New_York"]) {
+    assert.equal(initialTimezone(saved, "Asia/Tokyo"), saved);
+  }
+  assert.equal(initialTimezone(undefined, "Asia/Tokyo"), "Asia/Tokyo");
+  assert.equal(initialTimezone("", "Asia/Tokyo"), "Asia/Tokyo");
+  assert.equal(initialTimezone("invalid/zone", "Asia/Tokyo"), "Asia/Tokyo");
+  assert.equal(initialTimezone(null, "invalid/zone"), "UTC");
+  const h = mount(TimezoneSettings);
+  assert.match(text(h.tree), new RegExp(browserTimezone()));
+  assert.equal(calls.length, 0);
+  assert.equal(auth.user.timezone, undefined);
+});
+test("timezone list starts with nine Chinese common choices and preserves uncommon saved aliases", () => {
+  auth.user.timezone = "Etc/GMT+3";
+  const h = mount(TimezoneSettings);
+  const common = nodes(h.tree, n => n.props.className === "timezone-common")[0];
+  assert.equal(nodes(common, n => n.type === "button").length, 9);
+  for (const name of ["台北", "香港", "北京／上海", "東京", "新加坡", "首爾", "倫敦", "紐約", "洛杉磯"]) assert.ok(text(common).includes(name));
+  assert.equal(nodes(common, n => n.type === "time").length, 9);
+  assert.match(text(h.tree), /Etc\/GMT\+3/);
+  click(h, "其他城市／完整清單");
+  const options = nodes(h.tree, n => n.type === "option" && n.props.value);
+  assert.deepEqual(options.slice(0, 9).map(n => n.props.value), [...timezoneData.COMMON_TIMEZONES]);
+  assert.ok(options.some(n => n.props.value === "Etc/GMT+3"));
+  assert.ok(options.some(n => n.props.value === "UTC"));
+  assert.equal(options.length, new Set(options.map(n => n.props.value)).size);
+  assert.equal(calls.length, 0);
+});
+test("timezone search accepts Traditional, Simplified, English, full-width and partial IANA names", () => {
+  const { matchesTimezone } = timezoneData;
+  for (const query of ["台北", "臺北", "Taipei", "Ｔａｉｐｅｉ", "Asia/Tai", "  taiPEI "]) assert.ok(matchesTimezone("Asia/Taipei", query), query);
+  for (const query of ["紐約", "纽约", "New York", "new_york", "America/New"]) assert.ok(matchesTimezone("America/New_York", query), query);
+  assert.ok(matchesTimezone("Europe/London", "伦敦"));
+  assert.ok(matchesTimezone("America/Los_Angeles", "洛杉矶"));
+  assert.ok(matchesTimezone("Asia/Shanghai", "北京"));
+  assert.ok(!matchesTimezone("Asia/Taipei", "Tokyo"));
+  assert.ok(!matchesTimezone("Asia/Taipei", ".*"));
+  auth.user.timezone = "Europe/London";
+  const h = mount(TimezoneSettings);
+  searchTimezone(h, "台北");
+  const select = nodes(h.tree, n => n.type === "select")[0];
+  assert.deepEqual(nodes(select, n => n.type === "option" && n.props.value).map(n => n.props.value), ["Asia/Taipei"]);
+  assert.equal(select.props.value, "", "Searching must not select the first match automatically");
+  assert.match(text(nodes(h.tree, n => n.props.className === "timezone-selection")[0]), /Europe\/London/);
+  assert.equal(calls.length, 0);
+  select.props.onChange({ target: { value: "Asia/Taipei" } }); h.render();
+  assert.match(text(nodes(h.tree, n => n.props.className === "timezone-selection")[0]), /Asia\/Taipei/);
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.equal(nodes(h.tree, n => n.props.type === "search")[0].props.value, "台北");
+  assert.match(text(h.tree), /找到 1 个时区/);
+  assert.equal(calls.length, 0);
+});
+test("timezone no-result and collapse preserve the selected draft and keep recovery available", () => {
+  auth.user.timezone = "Asia/Tokyo";
+  const h = mount(TimezoneSettings);
+  searchTimezone(h, "<not-a-timezone>");
+  assert.equal(nodes(h.tree, n => n.type === "select").length, 0);
+  assert.match(text(h.tree), /找不到這個城市或時區/);
+  click(h, "收起完整清單");
+  assert.equal(nodes(h.tree, n => n.props.type === "search")[0].props.value, "");
+  assert.match(text(h.tree), /Asia\/Tokyo/);
+  assert.equal(calls.length, 0);
+});
+test("mainland city aliases find Beijing time in both Chinese scripts and save the actual IANA zone", async () => {
+  for (const query of ["北京", "上海", "廣州", "广州", "深圳", "成都", "杭州", "重庆", "沈阳", "哈尔滨", "北京時間", "北京时间", "China", "Beijing", "Guangzhou", "Chengdu", "UTC+8"]) assert.ok(timezoneData.matchesTimezone("Asia/Shanghai", query), query);
+  const h = mount(TimezoneSettings);
+  searchTimezone(h, "广州");
+  const select = nodes(h.tree, n => n.type === "select")[0];
+  const matches = nodes(select, n => n.type === "option" && n.props.value);
+  assert.deepEqual(matches.map(n => n.props.value), ["Asia/Shanghai"]);
+  assert.match(text(matches), /北京／上海/);
+  select.props.onChange({ target: { value: "Asia/Shanghai" } }); h.render();
+  assert.equal(calls.length, 0);
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.deepEqual(calls.find(c => c.method === "patch")?.args, ["/users/me", { timezone: "Asia/Shanghai" }]);
+  assert.equal(timezoneData.timezoneTime("Asia/Shanghai", new Date("2026-01-15T00:00:00Z")), "08:00");
+  searchTimezone(h, "乌鲁木齐");
+  assert.deepEqual(nodes(h.tree, n => n.type === "option" && n.props.value).map(n => n.props.value), ["Asia/Shanghai", "Asia/Urumqi"]);
+  assert.match(text(h.tree), /新疆地方時間/);
+  assert.equal(timezoneData.timezoneTime("Asia/Urumqi", new Date("2026-01-15T00:00:00Z")), "06:00");
+});
+test("timezone common-city buttons only change the draft and clear stale success notices", async () => {
+  auth.user.timezone = "Asia/Taipei";
+  const h = mount(TimezoneSettings);
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /時區已保存/);
+  const target = nodes(h.tree, n => n.type === "button" && text(n).startsWith("東京"))[0];
+  assert.equal(target.props.type, "button");
+  target.props.onClick(); h.render();
+  assert.doesNotMatch(text(h.tree), /時區已保存/);
+  assert.match(text(nodes(h.tree, n => n.props.className === "timezone-selection")[0]), /Asia\/Tokyo/);
+  assert.equal(nodes(h.tree, n => n.type === "button" && n.props["aria-pressed"] === true).length, 1);
+  assert.equal(calls.filter(c => c.method === "patch").length, 1);
+  assert.equal(auth.user.timezone, "Asia/Taipei");
+});
+test("timezone pending save freezes common buttons, search and full-list controls", async () => {
+  auth.user.timezone = "Asia/Taipei";
+  const h = mount(TimezoneSettings);
+  const staleCity = nodes(h.tree, n => n.type === "button" && text(n).startsWith("東京"))[0];
+  const pending = deferred(); answer = () => pending.promise;
+  const save = h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  for (const control of nodes(h.tree, n => ["input", "button"].includes(n.type))) assert.equal(control.props.disabled, true);
+  staleCity.props.onClick(); searchTimezone(h, "Tokyo");
+  assert.equal(nodes(h.tree, n => n.props.type === "search")[0].props.value, "");
+  assert.match(text(nodes(h.tree, n => n.props.className === "timezone-selection")[0]), /Asia\/Taipei/);
+  pending.resolve({ data: {} }); await save; h.render();
+  assert.equal(calls.filter(c => c.method === "patch").length, 1);
+});
+test("timezone current times follow DST, midnight and fractional-hour zones", () => {
+  const { timezoneTime } = timezoneData;
+  const winter = new Date("2026-01-15T00:00:00Z"), summer = new Date("2026-07-15T00:00:00Z");
+  assert.equal(timezoneTime("Asia/Taipei", winter), "08:00");
+  assert.equal(timezoneTime("Asia/Kathmandu", winter), "05:45");
+  assert.equal(timezoneTime("Europe/London", winter), "00:00");
+  assert.equal(timezoneTime("Europe/London", summer), "01:00");
+  assert.equal(timezoneTime("America/New_York", winter), "19:00");
+  assert.equal(timezoneTime("America/New_York", summer), "20:00");
+  assert.equal(timezoneTime("UTC", winter), "00:00");
+});
+test("timezone selector degrades safely without supportedValuesOf but retains saved and browser zones", () => {
+  const original = Intl.supportedValuesOf;
+  try {
+    for (const replacement of [undefined, () => { throw Error("unsupported"); }]) {
+      Intl.supportedValuesOf = replacement;
+      const values = timezoneData.availableTimezones("Etc/GMT+3", "Asia/Kathmandu");
+      assert.ok(values.includes("Etc/GMT+3")); assert.ok(values.includes("Asia/Kathmandu")); assert.ok(values.includes("UTC"));
+      assert.deepEqual(values.slice(0, 9), [...timezoneData.COMMON_TIMEZONES]);
+      assert.ok(!timezoneData.availableTimezones("invalid/zone").includes("invalid/zone"));
+    }
+  } finally { Intl.supportedValuesOf = original; }
+});
+test("timezone minute clock pauses while hidden, refreshes on resume, cleans up and never requests data", () => {
+  const h = mount(load("src/hooks/useTimezoneMinute.ts").useTimezoneMinute); h.effects(); h.render();
+  assert.equal(timers.size, 1);
+  assert.ok([...timers.values()][0].delay > 0 && [...timers.values()][0].delay <= 60_000);
+  const initial = h.tree;
+  [...timers.values()][0].fn(); h.render();
+  assert.notEqual(h.tree, initial);
+  assert.equal(timers.size, 1);
+  documentStub.hidden = true; emit(documentEvents, "visibilitychange");
+  assert.equal(timers.size, 0);
+  documentStub.hidden = false; emit(windowEvents, "pageshow"); h.render();
+  assert.equal(timers.size, 1);
+  h.dispose();
+  assert.equal(timers.size, 0);
+  for (const name of ["focus", "pageshow"]) assert.equal(windowEvents.get(name).size, 0);
+  assert.equal(documentEvents.get("visibilitychange").size, 0);
+  assert.equal(calls.length, 0);
+});
+test("both settings surfaces reuse the timezone picker; registration still detects without a duplicate control", () => {
+  for (const path of ["src/pages/AccountSettingsPage.tsx", "src/components/CabinPanelDialog.tsx"]) assert.match(readFileSync(resolve(root, path), "utf8"), /<TimezoneSettings/);
+  assert.match(readFileSync(resolve(root, "src/api/auth.ts"), "utf8"), /timezone: Intl.DateTimeFormat\(\).resolvedOptions\(\).timeZone/);
+  assert.doesNotMatch(readFileSync(resolve(root, "src/pages/RegisterPage.tsx"), "utf8"), /<TimezoneSettings|<select[^>]*timezone/);
+});
+test("account settings uses the approved cabin panels and preserves save locking and existing navigation", () => {
+  const h = mount(load("src/pages/AccountSettingsPage.tsx").AccountSettingsPage);
+  assert.equal(h.tree.props.className, "photo-album cabin-utility account-settings");
+  assert.equal(nodes(h.tree, n => n.type === "section" && n.props.className === "photo-panel").length, 3);
+  assert.equal(one(h, "Link").props.to, "/outside");
+  one(h, "TimezoneSettings").props.onBusyChange(true); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
+  assert.equal(components(h, "Link").length, 0);
+  one(h, "TimezoneSettings").props.onBusyChange(false); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, false);
+  assert.equal(one(h, "Link").props.to, "/outside");
+  assert.equal(calls.length, 0);
+});
+test("timezone controls use purple cabin tokens, readable native options and wrapping mobile layouts", () => {
+  const css = readFileSync(resolve(root, "src/timezone-settings.css"), "utf8");
+  const page = readFileSync(resolve(root, "src/pages/AccountSettingsPage.tsx"), "utf8");
+  assert.doesNotMatch(page, /fields\.css|field-app|field-panel/);
+  assert.doesNotMatch(css, /#8ed6dc|#39767d|--accent[,)]|--ink[,)]/);
+  for (const token of ["--c-sky", "--c-frost", "--c-muted", "--c-snow", "--c-moon"]) assert.ok(css.includes(token));
+  assert.match(css, /select option\s*\{[^}]*background-color: var\(--tz-bg\);[^}]*color: var\(--tz-ink\)/);
+  assert.match(css, /:is\(input, select\)[^{]*\{[^}]*-webkit-text-fill-color: var\(--tz-ink\);[^}]*color-scheme: dark/);
+  assert.match(css, /:disabled\s*\{[^}]*opacity: 1;[^}]*-webkit-text-fill-color: var\(--tz-muted\)/);
+  assert.match(css, /:focus-visible\s*\{[^}]*outline: 2px solid var\(--tz-accent\)/);
+  assert.match(css, /repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /flex-wrap: wrap/);
+  assert.match(css, /@media \(max-width: 360px\)/);
+  const luminance = hex => hex.match(/../g).map(part => parseInt(part, 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+  for (const foreground of ["f4f0ff", "a9a1c7", "efebf6", "b5abc7"]) assert.ok((luminance(foreground) + .05) / (luminance("0a081c") + .05) >= 4.5);
 });
 
 const { AdminPage } = load("src/pages/AdminPage.tsx");
@@ -2466,6 +2659,7 @@ test("real React server rendering serializes all eleven fields and registration 
     const code = ts.transpileModule(readFileSync(path, "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
     function localRequire(name) {
       if (name.endsWith(".css")) return {};
+      if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(path), name), "utf8"));
       if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
       if (name.endsWith("/hooks/useAuth")) return { useAuth: () => auth };
       if (!name.startsWith(".")) return require(name);
@@ -2509,6 +2703,7 @@ test("real React server rendering serializes all eleven fields and registration 
     ["fields/SpaceChat.tsx", "SpaceChatContent", { space: "plaza" }],
     ["components/CoordinateSettings.tsx", "CoordinateSettings", {}],
     ["components/TimezoneSettings.tsx", "TimezoneSettings", {}],
+    ["pages/AccountSettingsPage.tsx", "AccountSettingsPage", {}],
     ["components/FurnitureActions.tsx", "WardrobeActions", { onBusyChange() {} }],
     ["components/FurnitureActions.tsx", "DiningActions", { onBusyChange() {} }],
     ["components/FurnitureActions.tsx", "PetActions", { onBusyChange() {} }],
