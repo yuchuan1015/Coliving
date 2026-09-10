@@ -31,6 +31,7 @@ import { WorkshopField, WeilanField } from "./fields/ActivityFields";
 import { PlazaField } from "./fields/PlazaField";
 import { AuthorizePage } from "./pages/AuthorizePage";
 import { DMReportsPage } from "./pages/DMReportsPage";
+import { ContentReviewsPage } from "./pages/ContentReviewsPage";
 import "./social.css";
 import { LanguageDocument } from "./i18n/LanguageControl";
 
@@ -63,6 +64,7 @@ export default function App() {
               <Route path="/agent/advanced" element={<AdvancedAgentPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/dm-reports" element={<DMReportsPage />} />
+              <Route path="/admin/content-reviews" element={<ContentReviewsPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaField />} />
               <Route path="/settings" element={<AccountSettingsPage />} />

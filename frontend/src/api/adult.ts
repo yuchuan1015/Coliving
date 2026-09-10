@@ -7,12 +7,21 @@ export interface ArticleOut {
   title: string;
   content: string;
   author_name: string | null;
+  age_tier: string;
+  age_tier_name: string;
+  status: string;
   created_at: string;
 }
 
+export interface AdultTier { value: string; name: string; hint: string; min_age: number; allowed: boolean }
+export interface AdultSubmission extends ArticleOut { message: string }
 export interface AdultResponse {
+  field_name: string;
   articles: ArticleOut[];
   category_counts: Record<string, number>;
+  allowed_tiers: string[];
+  tiers: AdultTier[];
+  review_note: string;
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -37,7 +46,8 @@ export async function submitArticle(payload: {
   category: string;
   title: string;
   content: string;
-}): Promise<ArticleOut> {
-  const res = await client.post<ArticleOut>("/adult/submit", payload);
+  age_tier?: string;
+}): Promise<AdultSubmission> {
+  const res = await client.post<AdultSubmission>("/adult/submit", payload);
   return res.data;
 }

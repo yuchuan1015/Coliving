@@ -115,6 +115,7 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-agent-copy strong { font-size: 24px; font-weight: 400; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cabin-agent-copy small { font-size: 13px; color: var(--c-muted); }
 .cabin-agent-copy small span { color: var(--c-moon); }
+.cabin-agent-copy .agent-status-note { color:var(--c-moon); font-size:.875rem; line-height:1.4; margin-top:2px; }
 .cabin-fab-wrap { position: relative; flex: none; z-index: 11; width: 44px; height: 44px; }
 .cabin-fab { border: 0; background: none; color: var(--c-moon); width: 44px; height: 44px; display: grid; place-items: center; padding: 0; }
 .cabin-fab > span { width: calc(var(--c-avatar) / 2); height: calc(var(--c-avatar) / 2); border: 1px solid var(--c-moon); border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 300; line-height: 1; background: rgb(201 167 255 / .06); box-shadow: inset 0 1px 0 rgb(244 240 255 / .10); }

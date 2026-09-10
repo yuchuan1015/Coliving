@@ -61,6 +61,7 @@ export interface AgentPublic {
   llm_provider: LlmProvider;
   llm_model: string;
   has_api_key: boolean;
+  status_note?: string | null;
   first_key?: McpKey | null;
   dm_code?: string | null;
   dm_code_public?: boolean;
@@ -130,6 +131,7 @@ export interface ResidentWithAgent {
   agent_avatar_url?: string | null;
   agent_brain?: string | null;
   agent_dm_code?: string | null;
+  agent_status_note?: string | null;
   coordinate?: { l: number; b: number; r: number; partial?: boolean } | null;
   drifting?: boolean;
   partial?: boolean;

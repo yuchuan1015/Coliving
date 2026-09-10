@@ -8,6 +8,7 @@ import { getFurniture, weatherIcon, type FurnitureSummary } from "../api/furnitu
 import { useAuth } from "../hooks/useAuth";
 import { cabinZones, coverPoint, type CabinFurniture, type CabinPanel } from "../data/cabin";
 import { CabinPanelDialog } from "../components/CabinPanelDialog";
+import { AgentStatusNote } from "../components/AgentStatusNote";
 import { AvatarContent } from "../components/AvatarContent";
 import { PhotoImage } from "../components/PhotoImage";
 import { CabinPhotoFrame } from "../components/CabinPhotoFrame";
@@ -174,7 +175,7 @@ export function HomePage() {
     <section className="cabin-card cabin-agent" aria-label={uiText("Agent 個人名牌")}>
       <div className="cabin-agent-info">
         <span className="cabin-avatar" aria-hidden="true"><AvatarContent url={agent?.avatar_url} emoji={agent?.avatar_emoji ?? "◌"} name={agent?.name ?? "室友"} /></span>
-        <span className="cabin-agent-copy"><strong>{agent?.name ?? (error ? uiText("室友資料未同步") : uiText("尚未連結 Agent"))}</strong><small><span aria-hidden="true">•</span> {agent?.status ?? uiText("等待連結")}</small></span>
+        <span className="cabin-agent-copy"><strong>{agent?.name ?? (error ? uiText("室友資料未同步") : uiText("尚未連結 Agent"))}</strong><small><span aria-hidden="true">•</span> {agent?.status ?? uiText("等待連結")}</small><AgentStatusNote note={agent?.status_note} /></span>
       </div>
       <div className="cabin-fab-wrap">
         {fabOpen && <nav className="cabin-fab-menu" id="cabin-fab-menu" aria-label={uiText("艙室快捷選單")}>

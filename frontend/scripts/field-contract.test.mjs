@@ -292,7 +292,7 @@ test("intimacy center rename preserves the adult route, Antares coordinates and 
   assert.equal(entry.title, "Antares · 分級式人機親密關係中心");
   assert.equal(entry.link.to, "/adult");
   assert.ok(!entry.summary.includes("導航目前標示"));
-  assert.match(entry.notice, /符合成年條件/);
+  assert.match(entry.notice, /最低開放年齡為 12 歲/);
 });
 test("renamed destination and transition use the selected UI language but navigate to adult", () => {
   for (const locale of ["zh-TW", "zh-CN"]) {
@@ -1732,36 +1732,36 @@ test("own DM code is read-only until copy, with manual clipboard fallback", asyn
   assert.equal(nodes(h.tree, n => n.type === "input")[0].props.readOnly, true);
   assert.match(text(h.tree), /長按/);
 });
-test("nine chat spaces are lazy and disabled frames do not mount chat", () => {
-  assert.deepEqual(social.CHAT_SPACES, ["plaza", "library", "park", "workshop", "museum", "weilan", "history", "adult", "health"]);
+test("eight chat spaces are lazy and disabled frames do not mount chat", () => {
+  assert.deepEqual(social.CHAT_SPACES, ["plaza", "library", "park", "workshop", "museum", "weilan", "history", "health"]);
   for (const id of social.CHAT_SPACES) {
     assert.equal(one(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").props.space, id);
     assert.equal(components(mount(shared.FieldFrame, { id, children: null, chatEnabled: false }), "SpaceChat").length, 0);
     const h = mount(SpaceChat, { space: id }); assert.equal(components(h, "SpaceChatContent").length, 0); assert.equal(reads.length, 0);
     click(h, "展開聊天"); assert.equal(one(h, "SpaceChatContent").props.space, id);
   }
-  for (const id of ["mail", "ai-chat"]) assert.equal(components(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").length, 0);
+  for (const id of ["mail", "ai-chat", "adult"]) assert.equal(components(mount(shared.FieldFrame, { id, children: null }), "SpaceChat").length, 0);
 });
-test("adult chat follows explicit entry and exit; health does not infer age from the profile", () => {
+test("adult never mounts public chat; health does not infer age from the profile", () => {
   const h = mount(content.ArticlesField, { kind: "adult" });
   assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
   assert.equal(reads.length, 0);
   nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
-  click(h, "確認進入"); assert.equal(one(h, "FieldFrame").props.chatEnabled, true);
+  click(h, "確認進入"); assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
   click(h, "離開分級式人機親密關係中心"); assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
   auth.user.birth_year = null;
   const health = mount(content.ArticlesField, { kind: "health" });
   assert.equal(one(health, "FieldFrame").props.chatEnabled, true);
 });
 test("restricted chat waits for both reads before enabling send and export", () => {
-  fixture("/spaces/adult/present", { present: [] });
-  const h = mount(SpaceChatContent, { space: "adult" });
+  fixture("/spaces/health/present", { present: [] });
+  const h = mount(SpaceChatContent, { space: "health" });
   assert.equal(components(h, "FieldForm").length, 0); assert.equal(button(h, "匯出帶走").props.disabled, true);
-  assert.deepEqual(reads, ["/spaces/adult/present", "/spaces/adult/chat?limit=200"]);
+  assert.deepEqual(reads, ["/spaces/health/present", "/spaces/health/chat?limit=200"]);
   assert.equal(calls.length, 0);
 });
 test("403 from either restricted read hides content, people, send and export with exact server detail", () => {
-  for (const space of ["adult", "health"]) for (const denied of ["present", "chat?limit=200"]) {
+  for (const space of ["health"]) for (const denied of ["present", "chat?limit=200"]) {
     fixture(`/spaces/${space}/present`, { present: [{ id: "a", name: "不可顯示的名字" }] });
     fixture(`/spaces/${space}/chat?limit=200`, { messages: [{ id: "m", sender: "人", content: "不可顯示的內容", mentions: [], expires_at: "2099-01-01T00:00:00Z" }] });
     const error = { status: 403, message: "需要設定出生年份才能進入此區域" };
@@ -1785,10 +1785,10 @@ test("health chat sends independently of article tiers and frontend birth year",
   expectCall("post", "/spaces/health/chat", { content: "@星A 你好", mentions: [] });
 });
 test("a denied send clears restricted chat and rechecks only when the user asks", async () => {
-  fixture("/spaces/adult/present", { present: [{ id: "a", name: "星A" }] });
-  fixture("/spaces/adult/chat?limit=200", { messages: [] });
-  const h = mount(SpaceChatContent, { space: "adult" });
-  const detail = "此區域僅限 18 歲以上使用者";
+  fixture("/spaces/health/present", { present: [{ id: "a", name: "星A" }] });
+  fixture("/spaces/health/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "health" });
+  const detail = "需要設定出生年份才能進入此區域";
   answer = async () => { throw { isAxiosError: true, response: { status: 403, data: { detail } } }; };
   await assert.rejects(submit(h, "送出訊息", { content: "@星A 你好" })); h.render();
   assert.equal(one(h, "FieldError").props.error.message, detail);
@@ -1808,8 +1808,8 @@ test("Markdown export shows text-encoded JSON 403 detail without creating a down
   assert.equal(calls.length, 1); expectCall("get", "/spaces/health/chat/export");
 });
 test("a normal send error retains the draft form and does not become an age denial", async () => {
-  fixture("/spaces/adult/present", { present: [{ id: "a", name: "星A" }] }); fixture("/spaces/adult/chat?limit=200", { messages: [] });
-  const h = mount(SpaceChatContent, { space: "adult" });
+  fixture("/spaces/health/present", { present: [{ id: "a", name: "星A" }] }); fixture("/spaces/health/chat?limit=200", { messages: [] });
+  const h = mount(SpaceChatContent, { space: "health" });
   answer = async () => { throw { isAxiosError: true, response: { status: 400, data: { detail: "星A 已經離開" } } }; };
   await assert.rejects(submit(h, "送出訊息", { content: "@星A 草稿" })); h.render();
   assert.equal(components(h, "FieldForm").length, 1); assert.equal(components(h, "FieldError").length, 0);
@@ -2641,7 +2641,7 @@ test("adult consent is not authority: no reads before consent, no form after 403
   assert.ok(reads.includes("/adult")); assert.equal(button(h, "投稿文章").props.disabled, true); assert.equal(components(h, "FieldForm").length, 0);
 });
 test("authorized adult submits to adult API without inventing health tier", async () => {
-  fixture("/adult", { articles: [], category_counts: {} }); const h = mount(content.ArticlesField, { kind: "adult" });
+  fixture("/adult", adultFixture()); const h = mount(content.ArticlesField, { kind: "adult" });
   nodes(h.tree, n => n.type === "input")[0].props.onChange({ target: { checked: true } }); h.render(); click(h, "確認進入"); click(h, "投稿文章");
   await submit(h, "確認投稿", { category: "communication", title: "標題", content: "測試內容" }); expectCall("post", "/adult/submit", { category: "communication", title: "標題", content: "測試內容" });
 });
@@ -3215,7 +3215,7 @@ test("adoption with a key still sends it; failure retains inputs and backend det
   await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
   assert.equal(calls[0].args[1].api_key, "test-only-provider-key");
   assert.match(text(h.tree), /測試：金鑰不正確/);
-  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.value, " test-only-provider-key ");
+  assert.equal(nodes(h.tree, n => n.props.id === "adopt-api-key")[0].props.value, "test-only-provider-key");
   assert.equal(components(h, "AdoptionSuccess").length, 0);
 });
 
@@ -3561,4 +3561,192 @@ test("concurrent session 401s share one refresh and queued retries are bounded",
     await assert.rejects(h.reject({ config, response: { status: 401 } }));
   }
   assert.equal(h.refreshCalls(), 1); assert.equal(windowStub.location.href, undefined);
+});
+
+const adultTiers = [
+  { value: "guidance12", name: "輔12", hint: "關係與界線", min_age: 12, allowed: true },
+  { value: "guidance15", name: "輔15", hint: "情感與身體議題", min_age: 15, allowed: true },
+  { value: "restricted", name: "限制級", hint: "明確的性內容", min_age: 18, allowed: true },
+];
+function adultFixture(allowed = ["guidance12", "guidance15", "restricted"]) {
+  return { field_name: "後端命名測試", articles: adultTiers.map((t, i) => ({ id: String(i), category: "communication", category_name: "親密溝通", title: "文章-" + t.value, age_tier: t.value, age_tier_name: t.name, content: "本文", created_at: "2026-09-10T00:00:00Z" })),
+    category_counts: {}, allowed_tiers: allowed, tiers: adultTiers.map(t => ({ ...t, allowed: allowed.includes(t.value) })), review_note: "後端提示：人工審核，大約三個工作天。" };
+}
+function enterAdult() {
+  const h = mount(content.ArticlesField, { kind: "adult" });
+  nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } });
+  h.render(); click(h, "確認進入"); return h;
+}
+test("adult uses backend field name, tier names and permissions without computing local age", () => {
+  auth.user.birth_year = 1900;
+  fixture("/adult", adultFixture(["guidance12"]));
+  const h = enterAdult();
+  assert.equal(one(h, "FieldFrame").props.fieldName, "後端命名測試");
+  assert.deepEqual(components(h, "FieldTabs")[1].props.options, { "": "全部可讀分級", guidance12: "輔12" });
+  assert.match(text(h.tree), /文章-guidance12/);
+  assert.ok(!text(h.tree).includes("文章-restricted")); assert.ok(!text(h.tree).includes("文章-guidance15"));
+  assert.match(text(h.tree), /未開放/); assert.match(text(h.tree), /後端提示/);
+  const frame = mount(shared.FieldFrame, one(h, "FieldFrame").props);
+  assert.match(text(frame.tree), /後端命名測試/); assert.equal(components(frame, "SpaceChat").length, 0);
+});
+test("adult local tier filter sends no unsupported age_tier query and uses only authorized batch", () => {
+  fixture("/adult", adultFixture()); const h = enterAdult(); reads.length = 0;
+  tab(h, "guidance15", 1);
+  assert.deepEqual(reads, ["/adult"]);
+  assert.match(text(h.tree), /文章-guidance15/); assert.ok(!text(h.tree).includes("文章-guidance12"));
+  assert.match(text(h.tree), /目前載入的文章/);
+});
+test("adult disallows posting when tier metadata is missing or contradictory", () => {
+  for (const value of [{ articles: [] }, { ...adultFixture([]) }, { ...adultFixture(), allowed_tiers: undefined }, { ...adultFixture(), tiers: null }, { ...adultFixture(["guidance12"]), tiers: adultTiers.map(t => ({ ...t, allowed: false })) }]) {
+    fixture("/adult", value); const h = enterAdult();
+    assert.equal(button(h, "投稿文章").props.disabled, true); assert.equal(components(h, "FieldForm").length, 0);
+  }
+});
+test("adult entry and exit never offer public chat; even direct stale component calls do not read endpoints", () => {
+  fixture("/adult", adultFixture()); const h = enterAdult();
+  assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
+  assert.ok(nodes(h.tree, n => n.type?.name === "Link" && n.props.to === "/ai-chat").length > 0);
+  click(h, "離開分級式人機親密關係中心");
+  assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
+  reads.length = 0;
+  assert.equal(mount(SpaceChat, { space: "adult" }).tree, null);
+  assert.equal(mount(SpaceChatContent, { space: "adult" }).tree, null);
+  assert.deepEqual(reads, []); assert.deepEqual(calls, []);
+});
+test("adult submission preserves pending response message and optional suggested tier", async () => {
+  fixture("/adult", adultFixture()); const h = enterAdult(); click(h, "投稿文章");
+  assert.match(text(h.tree), /後端提示：人工審核，大約三個工作天/);
+  const tier = one(h, "FieldSelect", n => n.props.name === "age_tier");
+  assert.equal(tier.props.required, false); assert.equal(tier.props.value, "");
+  assert.equal(form(h, "確認投稿").props.guarded, true);
+  writeResult = { status: "pending", message: "後端原文：已收到，人工審核約三個工作天。" };
+  await submit(h, "確認投稿", { title: "投稿", category: "communication", content: "內容", age_tier: "guidance15" }, true);
+  expectCall("post", "/adult/submit", { title: "投稿", category: "communication", content: "內容", age_tier: "guidance15" });
+  assert.match(text(h.tree), /後端原文/); assert.ok(!text(h.tree).includes("正在更新列表"));
+  assert.equal(components(h, "FieldDialog").length, 0);
+});
+test("adult 403 detail stays authoritative and never leaves readable or writable stale data", () => {
+  fixtures.set("/adult", { data: adultFixture(), error: { status: 403, message: "最低是輔12，滿12歲才進得來" } });
+  const h = enterAdult();
+  assert.equal(button(h, "投稿文章").props.disabled, true); assert.ok(!text(h.tree).includes("文章-guidance12"));
+  assert.match(one(h, "ResourceState").props.resource.error.message, /輔12/);
+});
+const { ContentReviewsPage, ContentReviewQueue, ContentReviewDetail } = load("src/pages/ContentReviewsPage.tsx");
+const reviewData = () => ({ id: "r/a", status: "pending", content_type: "adult", submitter_name: "範例室友",
+  content: { type: "adult", title: "待審文章", content: "<script>原文不是HTML</script>", age_tier: "guidance12", age_tier_name: "輔12", tier_options: adultTiers } });
+test("content review entry reads nothing for non-admins and has a system-dashboard route", () => {
+  const h = mount(ContentReviewsPage); assert.equal(components(h, "ContentReviewQueue").length, 0);
+  assert.match(text(h.tree), /需要管理員/); assert.deepEqual(reads, []);
+  auth.user.role = "admin"; h.render(); assert.equal(components(h, "ContentReviewQueue").length, 1);
+  assert.ok(readFileSync(resolve(root, "src/App.tsx"), "utf8").includes('path="/admin/content-reviews"'));
+});
+test("content review queue filters to adult submissions, paginates and mounts selected detail", () => {
+  const path = "/review/pending?content_type=adult&limit=50&offset=0";
+  fixture(path, Array.from({ length: 50 }, (_, i) => ({ id: String(i), title: "稿件", created_at: "2026-09-10T00:00:00Z" })));
+  const h = mount(ContentReviewQueue); assert.deepEqual(reads, [path]);
+  nodes(h.tree, n => n.type === "button" && text(n) === "閱讀與決定分級")[0].props.onClick(); h.render();
+  assert.equal(one(h, "ContentReviewDetail").props.id, "0");
+  one(h, "FieldDialog").props.onClose(); h.render(); click(h, "下一頁");
+  assert.ok(reads.includes("/review/pending?content_type=adult&limit=50&offset=50"));
+  assert.equal(button(h, "下一頁").props.disabled, true);
+});
+function reviewDetail() { fixture("/review/r%2Fa", reviewData()); return mount(ContentReviewDetail, { id: "r/a", onDone() {} }); }
+function reviewDecision(h, value) { nodes(h.tree, n => n.type === "select" && n.props.name === "decision")[0].props.onChange({ target: { value } }); h.render(); }
+test("review approval sends exact backend tier code and note, plain article content, guarded form", async () => {
+  const h = reviewDetail(); reviewDecision(h, "approved");
+  assert.ok(text(h.tree).includes("<script>原文不是HTML</script>"));
+  assert.equal(nodes(h.tree, n => n.props.dangerouslySetInnerHTML).length, 0);
+  assert.equal(one(h, "FieldSelect").props.value, "guidance12");
+  assert.equal(form(h, "確認保存審核").props.guarded, true);
+  await submit(h, "確認保存審核", { age_tier: "guidance15", note: "分級理由" });
+  expectCall("post", "/review/r%2Fa/decide", { decision: "approved", note: "分級理由", age_tier: "guidance15" });
+});
+test("review rejects invalid/missing tier or note before writing, and rejection omits age_tier", async () => {
+  const h = reviewDetail(); reviewDecision(h, "approved");
+  await assert.rejects(submit(h, "確認保存審核", { age_tier: "adult", note: "理由" }));
+  await assert.rejects(submit(h, "確認保存審核", { age_tier: "guidance12", note: " " }));
+  assert.equal(calls.length, 0);
+  reviewDecision(h, "rejected"); assert.equal(components(h, "FieldSelect").length, 0);
+  await submit(h, "確認保存審核", { age_tier: "guidance15", note: "需修改" });
+  expectCall("post", "/review/r%2Fa/decide", { decision: "rejected", note: "需修改" });
+});
+test("missing, foreign and already-reviewed content cannot be decided", () => {
+  for (const value of [{ ...reviewData(), content: null }, { ...reviewData(), status: "approved" }, { ...reviewData(), content: { type: "exhibit" } }]) {
+    fixture("/review/r", value); const h = mount(ContentReviewDetail, { id: "r", onDone() {} });
+    assert.equal(components(h, "FieldForm").length, 0);
+  }
+});
+test("missing review tier options never permit approval", async () => {
+  fixture("/review/r", { ...reviewData(), content: { ...reviewData().content, tier_options: [] } });
+  const h = mount(ContentReviewDetail, { id: "r", onDone() {} }); reviewDecision(h, "approved");
+  assert.match(text(h.tree), /未取得可用分級/);
+  await assert.rejects(submit(h, "確認保存審核", { age_tier: "restricted", note: "理由" }));
+  assert.equal(calls.length, 0);
+});
+const { AgentStatusNote } = load("src/components/AgentStatusNote.tsx");
+test("status note is absent for null/empty and remains literal user text in Simplified UI", () => {
+  for (const note of [undefined, null, "", " "]) assert.equal(mount(AgentStatusNote, { note }).tree, null);
+  language.setUiLanguage("zh-CN");
+  const note = "我在圖書館讀書 <b>稍候</b>";
+  const h = mount(AgentStatusNote, { note });
+  assert.equal(text(h.tree), note); assert.equal(nodes(h.tree, n => n.type === "input" || n.props.dangerouslySetInnerHTML).length, 0);
+});
+test("directory and plaza show only public agent status note beside agent identity", () => {
+  const resident = { id: "r", display_name: "住戶", agent_id: "a", agent_name: "室友", agent_status_note: "勿擾" };
+  const identity = mount(ResidentIdentity, { resident });
+  assert.equal(one(identity, "AgentStatusNote").props.note, "勿擾");
+  fixture("/users/residents", { residents: [resident] });
+  const plaza = mount(PlazaField); tab(plaza, "residents");
+  assert.equal(one(plaza, "AgentStatusNote").props.note, "勿擾");
+  assert.equal(calls.length, 0);
+});
+test("cabin status note uses mine response and does not add any edit entry", async () => {
+  answer = async (_method, url) => ({ data: url === "/home/dashboard" ? { agents: [editorAgent], community_status: {} }
+    : url === "/agents/mine" ? { ...editorAgent, status_note: "外出中" }
+    : url === "/announcements" ? [] : { clock: {} } });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage); h.effects(); await tick(); await tick(); h.render();
+  assert.equal(one(h, "AgentStatusNote").props.note, "外出中");
+  assert.equal(nodes(h.tree, n => n.type === "input" && n.props.name === "status_note").length, 0); h.dispose();
+});
+function pasteInto(h, id, value, start = 0, end) {
+  const input = byId(h, id), existing = input.props.value;
+  let prevented = false;
+  input.props.onPaste({ preventDefault() { prevented = true; }, currentTarget: { value: existing, selectionStart: start, selectionEnd: end ?? existing.length }, clipboardData: { getData: () => value } });
+  assert.equal(prevented, true); h.render();
+}
+test("mirror and adoption trim paste immediately while preserving key characters and never writing on paste", async () => {
+  const editor = await openNoteEditor(); const adopted = mount(AdoptPage);
+  calls.length = 0;
+  for (const [h, id] of [[editor, "editor-key"], [adopted, "adopt-api-key"]]) {
+    pasteInto(h, id, " \r\n  test-only-key_+-== \t");
+    assert.equal(byId(h, id).props.value, "test-only-key_+-==");
+    assert.equal(byId(h, id).props.type, "password");
+    pasteInto(h, id, " NEW ", 10, 13);
+    assert.equal(byId(h, id).props.value, "test-only-NEW_+-==");
+  }
+  assert.equal(calls.length, 0);
+});
+test("invalid interior characters are not silently rewritten into another key", async () => {
+  const h = await openNoteEditor(); pasteInto(h, "editor-key", " test-中文 key ");
+  assert.equal(byId(h, "editor-key").props.value, "test-中文 key");
+});
+test("both key forms reject too-long paste locally instead of silently truncating", async () => {
+  const editor = await openNoteEditor(); const adopted = mount(AdoptPage); fillAdopt(adopted, "");
+  calls.length = 0;
+  for (const [h, id] of [[editor, "editor-key"], [adopted, "adopt-api-key"]]) {
+    pasteInto(h, id, "x".repeat(257)); assert.equal(byId(h, id).props.value.length, 257);
+    await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+    assert.match(text(h.tree), /金鑰超過 256 字/); assert.equal(calls.length, 0);
+  }
+});
+test("both key forms retain exact backend failure detail for invalid, unavailable and malformed keys", async () => {
+  for (const detail of ["金鑰存不進去：Anthropic說這把金鑰無效或沒有權限。", "金鑰存不進去：現在連不上 OpenAI，過一下再試（不一定是金鑰的問題）", "金鑰存不進去：金鑰裡有中文或全形字元"]) {
+    const editor = await openNoteEditor(); changeValue(editor, "editor-key", " test-only-key ");
+    const adopted = mount(AdoptPage); fillAdopt(adopted, " test-only-key ");
+    answer = async () => { throw { isAxiosError: true, response: { status: 400, data: { detail } } }; };
+    for (const [h, id] of [[editor, "editor-key"], [adopted, "adopt-api-key"]]) {
+      await nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); h.render();
+      assert.ok(text(h.tree).includes(detail)); assert.equal(byId(h, id).props.value, "test-only-key");
+    }
+  }
 });

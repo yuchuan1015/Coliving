@@ -7,7 +7,7 @@ import { shelfError, type ShelfError } from "../hooks/useBookshelf";
 import { fieldTime, formText, useFieldResource } from "./fieldData";
 import { FieldError, FieldForm, FieldPanel, FieldText, ResourceState } from "./shared";
 import { FormValidationError } from "./formErrors";
-import { remainingTime, unexpiredMessages, type ChatSpace, type SpaceMessage } from "./socialData";
+import { CHAT_SPACES, remainingTime, unexpiredMessages, type ChatSpace, type SpaceMessage } from "./socialData";
 
 function chatError(error: unknown): ShelfError {
   const failure = shelfError(error);
@@ -25,6 +25,7 @@ export function SpaceChat({ space }: { space: ChatSpace }) {
   useUiLanguage();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  if (!(CHAT_SPACES as readonly string[]).includes(space)) return null;
   return <FieldPanel title={uiText("在這裡聊聊")} action={<button disabled={busy} aria-expanded={open} onClick={() => setOpen(v => !v)}>{open ? uiText("收起聊天") : uiText("展開聊天")}</button>}>
     {open ? <SpaceChatContent key={space} space={space} onBusyChange={setBusy} /> : <p>{uiText("與在場的室友說話。訊息保留 24 小時，離開前可以匯出帶走。")}</p>}
   </FieldPanel>;
@@ -33,8 +34,9 @@ export function SpaceChat({ space }: { space: ChatSpace }) {
 export function SpaceChatContent({ space, onBusyChange }: { space: ChatSpace; onBusyChange?: (busy: boolean) => void }) {
   useUiLanguage();
   const base = `/spaces/${space}`;
-  const people = useFieldResource<{ present: { id: string; name: string; avatar_emoji: string }[] }>(`${base}/present`);
-  const chat = useFieldResource<{ messages: SpaceMessage[] }>(`${base}/chat?limit=200`);
+  const supported = (CHAT_SPACES as readonly string[]).includes(space);
+  const people = useFieldResource<{ present: { id: string; name: string; avatar_emoji: string }[] }>(supported ? `${base}/present` : null);
+  const chat = useFieldResource<{ messages: SpaceMessage[] }>(supported ? `${base}/chat?limit=200` : null);
   const [mentions, setMentions] = useState<string[]>([]);
   const [notice, setNotice] = useState(""); const [revision, setRevision] = useState(0);
   const [now, setNow] = useState(() => Date.now()); const [exporting, setExporting] = useState(false);
@@ -49,7 +51,7 @@ export function SpaceChatContent({ space, onBusyChange }: { space: ChatSpace; on
   const validNames = people.data?.present.map(a => a.name) ?? [];
   const selected = mentions.filter(name => validNames.includes(name));
   const forbidden = accessError ?? [people.error, chat.error].find(error => error?.status === 403);
-  const ready = !!people.data && !!chat.data && !people.loading && !chat.loading && !people.error && !chat.error && !forbidden;
+  const ready = supported && !!people.data && !!chat.data && !people.loading && !chat.loading && !people.error && !chat.error && !forbidden;
   function refresh() { setAccessError(undefined); setExported(null); setNotice(""); people.refresh(); chat.refresh(); setNow(Date.now()); }
   function denyAccess(error: ShelfError) {
     exportRequest.current?.abort(); setExported(null); setMentions([]); setNotice(""); setAccessError(error);
@@ -72,6 +74,7 @@ export function SpaceChatContent({ space, onBusyChange }: { space: ChatSpace; on
     }
     finally { exportLock.current = false; setExporting(false); }
   }
+  if (!supported) return null;
   if (forbidden) return <FieldError error={forbidden} retry={refresh} />;
   return <div className="field-stack">
     <div className="field-actions"><button disabled={sending || exporting} onClick={refresh}>{uiText("更新聊天與名單")}</button><button disabled={!ready || exporting || sending} onClick={() => void exportChat()}>{exporting ? uiText("準備中…") : uiText("匯出帶走")}</button></div>

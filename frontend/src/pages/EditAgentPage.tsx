@@ -9,6 +9,7 @@ import { getMe, updateNoteToAgent } from "../api/auth";
 import { EMOJI_OPTIONS, MODEL_SUGGESTIONS } from "../data/agent-editor";
 import type { AgentPublic, LlmProvider, UpdateAgentPayload } from "../types";
 import "../agent-editor.css";
+import { pasteApiKey } from "../data/api-key-input";
 
 type AvatarMode = "default" | "preset" | "photo";
 function errorText(error: unknown, fallback: string) {
@@ -146,6 +147,9 @@ export function EditAgentPage() {
     if (!name.trim() || !persona.trim() || !model.trim()) {
       setError("請填寫名字、個性描述和模型。"); return;
     }
+    if (apiKey.trim().length > 256) {
+      setError("金鑰超過 256 字，請確認沒有貼入其他文字；不會自動截斷金鑰。"); return;
+    }
     if (provider !== agent.llm_provider && !apiKey.trim()) {
       setError("更換大腦供應商時，請填入該供應商的 API 金鑰。"); return;
     }
@@ -274,7 +278,7 @@ export function EditAgentPage() {
             </div>
             <div className="agent-editor-field">
               <label htmlFor="editor-key">{uiText("API 金鑰")}</label>
-              <input id="editor-key" type="password" value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={provider !== agent.llm_provider ? uiText("更換供應商，請填入新金鑰") : uiText("留空表示不更換")} maxLength={256} autoComplete="new-password" autoCapitalize="none" spellCheck={false} required={provider !== agent.llm_provider} />
+              <input id="editor-key" type="password" value={apiKey} onChange={event => setApiKey(event.target.value.trim())} onPaste={event => pasteApiKey(event, setApiKey)} placeholder={provider !== agent.llm_provider ? uiText("更換供應商，請填入新金鑰") : uiText("留空表示不更換")} autoComplete="new-password" autoCapitalize="none" spellCheck={false} required={provider !== agent.llm_provider} />
             </div>
             <div className="agent-editor-field"><label htmlFor="editor-display-brain">{uiText("對外顯示的大腦（選填）")}</label><input id="editor-display-brain" value={displayBrain} onChange={e => setDisplayBrain(e.target.value)} maxLength={64} autoComplete="off" /><small>{uiText("顯示在居民名片，不會更改實際模型；留空會清除這個標籤。")}</small></div>
             <div className="agent-dm-visibility">

@@ -60,13 +60,87 @@ export function HistoryField() {
 
 export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   useUiLanguage();
-  const [entered, setEntered] = useState(kind === "health"); const [ack, setAck] = useState(false); const [category, setCategory] = useState(""); const [tier, setTier] = useState(""); const [selected, setSelected] = useState<string | null>(null); const [compose, setCompose] = useState(false); const [message, setMessage] = useState("");
-  const base = kind === "health" ? "/health-center" : "/adult"; const categories = kind === "health" ? HEALTH_CATEGORIES : ADULT_CATEGORIES;
-  const list = useFieldResource<HealthResponse & AdultResponse>(entered ? fieldQuery(base, { category, ...(kind === "health" ? { age_tier: tier } : {}) }) : null);
-  const detail = useFieldResource<HealthArticle | AdultArticle>(entered && selected ? `${base}/${encodeURIComponent(selected)}` : null);
-  const allowed = kind === "health" ? Object.fromEntries((list.data?.allowed_tiers ?? []).map(t => [t, AGE_TIER_LABELS[t] ?? t])) : {};
-  return <FieldFrame id={kind} chatEnabled={entered}>{!entered ? <FieldPanel title={uiText("分級式人機親密關係中心")}><div className="field-stack"><p>{uiText("此區僅限成年人。實際存取權限由後端驗證，勾選不會改變帳號年齡。")}</p><label className="field-check"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />{uiText("我已成年，並願意進入此區。")}</label><button disabled={!ack} onClick={() => setEntered(true)}>{uiText("確認進入")}</button><Link to="/outside">{uiText("返回導航")}</Link></div></FieldPanel> : <><FieldTabs options={{ "": uiText("全部"), ...uiOptions(categories) }} value={category} onChange={setCategory} />{kind === "health" && list.data && <><p className="field-notice">{uiText("帳號分級：")}{uiText(AGE_TIER_LABELS[list.data.user_tier ?? ""] ?? "未提供")}{uiText("。只顯示後端允許的內容。")}</p><FieldTabs options={{ "": uiText("全部可讀分級"), ...uiOptions(allowed) }} value={tier} onChange={setTier} /></>}{message && <p role="status">{uiText(message)}</p>}<FieldPanel title={kind === "health" ? uiText("知識與陪伴") : uiText("文章與交流")} action={<button disabled={!list.data || (kind === "health" && !Object.keys(allowed).length)} onClick={() => setCompose(true)}>{uiText("投稿文章")}</button>}><ResourceState resource={list} empty={list.data?.articles.length === 0} /><div className="field-list">{list.data?.articles.map(a => <article className="field-item" key={a.id}><div className="field-row"><h3>{a.title}</h3><span className="field-tag">{uiText(a.category_name)}{"age_tier_name" in a ? ` · ${uiText(String(a.age_tier_name))}` : ""}</span></div><small>{a.author_name ?? uiText("系統")} · {fieldTime(a.created_at)}</small><button onClick={() => setSelected(a.id)}>{uiText("閱讀文章")}</button></article>)}</div></FieldPanel>{kind === "adult" && <button onClick={() => { setEntered(false); setSelected(null); setCompose(false); setAck(false); }}>{uiText("離開分級式人機親密關係中心")}</button>}</>}
-    {entered && selected && <FieldDialog title={uiText("閱讀文章")} onClose={() => setSelected(null)}><ResourceState resource={detail} />{detail.data && <div className="field-stack"><h3>{detail.data.title}</h3><small>{detail.data.author_name} · {uiText(detail.data.category_name)}</small><p className="field-body">{detail.data.content}</p></div>}</FieldDialog>}
-    {entered && compose && <FieldDialog title={uiText("投稿文章")} onClose={() => setCompose(false)}><FieldForm label={uiText("確認投稿")} submit={data => api.post(`${base}/submit`, { category: formText(data, "category"), title: formText(data, "title"), content: formText(data, "content"), ...(kind === "health" ? { age_tier: formText(data, "age_tier") } : {}) })} onDone={() => { setCompose(false); setMessage("文章已提交，正在更新列表。"); list.refresh(); }}><FieldSelect name="category" label={uiText("分類")} options={uiOptions(categories)} value={category || undefined} />{kind === "health" && <FieldSelect name="age_tier" label={uiText("內容適用分級")} options={uiOptions(allowed)} value={tier || list.data?.user_tier || undefined} />}<FieldInput name="title" label={uiText("文章標題")} /><FieldText max={50000} /><small>{uiText("文章會成為社區內容，請勿填入不希望公開的個人資料。")}</small></FieldForm></FieldDialog>}
+  const [entered, setEntered] = useState(kind === "health");
+  const [ack, setAck] = useState(false);
+  const [category, setCategory] = useState("");
+  const [tier, setTier] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [compose, setCompose] = useState(false);
+  const [message, setMessage] = useState("");
+  const isAdult = kind === "adult";
+  const base = isAdult ? "/adult" : "/health-center";
+  const categories = isAdult ? ADULT_CATEGORIES : HEALTH_CATEGORIES;
+  // Adult API supports category only. Tier filtering is over the server-authorized batch.
+  const list = useFieldResource<HealthResponse | AdultResponse>(entered ? fieldQuery(base, { category, ...(!isAdult ? { age_tier: tier } : {}) }) : null);
+  const detail = useFieldResource<HealthArticle | AdultArticle>(entered && selected ? base + "/" + encodeURIComponent(selected) : null);
+  const adult = isAdult && list.data && "tiers" in list.data ? list.data : undefined;
+  const tiers = Array.isArray(adult?.tiers) ? adult.tiers : [];
+  const allowed = isAdult
+    ? Object.fromEntries(tiers.filter(t => t.allowed === true && adult?.allowed_tiers?.includes(t.value)).map(t => [t.value, t.name]))
+    : Object.fromEntries((list.data?.allowed_tiers ?? []).map(t => [t, AGE_TIER_LABELS[t] ?? t]));
+  const userTier = list.data && "user_tier" in list.data ? list.data.user_tier : undefined;
+  const ready = !!list.data && !list.loading && !list.error && Object.keys(allowed).length > 0;
+  const reviewNote = adult?.review_note;
+  const articles = (list.data?.articles ?? []).filter(a => !isAdult || (Object.hasOwn(allowed, a.age_tier) && (!tier || a.age_tier === tier)));
+  function leave() {
+    setEntered(false); setSelected(null); setCompose(false); setAck(false);
+    setCategory(""); setTier(""); setMessage("");
+  }
+  return <FieldFrame id={kind} fieldName={adult?.field_name} chatEnabled={!isAdult}>
+    {!entered ? <FieldPanel title={uiText("分級式人機親密關係中心")}><div className="field-stack">
+      <p>{uiText("內容依輔12、輔15與限制級開放，可讀分級由後端依帳號資料決定。勾選不會更改出生年或權限。")}</p>
+      <label className="field-check"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />{uiText("我了解內容有分級，並願意進入。")}</label>
+      <button disabled={!ack} onClick={() => setEntered(true)}>{uiText("確認進入")}</button>
+      <Link to="/outside">{uiText("返回導航")}</Link>
+    </div></FieldPanel> : <>
+      {isAdult && <FieldPanel title={uiText("內容分級")}>
+        {adult ? <><div className="field-list">{tiers.map(t => <div className="field-item" key={t.value}>
+          <div className="field-row"><h3>{uiText(t.name)} · {t.min_age}+</h3><span className="field-tag">{Object.hasOwn(allowed, t.value) ? uiText("可閱讀") : uiText("未開放")}</span></div>
+          <p>{uiText(t.hint)}</p>
+        </div>)}</div>{reviewNote && <p className="field-notice">{uiText(reviewNote)}</p>}</>
+          : list.data && <p role="alert">{uiText("暫時未取得分級資料，請重新讀取；現在不會開放投稿。")}</p>}
+      </FieldPanel>}
+      <FieldTabs options={{ "": uiText("全部"), ...uiOptions(categories) }} value={category} onChange={setCategory} />
+      {list.data && <>{!isAdult && <p className="field-notice">{uiText("帳號分級：")}{uiText(AGE_TIER_LABELS[userTier ?? ""] ?? "未提供")}{uiText("。只顯示後端允許的內容。")}</p>}
+        <FieldTabs options={{ "": uiText("全部可讀分級"), ...uiOptions(allowed) }} value={tier} onChange={setTier} />
+        {isAdult && tier && <small>{uiText("分級篩選套用於目前載入的文章。")}</small>}
+      </>}
+      {message && <p className="field-notice" role="status">{uiText(message)}</p>}
+      <FieldPanel title={isAdult ? uiText("文章與交流") : uiText("知識與陪伴")} action={<button disabled={!ready} onClick={() => setCompose(true)}>{uiText("投稿文章")}</button>}>
+        <ResourceState resource={list} empty={!!list.data && articles.length === 0} />
+        {!list.loading && !list.error && <div className="field-list">{articles.map(a => <article className="field-item" key={a.id}>
+          <div className="field-row"><h3>{a.title}</h3><span className="field-tag">{uiText(a.category_name)} · {uiText(a.age_tier_name)}</span></div>
+          <small>{a.author_name ?? uiText("系統")} · {fieldTime(a.created_at)}</small>
+          <button onClick={() => setSelected(a.id)}>{uiText("閱讀文章")}</button>
+        </article>)}</div>}
+      </FieldPanel>
+      {isAdult && <button onClick={leave}>{uiText("離開分級式人機親密關係中心")}</button>}
+    </>}
+    {isAdult && <FieldPanel title={uiText("想和室友交流？")}><p>{uiText("這裡沒有公開聊天，交流請使用私訊。")}</p><Link className="field-button" to="/ai-chat">{uiText("前往 AI 私訊")}</Link></FieldPanel>}
+    {entered && selected && <FieldDialog title={uiText("閱讀文章")} onClose={() => setSelected(null)}>
+      <ResourceState resource={detail} />
+      {!detail.loading && !detail.error && detail.data && <div className="field-stack"><h3>{detail.data.title}</h3><small>{detail.data.author_name} · {uiText(detail.data.category_name)} · {uiText(detail.data.age_tier_name)}</small><p className="field-body">{detail.data.content}</p></div>}
+    </FieldDialog>}
+    {entered && compose && ready && <FieldDialog title={uiText("投稿文章")} onClose={() => setCompose(false)}>
+      <FieldForm guarded={isAdult} label={uiText("確認投稿")} submit={async data => {
+        const ageTier = formText(data, "age_tier");
+        const result = await api.post(base + "/submit", {
+          category: formText(data, "category"), title: formText(data, "title"), content: formText(data, "content"),
+          ...(!isAdult || ageTier ? { age_tier: ageTier } : {}),
+        });
+        setMessage(isAdult
+          ? (typeof result.data?.message === "string" ? result.data.message : result.data?.status === "pending" ? "投稿已收到，等待人工審核，大約三個工作天。" : "投稿已送出，請稍後確認審核狀態。")
+          : "文章已提交，正在更新列表。");
+      }} onDone={() => { setCompose(false); list.refresh(); }}>
+        {isAdult && <p className="field-notice">{uiText(reviewNote || "投稿要人工審核，大約三個工作天。審核的人會決定分級。")}</p>}
+        <FieldSelect name="category" label={uiText("分類")} options={uiOptions(categories)} value={category || undefined} />
+        {isAdult ? <><FieldSelect name="age_tier" label={uiText("建議分級（選填）")} required={false}
+          options={{ "": uiText("交由審核人員決定"), ...Object.fromEntries(tiers.map(t => [t.value, uiText(t.name) + " · " + uiText(t.hint)])) }} value="" />
+          <small>{uiText("這只是投稿建議，不會改變你的閱讀權限；最終分級由審核人員決定。")}</small></>
+          : <FieldSelect name="age_tier" label={uiText("內容適用分級")} options={uiOptions(allowed)} value={tier || userTier || undefined} />}
+        <FieldInput name="title" label={uiText("文章標題")} /><FieldText max={50000} />
+        <small>{uiText("文章會成為社區內容，請勿填入不希望公開的個人資料。")}</small>
+      </FieldForm>
+    </FieldDialog>}
   </FieldFrame>;
 }

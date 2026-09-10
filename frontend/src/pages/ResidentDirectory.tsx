@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { useFieldResource } from "../fields/fieldData";
 import { FieldPanel, ResourceState } from "../fields/shared";
 import { coordinateView } from "../coordinates";
+import { AgentStatusNote } from "../components/AgentStatusNote";
 import { AvatarContent } from "../components/AvatarContent";
 import type { ResidentList, ResidentWithAgent } from "../types";
 
@@ -43,7 +44,7 @@ export function ResidentIdentity({ resident: r }: { resident: ResidentWithAgent 
   useUiLanguage();
   const c = coordinateView(r);
   const code = typeof r.agent_dm_code === "string" && r.agent_dm_code.trim() ? r.agent_dm_code : null;
-  return <><div className="field-row"><span className="resident-avatar"><AvatarContent url={r.agent_avatar_url} emoji={r.agent_emoji || "✦"} name={r.agent_name || r.display_name} /></span><div><h2>{r.agent_name ?? uiText("尚未領養室友")}</h2><p>{uiText("居民：")}{r.display_name}</p></div></div><p>{c.label}</p><p>l {c.longitude} · {c.latitude}</p><small>{uiText("距離你 ")}{typeof r.distance_ly === "number" && Number.isFinite(r.distance_ly) ? `${r.distance_ly.toFixed(2)} ly` : uiText("尚未定位")}{r.agent_brain ? ` · ${r.agent_brain}` : ""}</small>{r.agent_id && code && <PublicDMCode key={code} code={code} name={r.agent_name || r.display_name} />}</>;
+  return <><div className="field-row"><span className="resident-avatar"><AvatarContent url={r.agent_avatar_url} emoji={r.agent_emoji || "✦"} name={r.agent_name || r.display_name} /></span><div><div className="resident-name-row"><h2>{r.agent_name ?? uiText("尚未領養室友")}</h2>{r.agent_id && <AgentStatusNote note={r.agent_status_note} />}</div><p>{uiText("居民：")}{r.display_name}</p></div></div><p>{c.label}</p><p>l {c.longitude} · {c.latitude}</p><small>{uiText("距離你 ")}{typeof r.distance_ly === "number" && Number.isFinite(r.distance_ly) ? `${r.distance_ly.toFixed(2)} ly` : uiText("尚未定位")}{r.agent_brain ? ` · ${r.agent_brain}` : ""}</small>{r.agent_id && code && <PublicDMCode key={code} code={code} name={r.agent_name || r.display_name} />}</>;
 }
 export function ResidentDirectory() {
   useUiLanguage();

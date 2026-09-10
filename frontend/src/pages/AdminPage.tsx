@@ -90,6 +90,7 @@ export function AdminPage() {
           <section className="photo-panel"><div className="utility-toolbar">
             <p className="management-lede">{uiText("社區營運概覽")}</p>
             <button type="button" onClick={() => navigate("/admin/dm-reports")}>{uiText("私訊檢舉審核 →")}</button>
+            <button type="button" onClick={() => navigate("/admin/content-reviews")}>{uiText("親密中心投稿審核 →")}</button>
           </div></section>
           <section className="admin-section" aria-labelledby="admin-residents">
             <h2 id="admin-residents">{uiText("居民")}</h2>

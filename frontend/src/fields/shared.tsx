@@ -8,12 +8,13 @@ import "./fields.css";
 import { SpaceChat } from "./SpaceChat";
 import { CHAT_SPACES, type ChatSpace } from "./socialData";
 import { FormValidationError } from "./formErrors";
-export function FieldFrame({ id, children, chatEnabled = true }: { id: FieldId; children: ReactNode; chatEnabled?: boolean }) {
+export function FieldFrame({ id, children, chatEnabled = true, fieldName }: { id: FieldId; children: ReactNode; chatEnabled?: boolean; fieldName?: string }) {
   useUiLanguage();
   const field = FIELDS.find(f => f[0] === id)!;
+  const name = fieldName || field[2];
   return <main className="field-app"><div className="field-shell">
     <header className="field-topbar"><Link className="field-button" to="/outside">{uiText("← 出艙導航")}</Link><small>THE ROOKERY / {String(FIELDS.indexOf(field) + 1).padStart(2, "0")}</small></header>
-    <section className="field-hero"><img src={`/field-preview/assets/${field[6]}`} alt={uiText`${uiText(field[2])}的太空場景`} /><div><small>{uiText(field[2])}</small><h1>{field[1]}</h1><p>l {field[3]}° · b {field[4] >= 0 ? "+" : ""}{field[4]}° · {field[5]} ly</p></div></section>
+    <section className="field-hero"><img src={`/field-preview/assets/${field[6]}`} alt={uiText`${uiText(name)}的太空場景`} /><div><small>{uiText(name)}</small><h1>{field[1]}</h1><p>l {field[3]}° · b {field[4] >= 0 ? "+" : ""}{field[4]}° · {field[5]} ly</p></div></section>
     {children}{chatEnabled && (CHAT_SPACES as readonly string[]).includes(id) && <SpaceChat key={id} space={id as ChatSpace} />}<footer><Link to="/outside">{uiText("← 選擇其他目的地")}</Link><span>{uiText("社區時間 · Asia/Taipei")}</span></footer>
   </div></main>;
 }
@@ -46,7 +47,7 @@ export function FieldForm({ submit, children, label = uiText("保存"), onDone, 
 }
 export function FieldInput({ name, label, max = 200, value, type = "text", required = true }: { name: string; label: string; max?: number; value?: string; type?: string; required?: boolean }) { return <label className="field-input">{label}<input name={name} type={type} maxLength={max} defaultValue={value} required={required} /></label>; }
 export function FieldText({ name = "content", label = uiText("內容"), max = 2000, value }: { name?: string; label?: string; max?: number; value?: string }) { return <label className="field-input">{label}<textarea name={name} required maxLength={max} defaultValue={value} rows={5} /></label>; }
-export function FieldSelect({ name, label, options, value }: { name: string; label: string; options: Record<string, string>; value?: string }) { return <label className="field-input">{label}<select name={name} defaultValue={value} required>{Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>; }
+export function FieldSelect({ name, label, options, value, required = true }: { name: string; label: string; options: Record<string, string>; value?: string; required?: boolean }) { return <label className="field-input">{label}<select name={name} defaultValue={value} required={required}>{Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>; }
 export function ConfirmAction({ title, action, onDone, label = uiText("確認") }: { title: string; action: () => Promise<unknown>; onDone: () => void; label?: string }) {
   useUiLanguage();
   const [open, setOpen] = useState(false);

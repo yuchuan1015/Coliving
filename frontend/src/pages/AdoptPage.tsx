@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { CabinUtilityShell } from "../components/CabinUtilityShell";
 import "../cabin-management.css";
 import { createAgent } from "../api/agents";
+import { pasteApiKey } from "../data/api-key-input";
 import { AdoptionSuccess } from "../components/AdoptionSuccess";
 import type { AgentPublic } from "../types";
 
@@ -53,6 +54,9 @@ export function AdoptPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitLock.current || adopted || !name.trim() || !persona.trim()) return;
+    if (apiKey.trim().length > 256) {
+      setError("金鑰超過 256 字，請確認沒有貼入其他文字；不會自動截斷金鑰。"); return;
+    }
     submitLock.current = true;
     setError("");
     setLoading(true);
@@ -117,7 +121,7 @@ export function AdoptPage() {
               </select>
             </label>
             <label htmlFor="adopt-api-key">{uiText("API 金鑰（選填）")}
-              <input id="adopt-api-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+              <input id="adopt-api-key" type="password" value={apiKey} onChange={e => setApiKey(e.target.value.trim())} onPaste={e => pasteApiKey(e, setApiKey)}
                 autoComplete="off" autoCapitalize="none" spellCheck={false} aria-describedby="adopt-api-key-help"
                 placeholder={provider === "claude" ? "sk-ant-..." : provider === "xai" ? "xai-..." : "sk-..."} />
             </label>
