@@ -55,6 +55,49 @@ test("timezone native select pairs dark background with readable text in every c
   }
 });
 
+test("furniture forms pair cabin ink with cabin surface instead of the global light palette", () => {
+  const scope = rule(".cabin-panel .cabin-action-fields");
+  for (const [local, cabin] of [["--surface", "--c-sky"], ["--ink", "--c-frost"], ["--muted", "--c-muted"], ["--border", "--c-snow"], ["--line", "--c-snow"], ["--accent", "--c-moon"]]) {
+    assert.equal(scope[local], `var(${cabin})`);
+  }
+  assert.equal(scope["color-scheme"], "dark");
+  const input = rule(".cabin-panel .cabin-action-fields .field-input :is(input, textarea, select)");
+  assert.equal(input["background-color"], "var(--c-sky)");
+  assert.equal(input.color, "var(--c-frost)");
+  assert.equal(input["-webkit-text-fill-color"], "var(--c-frost)");
+  assert.equal(input["color-scheme"], "dark");
+  assert.equal(input["font-size"], "16px");
+  assert.equal(input.appearance, undefined, "Keep the native file picker and select behavior");
+});
+
+test("dining file-picker button and confirmation checkbox use explicit dark control colors", () => {
+  const file = rule(".cabin-panel .cabin-action-fields input[type=file]::file-selector-button");
+  assert.equal(file.background, "var(--c-glass)");
+  assert.equal(file.color, "var(--c-frost)");
+  assert.equal(file["-webkit-text-fill-color"], "var(--c-frost)");
+  assert.equal(file["min-height"], "44px");
+  const checkbox = rule(".cabin-panel .cabin-action-fields input[type=checkbox]");
+  assert.equal(checkbox["accent-color"], "var(--c-moon)");
+  assert.equal(checkbox["color-scheme"], "dark");
+  assert.equal(checkbox.appearance, undefined, "Retain native accessible checkbox behavior");
+  assert.match(rule(".cabin-panel .cabin-action-fields input[type=checkbox]:focus-visible").outline, /var\(--c-moon\)/);
+});
+
+test("furniture input focus, placeholders and disabled text retain readable cabin colors", () => {
+  const base = ".cabin-panel .cabin-action-fields .field-input";
+  const placeholder = rule(`${base} ::placeholder`);
+  assert.equal(placeholder.color, "var(--c-muted)");
+  assert.equal(placeholder["-webkit-text-fill-color"], "var(--c-muted)");
+  assert.equal(placeholder.opacity, "1");
+  const disabled = rule(`${base} :is(input, textarea, select):disabled`);
+  assert.equal(disabled.color, "var(--c-muted)");
+  assert.equal(disabled["-webkit-text-fill-color"], "var(--c-muted)");
+  assert.equal(disabled.opacity, "1");
+  assert.match(rule(`${base} :is(input, textarea, select):focus-visible`).outline, /var\(--c-moon\)/);
+  assert.equal(rule(`${base} select option`)["background-color"], "var(--c-sky)");
+  assert.match(read("scripts/cabin-theme-preview/view.tsx"), /panel="dining"/);
+});
+
 test("three-card geometry, responsive rows and FAB/portrait sizing stay fixed", () => {
   assert.equal(rule(".cabin-home")["grid-template-rows"], "136px minmax(0, 1fr) 104px");
   assert.equal(rules(".cabin-home")[1]["grid-template-rows"], "152px minmax(0, 1fr) 120px");

@@ -131,6 +131,27 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-panel button { min-height: 44px; color: var(--c-moon); font: inherit; border: 1px solid var(--c-snow); padding: 8px 12px; border-radius: 12px; background: none; cursor: pointer; }
 .cabin-panel-actions { display: grid; gap: 8px; }
 .cabin-panel fieldset { border:0; padding:0; min-width:0; }
+/* Furniture forms must not inherit the global light-theme surface with cabin ink. */
+.cabin-panel .cabin-action-fields {
+  --surface: var(--c-sky); --ink: var(--c-frost); --muted: var(--c-muted);
+  --border: var(--c-snow); --line: var(--c-snow); --accent: var(--c-moon);
+  color: var(--c-frost); color-scheme: dark;
+}
+.cabin-panel .cabin-action-fields .field-input :is(input, textarea, select) {
+  background-color: var(--c-sky); color: var(--c-frost); -webkit-text-fill-color: var(--c-frost);
+  border-color: var(--c-snow); caret-color: var(--c-moon); color-scheme: dark; font: inherit; font-size: 16px;
+}
+.cabin-panel .cabin-action-fields .field-input ::placeholder { color: var(--c-muted); -webkit-text-fill-color: var(--c-muted); opacity: 1; }
+.cabin-panel .cabin-action-fields .field-input :is(input, textarea, select):focus-visible { outline: 2px solid var(--c-moon); outline-offset: 2px; }
+.cabin-panel .cabin-action-fields .field-input :is(input, textarea, select):disabled { opacity: 1; color: var(--c-muted); -webkit-text-fill-color: var(--c-muted); cursor: default; }
+.cabin-panel .cabin-action-fields .field-input select option { background-color: var(--c-sky); color: var(--c-frost); }
+.cabin-panel .cabin-action-fields input[type=file] { padding: 8px; }
+.cabin-panel .cabin-action-fields input[type=file]::file-selector-button {
+  min-height: 44px; margin-right: 12px; padding: 8px 12px; border: 1px solid var(--c-moon); border-radius: 8px;
+  background: var(--c-glass); color: var(--c-frost); -webkit-text-fill-color: var(--c-frost); font: inherit; cursor: pointer;
+}
+.cabin-panel .cabin-action-fields input[type=checkbox] { flex: 0 0 auto; accent-color: var(--c-moon); color-scheme: dark; }
+.cabin-panel .cabin-action-fields input[type=checkbox]:focus-visible { outline: 2px solid var(--c-moon); outline-offset: 2px; }
 .cabin-city-form { display:grid; gap:12px; padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--c-snow); }
 .cabin-city-form input { width:100%; min-width:0; min-height:44px; border:1px solid var(--c-snow); border-radius:12px; background:transparent; color:var(--c-frost); padding:12px; font:inherit; font-size:16px; }
 .cabin-city-form input:focus-visible { outline:2px solid var(--c-moon); outline-offset:2px; }

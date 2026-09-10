@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthContext } from "../../src/contexts/AuthContext";
 import { HomePage } from "../../src/pages/HomePage";
+import { CabinPanelDialog } from "../../src/components/CabinPanelDialog";
 import { LoginPage } from "../../src/pages/LoginPage";
 import api from "../../src/api/client";
 import type { UserMe } from "../../src/types";
@@ -49,7 +50,8 @@ api.defaults.adapter = async config => {
   if (!(path in fixture)) throw new Error("This endpoint is outside the local palette preview.");
   return { data: structuredClone(fixture[path]), status: 200, statusText: "Local fixture", headers: {}, config };
 };
-const start = new URLSearchParams(location.search).get("screen") === "login" ? "/login" : "/";
+const screen = new URLSearchParams(location.search).get("screen");
+const start = screen === "login" ? "/login" : screen === "dining" ? "/dining" : "/";
 createRoot(document.getElementById("root")!).render(
   <AuthContext.Provider value={{
     user, isLoading: false, login: readOnly, register: readOnly, logout() {},
@@ -59,6 +61,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/dining" element={<div className="cabin-home"><CabinPanelDialog panel="dining" summary={null} now={new Date(stamp)} onClose={() => { location.search = ""; }} onRefreshWeather={async () => {}} /></div>} />
         <Route path="*" element={<main className="ya-auth-page"><section className="ya-auth-card"><p>這個入口已連結；配色預覽不會開啟真實資料。</p><Link className="ya-module-back" to="/">返回艙室</Link></section></main>} />
       </Routes>
     </MemoryRouter>
