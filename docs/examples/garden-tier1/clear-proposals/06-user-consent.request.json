@@ -1,0 +1,12 @@
+{
+  "actions": [
+    {
+      "action": "consent_clear",
+      "request_id": "fixture-06-user-consent",
+      "plot_id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:1",
+      "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+      "proposal_id": "0f4f5aec-97bf-41da-b2b9-b570110ba72a",
+      "accept": true
+    }
+  ]
+}

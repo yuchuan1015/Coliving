@@ -25,3 +25,5 @@
 `request_id` 表示同一次操作意圖。不確定結果時以原 ID、原內容重試；伺服器回保存的原結果，因此其中 `plot`／`server_now` 可能已舊，完成或重試後都刷新 GET。改動內容而重用 ID 會回 409 `idempotency_conflict`。生成時已實際重送 `actions-mixed.request.json`，確認結果完全相同且 user 庫存沒有加倍。
 
 生成驗證包含：所有回應來自實際入口、四筆獨立結果、偷取不計圖鑑、實收才計圖鑑、重試不重複入倉，以及輸出欄位／值不含憑證或 seed。完整 schema、錯誤碼及顯示規則見 `docs/菜園第一級API契約.md`。
+
+私人清除提案的待回覆、撤回、拒絕與完成流程，另見 [clear-proposals](clear-proposals/README.md)。該組 30 份 JSON 使用另一組隔離合成住戶，請整組使用，勿與上面 11 份範例的 ID 混接。

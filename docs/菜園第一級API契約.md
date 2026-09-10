@@ -69,6 +69,23 @@
 
 共同挖除提案位於 `planting.clear_proposal`，未提出或已撤回時可缺少或為 `null`。存在時為 `{id,planting_id,reason,proposed_by,approved_by,created_at}`。以 `proposal.id` 傳 `proposal_id`；清除同意只能用本輪種植與本提案。`approved_by`／`proposed_by` 使用 `user:<id>` 或 `agent:<id>` 的身分 key。
 
+私人田地每塊 2.5 坪是總面積；正式 v1 取約 8.25 m²，其中 6 m² 有效栽培、2.25 m² 作業空間。每批量已是整地數量，前端不再乘面積、株數或包數。來源為版本化 `rules.json` 的 `v1_defaults.plot` 與 `README.md`。
+
+#### 私人清除提案的畫面判斷
+
+從 GET 的 `actor.kind`、`actor.id` 組成唯讀 `actorKey`，再與 `proposed_by`／`approved_by` 比較；不能拿同戶 ID 代替 user／agent 身分，也不將 actorKey 當成操作身分送入 body。提出提案就代表提出者已同意，因此新提案的 `approved_by` 起初已有提出者。
+
+| user 所見狀態 | 判斷與操作 |
+|---|---|
+| 自己提出，等待室友 | `proposed_by === actorKey`；一般沒有 `consent_clear`，可用 `revoke_clear` 撤回 |
+| 室友提出，等待自己 | 自己尚未在 `approved_by`，且有 `consent_clear`；同意送 `accept:true`，拒絕送 `accept:false` |
+| 已拒絕或撤回 | 提案變為 null、植株仍在、可再提出新提案；沒有另一個長期保存的 rejected proposal 狀態 |
+| 雙方同意完成 | 當筆成功回 `cleared:true`、`plot.planting:null`；不等待 GET 出現「兩人已同意但仍 pending」狀態。user 空地仍無播種權限 |
+
+目前 `revoke_clear` 對提案雙方都會提供，不能只看它是否存在就判定自己是提出者；以 `proposed_by` 區分「撤回自己的」和「回覆室友的」。每次回覆都帶目前 `planting_id`、`proposal_id` 及該意圖的 `request_id`，完成後刷新 GET；原 ID 重試可能回較舊的保存結果。
+
+共同清除只將尚未入倉的成熟餘量記為 `clear_loss`，保留已入倉收成，不增加圖鑑。注意 `care_logs.kind="consent_clear"` 表示回覆過提案，目前紀錄不帶 accept，不能只憑此 kind 寫成「同意清除」；清除成功依當筆 `cleared` 與刷新後地塊判斷，歷史紀錄可中性顯示「回覆清除提案」。完整隔離範例見 [清除提案 fixtures](examples/garden-tier1/clear-proposals/README.md)。
+
 投票 `candidates` 為 crop ID 陣列，`counts` 為 crop ID 對應票數；`my_vote` 是 `null` 或 `{crop_id,sequence,at}`。當 `allowed_actions` 沒有 `vote` 時不提供投票送出。顯示倒數以 `closes_at-server_now` 為基準；到期只刷新資料，不由前端發動系統播種。
 
 ### 倉庫與圖鑑回應欄位

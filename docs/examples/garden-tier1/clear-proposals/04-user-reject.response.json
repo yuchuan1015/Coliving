@@ -1,0 +1,211 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "result": {
+        "plot": {
+          "id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:1",
+          "scope": "private",
+          "number": 1,
+          "revision": 18,
+          "planting": {
+            "all_batches_generated": false,
+            "area_scale": "1",
+            "batches": {
+              "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0": {
+                "batch_index": 0,
+                "cycle_index": 0,
+                "first_cycle_factor": "1",
+                "garden_month": 1,
+                "health_factor": "1",
+                "id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+                "matured_at": "2026-09-11T20:34:17.142858+00:00",
+                "remaining_g": 2637,
+                "season_factor": "1",
+                "status": "ready",
+                "stolen": true,
+                "yield_g": 5274,
+                "steal_available": false,
+                "harvest_available": false
+              }
+            },
+            "clear_proposal": null,
+            "crop_id": "petite_oyster_mushroom",
+            "effective_growth_us": "520500000006",
+            "end_behavior": "substrate_spent",
+            "epoch_at": "2026-09-11T00:00:00+00:00",
+            "health": 100.0,
+            "last_advanced_at": "2026-09-11T20:39:17.142858+00:00",
+            "last_care_tick": 3,
+            "last_random_decision": {
+              "draw": 1.0,
+              "probability": 0.02,
+              "tick_index": 3,
+              "triggered": false
+            },
+            "moisture": 80.0,
+            "needs": [],
+            "next_batch_index": 1,
+            "next_cycle_index": 0,
+            "next_due_growth_us": null,
+            "nutrients": 74.6,
+            "planted_at": "2026-09-11T00:00:00+00:00",
+            "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+            "problem_since": {},
+            "public": false,
+            "random_problem": null,
+            "status": "harvest_ready",
+            "terminal_reason": null,
+            "version": 1
+          },
+          "crop_name": "秀珍菇",
+          "vote": null,
+          "need": [],
+          "allowed_actions": [
+            "water",
+            "propose_clear"
+          ],
+          "steal_available": false,
+          "short_status": "私田1｜秀珍菇｜harvest_ready",
+          "contributors": [],
+          "care_logs": [
+            {
+              "id": 10,
+              "kind": "consent_clear",
+              "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": "0a49757d-c67a-4187-9bde-51c28b05ecef",
+                "reason": null
+              },
+              "created_at": "2026-09-11T20:39:17.142858+00:00"
+            },
+            {
+              "id": 9,
+              "kind": "propose_clear",
+              "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": "0a49757d-c67a-4187-9bde-51c28b05ecef",
+                "reason": "fixture：提議這批結束後改種別的作物"
+              },
+              "created_at": "2026-09-11T20:38:17.142858+00:00"
+            },
+            {
+              "id": 8,
+              "kind": "revoke_clear",
+              "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": "2ffab1ea-9cef-4f39-ad21-2844d0c087af",
+                "reason": null
+              },
+              "created_at": "2026-09-11T20:37:17.142858+00:00"
+            },
+            {
+              "id": 7,
+              "kind": "propose_clear",
+              "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": "2ffab1ea-9cef-4f39-ad21-2844d0c087af",
+                "reason": "fixture：希望換一種作物"
+              },
+              "created_at": "2026-09-11T20:36:17.142858+00:00"
+            },
+            {
+              "id": 6,
+              "kind": "steal",
+              "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+                "crop_id": null,
+                "proposal_id": null,
+                "reason": null
+              },
+              "created_at": "2026-09-11T20:35:17.142858+00:00"
+            },
+            {
+              "id": 5,
+              "kind": "batch_ready",
+              "actor_key": null,
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "event": {
+                  "at": "2026-09-11T20:34:17.142858+00:00",
+                  "batch_id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+                  "kind": "batch_ready",
+                  "quantity_g": 5274,
+                  "tick_index": 4
+                }
+              },
+              "created_at": "2026-09-11T20:34:17.142858+00:00"
+            },
+            {
+              "id": 4,
+              "kind": "care",
+              "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": null,
+                "reason": null
+              },
+              "created_at": "2026-09-11T18:00:00+00:00"
+            },
+            {
+              "id": 3,
+              "kind": "care",
+              "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": null,
+                "reason": null
+              },
+              "created_at": "2026-09-11T12:00:00+00:00"
+            },
+            {
+              "id": 2,
+              "kind": "care",
+              "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": null,
+                "proposal_id": null,
+                "reason": null
+              },
+              "created_at": "2026-09-11T06:00:00+00:00"
+            },
+            {
+              "id": 1,
+              "kind": "plant",
+              "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+              "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+              "detail": {
+                "batch_id": null,
+                "crop_id": "petite_oyster_mushroom",
+                "proposal_id": null,
+                "reason": null
+              },
+              "created_at": "2026-09-11T00:00:00+00:00"
+            }
+          ]
+        },
+        "server_now": "2026-09-11T20:39:17.142858+00:00"
+      }
+    }
+  ]
+}

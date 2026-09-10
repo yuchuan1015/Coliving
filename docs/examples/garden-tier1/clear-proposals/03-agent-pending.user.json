@@ -1,0 +1,1132 @@
+{
+  "server_now": "2026-09-11T20:38:17.142858+00:00",
+  "garden_time": "2026-01-07T00:28:00.000006+00:00",
+  "garden_month": 1,
+  "epoch_at": "2026-09-11T00:00:00+00:00",
+  "time_multiplier": 7,
+  "vote_duration_real_hours": 12,
+  "plots": [
+    {
+      "id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:1",
+      "scope": "private",
+      "number": 1,
+      "revision": 16,
+      "planting": {
+        "all_batches_generated": false,
+        "area_scale": "1",
+        "batches": {
+          "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0": {
+            "batch_index": 0,
+            "cycle_index": 0,
+            "first_cycle_factor": "1",
+            "garden_month": 1,
+            "health_factor": "1",
+            "id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+            "matured_at": "2026-09-11T20:34:17.142858+00:00",
+            "remaining_g": 2637,
+            "season_factor": "1",
+            "status": "ready",
+            "stolen": true,
+            "yield_g": 5274,
+            "steal_available": false,
+            "harvest_available": false
+          }
+        },
+        "clear_proposal": {
+          "approved_by": [
+            "agent:63834332-443a-4e47-a090-b594601e9464"
+          ],
+          "created_at": "2026-09-11T20:38:17.142858+00:00",
+          "id": "0a49757d-c67a-4187-9bde-51c28b05ecef",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "proposed_by": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "reason": "fixture：提議這批結束後改種別的作物"
+        },
+        "crop_id": "petite_oyster_mushroom",
+        "effective_growth_us": "520080000006",
+        "end_behavior": "substrate_spent",
+        "epoch_at": "2026-09-11T00:00:00+00:00",
+        "health": 100.0,
+        "last_advanced_at": "2026-09-11T20:38:17.142858+00:00",
+        "last_care_tick": 3,
+        "last_random_decision": {
+          "draw": 1.0,
+          "probability": 0.02,
+          "tick_index": 3,
+          "triggered": false
+        },
+        "moisture": 80.0,
+        "needs": [],
+        "next_batch_index": 1,
+        "next_cycle_index": 0,
+        "next_due_growth_us": null,
+        "nutrients": 74.6,
+        "planted_at": "2026-09-11T00:00:00+00:00",
+        "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+        "problem_since": {},
+        "public": false,
+        "random_problem": null,
+        "status": "harvest_ready",
+        "terminal_reason": null,
+        "version": 1
+      },
+      "crop_name": "秀珍菇",
+      "vote": null,
+      "need": [],
+      "allowed_actions": [
+        "water",
+        "consent_clear",
+        "revoke_clear"
+      ],
+      "steal_available": false,
+      "short_status": "私田1｜秀珍菇｜harvest_ready",
+      "contributors": [],
+      "care_logs": [
+        {
+          "id": 9,
+          "kind": "propose_clear",
+          "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": "0a49757d-c67a-4187-9bde-51c28b05ecef",
+            "reason": "fixture：提議這批結束後改種別的作物"
+          },
+          "created_at": "2026-09-11T20:38:17.142858+00:00"
+        },
+        {
+          "id": 8,
+          "kind": "revoke_clear",
+          "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": "2ffab1ea-9cef-4f39-ad21-2844d0c087af",
+            "reason": null
+          },
+          "created_at": "2026-09-11T20:37:17.142858+00:00"
+        },
+        {
+          "id": 7,
+          "kind": "propose_clear",
+          "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": "2ffab1ea-9cef-4f39-ad21-2844d0c087af",
+            "reason": "fixture：希望換一種作物"
+          },
+          "created_at": "2026-09-11T20:36:17.142858+00:00"
+        },
+        {
+          "id": 6,
+          "kind": "steal",
+          "actor_key": "user:04326508-43f0-40e5-a37a-770ff1d7e621",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+            "crop_id": null,
+            "proposal_id": null,
+            "reason": null
+          },
+          "created_at": "2026-09-11T20:35:17.142858+00:00"
+        },
+        {
+          "id": 5,
+          "kind": "batch_ready",
+          "actor_key": null,
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "event": {
+              "at": "2026-09-11T20:34:17.142858+00:00",
+              "batch_id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0",
+              "kind": "batch_ready",
+              "quantity_g": 5274,
+              "tick_index": 4
+            }
+          },
+          "created_at": "2026-09-11T20:34:17.142858+00:00"
+        },
+        {
+          "id": 4,
+          "kind": "care",
+          "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": null,
+            "reason": null
+          },
+          "created_at": "2026-09-11T18:00:00+00:00"
+        },
+        {
+          "id": 3,
+          "kind": "care",
+          "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": null,
+            "reason": null
+          },
+          "created_at": "2026-09-11T12:00:00+00:00"
+        },
+        {
+          "id": 2,
+          "kind": "care",
+          "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": null,
+            "proposal_id": null,
+            "reason": null
+          },
+          "created_at": "2026-09-11T06:00:00+00:00"
+        },
+        {
+          "id": 1,
+          "kind": "plant",
+          "actor_key": "agent:63834332-443a-4e47-a090-b594601e9464",
+          "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+          "detail": {
+            "batch_id": null,
+            "crop_id": "petite_oyster_mushroom",
+            "proposal_id": null,
+            "reason": null
+          },
+          "created_at": "2026-09-11T00:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:2",
+      "scope": "private",
+      "number": 2,
+      "revision": 0,
+      "planting": null,
+      "crop_name": null,
+      "vote": null,
+      "need": [],
+      "allowed_actions": [],
+      "steal_available": false,
+      "short_status": "私田2｜空地｜待種植",
+      "contributors": [],
+      "care_logs": []
+    },
+    {
+      "id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:3",
+      "scope": "private",
+      "number": 3,
+      "revision": 0,
+      "planting": null,
+      "crop_name": null,
+      "vote": null,
+      "need": [],
+      "allowed_actions": [],
+      "steal_available": false,
+      "short_status": "私田3｜空地｜待種植",
+      "contributors": [],
+      "care_logs": []
+    },
+    {
+      "id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:4",
+      "scope": "private",
+      "number": 4,
+      "revision": 0,
+      "planting": null,
+      "crop_name": null,
+      "vote": null,
+      "need": [],
+      "allowed_actions": [],
+      "steal_available": false,
+      "short_status": "私田4｜空地｜待種植",
+      "contributors": [],
+      "care_logs": []
+    }
+  ],
+  "crops": [
+    {
+      "id": "daikon",
+      "name": "白蘿蔔",
+      "category": "根菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 63,
+        "first_harvest_days": 63
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          63
+        ],
+        "yield_g_per_plot_by_batch": [
+          44550
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "一株一次成熟根，依66株×675g得到本地本作潛在總量44550g，僅生成一批。無再生或續採，repeat_cycle_days=0表示不適用；完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "穩定供水與排水、土壤通氣；避免乾濕劇變裂根及拖延採收空心。施肥與間拔納入既有照顧。偏好月份不限制全年選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 66,
+        "productive_area_m2": 6,
+        "note": "6m²有效栽培面積按每株0.45×0.20m²向下取整為66株。容量是v1幾何配置，非出苗率；不另要求玩家逐株播種。"
+      }
+    },
+    {
+      "id": "carrot",
+      "name": "胡蘿蔔",
+      "category": "根菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 110,
+        "first_harvest_days": 110
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          110
+        ],
+        "yield_g_per_plot_by_batch": [
+          40000
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "向陽2號約250g/根，v1按160株計40000g/地/作，只生成一次成熟根收成。無續採或再生；repeat_cycle_days=0表示不適用，完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2
+        ],
+        "note": "萌芽前保濕，膨根期維持水分穩定並排水；土要深鬆，避免土塊及未腐熟基肥。疏苗與施肥納入既有照顧。全年可選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 160,
+        "productive_area_m2": 6,
+        "note": "以淨栽培株行距25×15cm換算160株。舊證據1.35m連溝畦的整畦密度不再套在6m²淨面積上，避免重扣已另留的作業空間。"
+      }
+    },
+    {
+      "id": "potato",
+      "name": "馬鈴薯",
+      "category": "莖菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 105,
+        "first_harvest_days": 105
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          105
+        ],
+        "yield_g_per_plot_by_batch": [
+          11906
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "成熟主作薯一次挖收，v1以25株及來源行產量中點校準為11906g/地/作。無新薯提前採或後續再挖批次；repeat_cycle_days=0表示不適用，完成後empty。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2
+        ],
+        "note": "健康種薯、穩定供水與排水，結薯期不缺水；培土遮住塊莖。正常成熟枯葉不直接判為病死。全年可選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 25,
+        "productive_area_m2": 6,
+        "note": "健康種薯每穴形成1株；6m²按76.2×30.48cm配置向下取整25株。不是25顆最終馬鈴薯，塊莖按總重計收。"
+      }
+    },
+    {
+      "id": "kohlrabi",
+      "name": "球莖甘藍",
+      "category": "莖菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 28,
+        "growing_days_to_first": 57,
+        "first_harvest_days": 85
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          85
+        ],
+        "yield_g_per_plot_by_batch": [
+          17554
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "一次採嫩肥大莖；v1以129株及來源行產量中點校準為17554g/地/作。非葉用割採，無再生批次；repeat_cycle_days=0表示不適用，完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ],
+        "note": "保持土壤均勻濕潤、排水與充足光照；適時補肥，球莖仍嫩時採收以免粗硬木質化。育苗照顧整合在同一倒數內；全年可選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 129,
+        "productive_area_m2": 6,
+        "note": "6m²依15.24×30.48cm株行距向下取整129株；育苗是種植內部流程，不另外占玩家一塊田或要求移植按鈕。"
+      }
+    },
+    {
+      "id": "pak_choi",
+      "name": "小白菜",
+      "category": "葉菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 33,
+        "first_harvest_days": 33
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          33
+        ],
+        "yield_g_per_plot_by_batch": [
+          33750
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "第33栽培日形成單批整株收成；收完即完成這次種植。150株×225g＝33750g，沒有側葉續採。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ],
+        "note": "土壤保持濕潤並能排水，給足日照；基礎疏苗與均衡養分由照顧狀態處理。全年可種，春秋較順。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 150,
+        "productive_area_m2": 6,
+        "note": "按20×20cm遊戲株行距配置150株。每地收量已含150株，不能再次乘株數。"
+      }
+    },
+    {
+      "id": "water_spinach",
+      "name": "空心菜",
+      "category": "葉菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 23,
+        "first_harvest_days": 23
+      },
+      "harvest": {
+        "mode": "regrow",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          23,
+          44,
+          65,
+          86,
+          107,
+          128
+        ],
+        "yield_g_per_plot_by_batch": [
+          3546,
+          3546,
+          3546,
+          3546,
+          3546,
+          3546
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "首採23栽培日，此後由agent收完前批餘量後再長21栽培日；公田由系統實收後計。偷取不啟動再生、不重設倒數。前三批按外地研究三次合計取均量，後三批等量為明示v1遊戲外推；六批合計21276g。最後一批收完記production_complete；不是死亡，私田清除沿原雙方同意規則，公田整輪結束才系統清理投票。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "水分要足、日照要好；割採留基部，割後養分與水分由共用照顧狀態處理。插穗與土耕基礎配置不增加玩家操作。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 240,
+        "productive_area_m2": 6,
+        "note": "25×20cm約120叢，每叢兩枝插穗，共240株配置。產量按6m²一次計算，叢數/株數僅為種植容量，不再乘入收量。"
+      }
+    },
+    {
+      "id": "cauliflower",
+      "name": "花椰菜",
+      "category": "花菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 23,
+        "growing_days_to_first": 37,
+        "first_harvest_days": 60
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          60
+        ],
+        "yield_g_per_plot_by_batch": [
+          15000
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "播種起算60栽培日已含23日育苗；主花球每株750g×20株＝15000g/地。一批收完結束，不追加青花菜側球。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "note": "定植及花球形成期間供水穩定，土壤能排水，保持日照；育苗馴化與必要覆球由基礎配置和照顧狀態處理，不新增按鈕。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 20,
+        "productive_area_m2": 6,
+        "note": "採極早生65×45cm參考，floor(6÷0.2925)＝20株。這份v1明確採夏雲整套，不混用原早生定植後60日與75×50cm。"
+      }
+    },
+    {
+      "id": "broccoli",
+      "name": "青花菜",
+      "category": "花菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 45,
+        "growing_days_to_first": 60,
+        "first_harvest_days": 105
+      },
+      "harvest": {
+        "mode": "regrow",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          105,
+          135,
+          138,
+          141,
+          144,
+          147,
+          150,
+          153,
+          156,
+          159,
+          162,
+          165,
+          168,
+          171,
+          174,
+          177
+        ],
+        "yield_g_per_plot_by_batch": [
+          7200,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "主球105栽培日成熟，agent實收完主球後才計30日，第一側球批成熟；其後每次收完餘量再計3日。公田用系統實收時間。每批是當次生成的新成熟小側球，未暗中採收或14日聚合；偷取不代替採完餘量。側球15批總2240g，主球7200g，整輪9440g。理想最末177日；延遲實收會順延。末批收完記production_complete而非死亡，私田清除沿原雙方同意規則。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          10,
+          11,
+          12
+        ],
+        "note": "保持均勻水分、充足日照，偏涼時較順；主球採完保留下方葉片與腋芽，供水與補充養分由共用照顧狀態處理。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 16,
+        "productive_area_m2": 6,
+        "note": "v1用50×75cm配置16株，落於Maryland參考株距16–24吋、行距24–30吋內；每地產量已乘16株。"
+      }
+    },
+    {
+      "id": "cucumber",
+      "name": "小黃瓜",
+      "category": "果菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 9,
+        "growing_days_to_first": 35,
+        "first_harvest_days": 44
+      },
+      "harvest": {
+        "mode": "continuous",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "yield_g_per_plot_by_batch": [
+          428,
+          430,
+          428,
+          428,
+          428,
+          430,
+          428,
+          858,
+          856,
+          858,
+          856,
+          858,
+          856,
+          858,
+          1286,
+          1286,
+          1286,
+          1284,
+          1286,
+          1286,
+          1286,
+          1286,
+          1286,
+          1286,
+          1284,
+          1286,
+          1286,
+          1286,
+          858,
+          856,
+          858,
+          856,
+          858,
+          856,
+          858,
+          428,
+          430,
+          428,
+          428,
+          428,
+          430,
+          428
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "v1採42個每日成熟批，首批第44日、末批第85日；42日規劃窗不在末端多加一批。每週權重1、2、3、3、2、1，先少、盛產較多、後段減量；全作守恆36000g。這是跨來源總量校準的遊戲曲線，非台南1號逐批實測。各批按同一植株累計有效生長時間獨立成熟，不等舊批採完，不增加成熟後保護期。末批生成後不再新增；餘下成熟批仍保留至採收。本作結束不是宣稱植株死亡，健康私田植株清除仍依原雙方同意規則。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          3,
+          4,
+          5,
+          6,
+          9,
+          10
+        ],
+        "note": "維持根區濕潤與排水、立架通風；乾旱或積水會降低生长與結果表現。基礎配置含瓜網，照顧沿用共用流程；偏好月不限制全年選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 14,
+        "productive_area_m2": 6,
+        "note": "以官方畦植配置推算約2.35–2.96株/m²，v1取低密度並向下取整為14株。此容量用於植株配置；整地產量按6m²×面積產量計，不再乘14。"
+      }
+    },
+    {
+      "id": "tomato",
+      "name": "番茄",
+      "category": "果菜類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 32,
+        "growing_days_to_first": 75,
+        "first_harvest_days": 107
+      },
+      "harvest": {
+        "mode": "continuous",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          107,
+          108.75,
+          110.5,
+          112.25,
+          114,
+          115.75,
+          117.5,
+          119.25,
+          121,
+          122.75,
+          124.5,
+          126.25,
+          128,
+          129.75,
+          131.5,
+          133.25,
+          135,
+          136.75,
+          138.5,
+          140.25,
+          142,
+          143.75,
+          145.5,
+          147.25,
+          149,
+          150.75,
+          152.5,
+          154.25,
+          156,
+          157.75,
+          159.5,
+          161.25,
+          163,
+          164.75,
+          166.5,
+          168.25
+        ],
+        "yield_g_per_plot_by_batch": [
+          108,
+          110,
+          108,
+          110,
+          218,
+          216,
+          218,
+          218,
+          326,
+          328,
+          326,
+          326,
+          436,
+          436,
+          436,
+          434,
+          544,
+          546,
+          544,
+          544,
+          436,
+          434,
+          436,
+          436,
+          326,
+          326,
+          328,
+          326,
+          218,
+          218,
+          218,
+          216,
+          110,
+          108,
+          110,
+          108
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "v1選9週採期、每週4成熟批，共36批；首批第107日，之後每1.75栽培日一批，末批第168.25日。採期按36槽計，不在第63日末端加送一批。每週權重1、2、3、4、5、4、3、2、1，整作10886g；權重為遊戲曲線。新批不等舊批採完、不追加保護期，舊批保留獨立ID。v1生產期結束為production_complete，不表示非停心植株自然死亡，也不授權清除健康私田植株。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          4,
+          10,
+          11,
+          12
+        ],
+        "note": "穩定根區供水、排水與通風，避免乾濕劇變及長時間濕葉；過量氮肥不利結果。支架與日常照顧沿用基礎配置，偏好月不限制全年選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 6,
+        "productive_area_m2": 6,
+        "note": "v1配置1株/m²、每地6株，參照UMN含通道密度約0.90–1.44株/m²採保守值。每株整作產量只乘6一次，以下皆整地產量。"
+      }
+    },
+    {
+      "id": "petite_oyster_mushroom",
+      "name": "秀珍菇",
+      "category": "菌菇類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 6,
+        "first_harvest_days": 6
+      },
+      "harvest": {
+        "mode": "flush",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          6,
+          19,
+          32,
+          45,
+          58,
+          71
+        ],
+        "yield_g_per_plot_by_batch": [
+          5274,
+          3692,
+          1582,
+          792,
+          394,
+          198
+        ],
+        "end_behavior": "substrate_spent",
+        "repeat_cycle_days": 0,
+        "note": "v1共6潮。已養菌包約6栽培日首潮，之後前潮由agent收完餘量或公田系統採收後，再倒數13日才達下一潮成熟；理想即採時的offset為6、19、32、45、58、71日。13日包含翻菌恢復、再次誘導與子實體長成熟，翻菌完成當天不直接可收。前三潮總量嚴守SJ-10觀察量175.8g/包，第四至六潮按第三潮每次減半作遊戲外推。六潮整地11932g；第六潮後substrate_spent表示v1可生產資源預算用盡，不是菌絲病死或研究證明第六潮必死。研究只量三潮也不代表三潮後不能出菇。成熟不追加保護期，偷取不啟動下潮倒數。"
+      },
+      "care": {
+        "water_profile": "humidity",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "note": "維持出菇濕度與換氣，避免料面乾燥、菇體水膜及殘菇累積污染；環控、誘導與採後翻菌由基礎照顧處理，不增加玩家操作。室內基本環控下全年為偏好月份。"
+      },
+      "capacity": {
+        "unit": "bag",
+        "count": 60,
+        "productive_area_m2": 6,
+        "note": "6m²有效區保守配置60個900g已養菌包，單層、不疊架，是遊戲容量；沒有宣稱按實測包體尺寸密排。各批量已乘60包，不再乘包數。"
+      }
+    },
+    {
+      "id": "vegetable_fern",
+      "name": "過貓",
+      "category": "蕨類",
+      "tier": 1,
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 90,
+        "first_harvest_days": 90
+      },
+      "harvest": {
+        "mode": "perennial",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          90,
+          97,
+          104,
+          111,
+          118,
+          125,
+          132,
+          139,
+          146,
+          153,
+          160,
+          167,
+          174,
+          181,
+          188,
+          195,
+          202,
+          209,
+          216,
+          223,
+          230,
+          237,
+          244,
+          251,
+          258,
+          265,
+          272,
+          279,
+          286,
+          293,
+          300,
+          307,
+          314,
+          321,
+          328,
+          335,
+          342,
+          349,
+          356,
+          363,
+          370,
+          377,
+          384,
+          391,
+          398,
+          405,
+          412,
+          419,
+          426,
+          433,
+          440,
+          447
+        ],
+        "yield_g_per_plot_by_batch": [
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          234,
+          236,
+          234,
+          236
+        ],
+        "first_cycle_yield_factors_by_batch": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "end_behavior": "repeat_perennial_cycle",
+        "repeat_cycle_days": 364,
+        "note": "v1健康分株苗種植約90栽培日首批，之後每7栽培日一個獨立成熟嫩芽批；一周期52批，理想offset90…447，相鄰7日。成熟群落基準每364日周期15996g；末4批權重0.75作養株減量，其餘1，歸一化保全年基準量。first_cycle_yield_factors_by_batch僅首個生產周期生效：前4批0.5、次4批0.75、其餘1，模擬新植漸入產；不把成熟群落全年量給尚未初採的前90日。下一周期成熟時間=原offset+cycle_index×364，首批第454日，與前周期末批相隔7日，不重加90日苗期。多年生持續生產與養株，不按52次或固定年數判死或自動清除；舊批未收不阻塞新批，也不追加保護期。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "保持土壤濕潤、遮陰與排水，採嫩芽並每株保留3–5片母葉。養株及老葉更新由共用照顧承接，不另加按鈕；乾旱、曝曬與過度拔葉會影響續生，偏好月份不限制全年選種。"
+      },
+      "capacity": {
+        "unit": "plant",
+        "count": 6,
+        "productive_area_m2": 6,
+        "note": "v1保守配置每m²一株、每地6株健康分株苗；TGAP每分地約1000株僅作密度背景。收量以6m²成熟群落面積校準，不再乘6株。"
+      }
+    }
+  ],
+  "public_area": {
+    "gross_m2": 667,
+    "productive_m2": 480
+  },
+  "actor": {
+    "kind": "user",
+    "id": "04326508-43f0-40e5-a37a-770ff1d7e621",
+    "household_id": "04326508-43f0-40e5-a37a-770ff1d7e621"
+  }
+}

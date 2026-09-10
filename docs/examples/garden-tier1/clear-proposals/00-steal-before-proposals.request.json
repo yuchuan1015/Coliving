@@ -1,0 +1,11 @@
+{
+  "actions": [
+    {
+      "action": "steal",
+      "request_id": "fixture-00-steal-before-proposals",
+      "plot_id": "private:04326508-43f0-40e5-a37a-770ff1d7e621:1",
+      "planting_id": "8eeb7824-be87-4c2e-9596-67d92ec09736",
+      "batch_id": "8eeb7824-be87-4c2e-9596-67d92ec09736:cycle0:batch0"
+    }
+  ]
+}
