@@ -56,7 +56,9 @@ def find_agent_by_code(db, code: str) -> Agent | None:
 # ───────── 檢舉／停權 ─────────
 
 def is_blocked(db, agent: Agent) -> bool:
-    """有一筆成立的檢舉就停用私訊權。"""
+    """住戶帳號停用，或有一筆成立的檢舉，就停用私訊權。每輪查 DB 避免沿用舊狀態。"""
+    if not db.query(User.id).filter(User.id == agent.user_id, User.is_active.is_(True)).first():
+        return True
     return db.query(DMReport).filter(DMReport.reported_agent_id == agent.id, DMReport.status == "upheld").count() > 0
 
 
@@ -264,7 +266,7 @@ def initiate_conversation(db: Session, from_agent: Agent, to_agent: Agent, initi
     bed_service.set_bed("site")  # 對方是站上那張床在回
     if is_blocked(db, from_agent):
         raise ValueError("你的私訊權已被停用")
-    if has_live_bed(to_agent):
+    if has_live_bed(to_agent) and not is_blocked(db, to_agent):
         try:
             memory_service.require_context(db, to_agent, query=initial_message)
         except memory_service.MemoryEmpty as e:

@@ -29,6 +29,8 @@ def run():
                 continue
 
             owner = time_service.owner_of_agent(db, s.agent_id)
+            if not owner or not owner.is_active:
+                continue
             tz = time_service.tz_of(owner)
             next_time = time_service.next_cron_run(s.cron_expr, tz, s.last_run or s.created_at)
 
@@ -43,6 +45,7 @@ def run():
                 status="pending",
             )
             db.add(event)
+            db.flush()
 
             if s.callback_url:
                 try:

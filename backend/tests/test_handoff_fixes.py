@@ -149,6 +149,33 @@ class HandoffEndpointsTest(unittest.TestCase):
         self.assertEqual(conv.status, "ended")
         self.assertEqual(conv.ended_reason, "blocked")
 
+    def test_inactive_responder_never_loads_memory_or_calls_model(self):
+        other, inactive = resident(self.db, is_active=False)
+        inactive.encrypted_api_key = "test-key"
+        self.db.commit()
+        with patch.object(ai_chat_service.memory_service, "require_context") as memory, \
+             patch.object(ai_chat_service, "_call_agent_decision", return_value={"action": "reply", "content": "reply"}) as call:
+            conv = ai_chat_service.initiate_conversation(self.db, self.agent, inactive, "hello")
+        memory.assert_not_called()
+        call.assert_not_called()
+        self.assertEqual((conv.status, conv.ended_reason, conv.turn_count), ("ended", "blocked", 1))
+
+    def test_account_disabled_during_dm_loop_cannot_auto_reply(self):
+        other, responder = resident(self.db)
+        responder.encrypted_api_key = self.agent.encrypted_api_key = "test-key"
+        self.db.commit()
+
+        def reply_then_disable(*_args):
+            self.user.is_active = False
+            self.db.commit()
+            return {"action": "reply", "content": "first reply"}
+
+        with patch.object(ai_chat_service.memory_service, "require_context"), \
+             patch.object(ai_chat_service, "_call_agent_decision", side_effect=reply_then_disable) as call:
+            conv = ai_chat_service.initiate_conversation(self.db, self.agent, responder, "hello")
+        self.assertEqual(call.call_count, 1)
+        self.assertEqual((conv.status, conv.ended_reason, conv.turn_count), ("ended", "blocked", 2))
+
     def test_display_name_changes_only_own_name(self):
         r = self.client.patch("/api/users/me", json={"display_name": "  新名字  "})
         self.assertEqual(r.status_code, 200, r.text)
