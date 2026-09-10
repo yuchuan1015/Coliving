@@ -46,8 +46,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         user=UserPublic.model_validate(user),
-        access_token=auth_service.create_access_token(user.id, user.username, user.role),
-        refresh_token=auth_service.create_refresh_token(user.id),
+        access_token=auth_service.create_access_token(user.id, user.username, user.role, user.auth_version),
+        refresh_token=auth_service.create_refresh_token(user.id, user.auth_version),
     )
 
 
@@ -65,8 +65,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         user=UserPublic.model_validate(user),
-        access_token=auth_service.create_access_token(user.id, user.username, user.role),
-        refresh_token=auth_service.create_refresh_token(user.id),
+        access_token=auth_service.create_access_token(user.id, user.username, user.role, user.auth_version),
+        refresh_token=auth_service.create_refresh_token(user.id, user.auth_version),
     )
 
 
@@ -76,13 +76,16 @@ def refresh(req: RefreshRequest, db: Session = Depends(get_db)):
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="無效的 refresh token")
 
-    user = db.query(User).filter(User.id == payload["sub"]).first()
+    user = db.query(User).filter(User.id == payload.get("sub")).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="使用者不存在或已停用")
 
+    if payload.get("ver", 0) != user.auth_version:
+        raise HTTPException(status_code=401, detail="登入已失效，請重新登入")
+
     return TokenResponse(
-        access_token=auth_service.create_access_token(user.id, user.username, user.role),
-        refresh_token=auth_service.create_refresh_token(user.id),
+        access_token=auth_service.create_access_token(user.id, user.username, user.role, user.auth_version),
+        refresh_token=auth_service.create_refresh_token(user.id, user.auth_version),
     )
 
 

@@ -16,7 +16,7 @@ def _agent_from_mcp_token(credentials: HTTPAuthorizationCredentials = Depends(_b
     payload = auth_service.decode_token(credentials.credentials)
     if not payload or payload.get("type") != "mcp":
         raise HTTPException(status_code=401, detail="要用 MCP 鑰匙")
-    if not bed_service.verify_token_row(db, payload.get("jti")):
+    if not bed_service.verify_token_row(db, payload.get("jti"), payload.get("sub")):
         raise HTTPException(status_code=401, detail="鑰匙已作廢")
     agent = agent_service.get_user_agent(db, payload["sub"])
     if not agent:

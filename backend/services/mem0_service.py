@@ -24,10 +24,12 @@ _HISTORY_DB = _settings.mem0_history_db
 _EMBED_KEY = _settings.embed_openai_api_key
 _EMBED_MODEL = _settings.mem0_embed_model
 _EMBED_DIMS = _settings.mem0_embed_dims
+os.environ.setdefault("MEM0_DIR", str(Path(_HISTORY_DB).parent / "sdk"))
+os.environ.setdefault("MEM0_TELEMETRY", "false")
 
 _qdrant_client = None
 _qdrant_lock = threading.Lock()
-_instances: dict[str, object] = {}  # agent_id → Memory
+_instances: dict[str, tuple[tuple, object]] = {}  # agent_id → (設定識別, Memory)
 _instances_lock = threading.Lock()
 
 
@@ -60,11 +62,14 @@ def _decrypt_key(agent: Agent) -> str | None:
 
 def _get_instance(agent: Agent):
     """一個 agent 一個 Memory 實例（LLM key 不同），vector store 共用一個 qdrant client。"""
-    if agent.id in _instances:
-        return _instances[agent.id]
+    identity = (agent.llm_provider, agent.llm_model, agent.encrypted_api_key)
+    cached = _instances.get(agent.id)
+    if cached and cached[0] == identity:
+        return cached[1]
     with _instances_lock:
-        if agent.id in _instances:
-            return _instances[agent.id]
+        cached = _instances.get(agent.id)
+        if cached and cached[0] == identity:
+            return cached[1]
         from mem0 import Memory
         api_key = _decrypt_key(agent)
         if not api_key:
@@ -72,7 +77,7 @@ def _get_instance(agent: Agent):
         llm_provider = agent.llm_provider or "openai"
         llm_model = agent.llm_model or "gpt-4o-mini"
         # Map provider names to mem0's expected names
-        provider_map = {"claude": "anthropic", "xai": "openai", "gemini": "openai", "deepseek": "openai"}
+        provider_map = {"claude": "anthropic", "xai": "xai", "gemini": "gemini", "deepseek": "deepseek"}
         mem0_provider = provider_map.get(llm_provider, llm_provider)
         config = {
             "llm": {
@@ -102,7 +107,7 @@ def _get_instance(agent: Agent):
         }
         try:
             m = Memory.from_config(config)
-            _instances[agent.id] = m
+            _instances[agent.id] = (identity, m)
             return m
         except Exception as e:
             logger.error("mem0 init failed for %s: %s", agent.name, e)
@@ -123,7 +128,7 @@ def add_background(agent: Agent, messages: list[dict]) -> None:
         return
     def _do():
         try:
-            m.add(messages, filters={"user_id": agent.id})
+            m.add(messages, user_id=agent.id)
         except Exception as e:
             logger.warning("mem0 add failed for %s: %s", agent.name, e)
     t = threading.Thread(target=_do, daemon=True)
@@ -138,7 +143,7 @@ def search(agent: Agent, query: str, limit: int = 10) -> list[dict]:
     if not m:
         return []
     try:
-        results = m.search(query, filters={"user_id": agent.id}, limit=limit)
+        results = m.search(query, filters={"user_id": agent.id}, top_k=limit)
         if isinstance(results, dict) and "results" in results:
             results = results["results"]
         return [
@@ -171,7 +176,7 @@ def add_direct(agent: Agent, text: str) -> bool:
     if not m:
         return False
     try:
-        m.add([{"role": "user", "content": text}], filters={"user_id": agent.id})
+        m.add([{"role": "user", "content": text}], user_id=agent.id)
         return True
     except Exception as e:
         logger.warning("mem0 add_direct failed for %s: %s", agent.name, e)
@@ -186,9 +191,15 @@ def get_all(agent: Agent) -> list[dict]:
     if not m:
         return []
     try:
-        results = m.get_all(filters={"user_id": agent.id})
-        if isinstance(results, dict) and "results" in results:
-            results = results["results"]
+        # SDK 2.x 預設只取 20 筆；列表／匯出不能把剩下的記憶悄悄截掉。
+        page_size = 100
+        while True:
+            results = m.get_all(filters={"user_id": agent.id}, top_k=page_size)
+            if isinstance(results, dict) and "results" in results:
+                results = results["results"]
+            if len(results or []) < page_size:
+                break
+            page_size *= 2
         return [
             {
                 "id": r.get("id", ""),
@@ -212,6 +223,9 @@ def delete_one(agent: Agent, memory_id: str) -> bool:
     if not m:
         return False
     try:
+        item = m.get(memory_id)
+        if not isinstance(item, dict) or item.get("user_id") != agent.id:
+            return False
         m.delete(memory_id)
         return True
     except Exception as e:

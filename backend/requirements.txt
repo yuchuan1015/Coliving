@@ -12,3 +12,8 @@ httpx-sse>=0.4
 cryptography>=43.0
 mcp>=2.0,<3.0
 croniter>=2.0,<4.0
+Pillow>=11.0,<13.0
+mem0ai==2.0.20
+qdrant-client>=1.19,<2.0
+anthropic>=1.4,<2.0
+google-genai>=1.0,<2.0

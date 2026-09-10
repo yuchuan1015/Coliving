@@ -14,6 +14,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(64), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    auth_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="resident")
     invite_code_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("invite_codes.id"), nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)

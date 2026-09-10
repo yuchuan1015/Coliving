@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.user import User
-from schemas.user import AnchorRequest, ResidentListResponse, ResidentWithAgent, UpdateMeRequest, UserMe
-from services import ai_chat_service, coordinate_service, time_service, weather_service
+from schemas.user import AnchorRequest, ChangePasswordRequest, ResidentListResponse, ResidentWithAgent, UpdateMeRequest, UserMe
+from services import ai_chat_service, auth_service, coordinate_service, time_service, weather_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -25,11 +25,13 @@ def update_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """改自己的設定：時區、所在城市、出生年（只能填一次）、給室友的話。改了時區會重算名下排程的 next_run。"""
+    """改自己的顯示名稱、時區、城市、出生年（只能填一次）、給室友的話。改時區會重算名下排程。"""
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="沒有提供要更新的欄位")
     user = db.query(User).filter(User.id == current_user.id).first()
+    if "display_name" in updates:
+        user.display_name = updates["display_name"]
     if "timezone" in updates:
         try:
             user.timezone = time_service.validate_timezone(updates["timezone"]) if updates["timezone"] else None
@@ -60,6 +62,25 @@ def update_me(
 @router.get("/me", response_model=UserMe)
 def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return _me(db, current_user)
+
+
+@router.post("/me/password")
+def change_password(body: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not auth_service.verify_password(body.old_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="目前的密碼不正確")
+    if auth_service.verify_password(body.new_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="新密碼不能和目前的密碼相同")
+    changed = db.query(User).filter(User.id == user.id, User.hashed_password == user.hashed_password,
+                                   User.auth_version == user.auth_version).update({
+        User.hashed_password: auth_service.hash_password(body.new_password),
+        User.auth_version: user.auth_version + 1,
+    }, synchronize_session=False)
+    if changed != 1:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="密碼已變更，請重新登入")
+    db.commit()
+    return {"message": "密碼已更新，請用新密碼重新登入", "reauthenticate": True}
 
 
 @router.patch("/me/anchors", response_model=UserMe)

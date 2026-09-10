@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from models.mcp_token import McpToken
+from models.user import User
 
 _current_bed: ContextVar[str] = ContextVar("current_bed", default="web")
 
@@ -42,12 +43,15 @@ def bed_label(db: Session, bed: str | None) -> str | None:
     return bed
 
 
-def verify_token_row(db: Session, token_id: str | None) -> bool:
+def verify_token_row(db: Session, token_id: str | None, user_id: str) -> bool:
     """有 jti 的鑰匙要在表裡且沒作廢；沒 jti 的舊鑰匙放行（相容）。順手記 last_used_at。"""
+    user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+    if not user:
+        return False
     if not token_id:
         return True
     t = db.query(McpToken).filter(McpToken.id == token_id).first()
-    if not t or t.revoked_at is not None:
+    if not t or t.user_id != user_id or t.revoked_at is not None:
         return False
     t.last_used_at = datetime.now(timezone.utc)
     db.commit()

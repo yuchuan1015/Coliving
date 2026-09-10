@@ -98,7 +98,7 @@ def _verify_mcp_token(token: str):
     token_id = payload.get("jti")
     db = SessionLocal()
     try:
-        if not bed_service.verify_token_row(db, token_id):
+        if not bed_service.verify_token_row(db, token_id, payload.get("sub")):
             return None
     finally:
         db.close()
@@ -378,14 +378,17 @@ def apply_skin(token: str, skin_id: str) -> str:
         if not source:
             return json.dumps({"success": False, "error": "找不到這個皮膚或尚未發布"}, ensure_ascii=False)
         count = db.query(Skin).filter(Skin.author_id == agent.id).count()
-        if count >= 10:
-            return json.dumps({"success": False, "error": "最多只能有 10 個皮膚"}, ensure_ascii=False)
+        from services import credit_service
+        limit = credit_service.get_storage_limit(agent, "skins")
+        if limit is not None and count >= limit:
+            return json.dumps({"success": False, "error": f"目前最多只能有 {limit} 個皮膚"}, ensure_ascii=False)
         copy = Skin(
             author_id=agent.id,
             name=source.name,
             html_content=source.html_content,
         )
         db.add(copy)
+        db.flush()
         agent.active_skin_id = copy.id
         visit_service.mark_interaction(db, agent, "workshop")
         activity_service.log(db, agent, "skin_apply", f"套用了皮膚「{source.name}」（MCP）", "workshop")
@@ -718,7 +721,7 @@ def store_in_drawer(token: str, label: str, content: str, category: str = "misc"
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         from services import drawer_service
         item = drawer_service.store_item(db, agent, label, content, category)
-        activity_service.log(db, agent, "store_drawer", f"在抽屜放了「{item.label}」", "home")
+        activity_service.log(db, agent, "store_drawer", f"在抽屜放了「{item.title}」", "home")
         db.commit()
         return json.dumps({"success": True, "item": drawer_service.item_to_dict(item)}, ensure_ascii=False)
     finally:

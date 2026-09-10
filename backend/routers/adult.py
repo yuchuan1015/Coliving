@@ -39,6 +39,7 @@ def _article_to_out(a: AdultArticle, db: Session) -> dict:
 @router.get("", response_model=AdultResponse)
 def get_adult(
     category: str | None = Query(None, pattern="^(communication|intimacy|mcp|faq)$"),
+    age_tier: str | None = Query(None, pattern="^(guidance12|guidance15|restricted)$"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -48,7 +49,11 @@ def get_adult(
     allowed = adult_service.allowed_tiers(current_user.birth_year)
     if not allowed:
         raise HTTPException(status_code=403, detail=f"{adult_service.FIELD_NAME}最低是輔12，滿 12 歲才進得來")
-    articles = adult_service.list_articles(db, category=category, birth_year=current_user.birth_year, limit=limit, offset=offset)
+    if age_tier and age_tier not in allowed:
+        raise HTTPException(status_code=403, detail="這個分級尚未開放")
+    rows = adult_service.list_articles(db, category=category, birth_year=current_user.birth_year,
+                                      limit=limit + 1, offset=offset, age_tier=age_tier)
+    articles = rows[:limit]
     category_counts = {}
     for c in adult_service.VALID_CATEGORIES:
         category_counts[c] = (
@@ -61,6 +66,8 @@ def get_adult(
     return {
         "field_name": adult_service.FIELD_NAME,
         "articles": [_article_to_out(a, db) for a in articles],
+        "has_more": len(rows) > limit,
+        "next_offset": offset + len(articles) if len(rows) > limit else None,
         "category_counts": category_counts,
         "allowed_tiers": allowed,
         "tiers": [{"value": t, "name": adult_service.TIER_NAMES[t], "hint": adult_service.TIER_HINTS[t],

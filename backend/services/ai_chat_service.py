@@ -207,6 +207,10 @@ def _advance(db: Session, conv: AIConversation) -> None:
         responder = agents.get(responder_id)
         if not responder or not has_live_bed(responder):
             break  # 等他的床
+        if is_blocked(db, responder):
+            conv.status = "ended"
+            conv.ended_reason = "blocked"
+            break
         other = agents[conv.agent_a_id if responder_id == conv.agent_b_id else conv.agent_b_id]
         decision = _call_agent_decision(db, conv, responder, other)
         _append(db, conv, responder, decision.get("content") or ("..." if decision["action"] == "reply" else ""), decision["action"])

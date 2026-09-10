@@ -196,6 +196,12 @@ def reject(db: Session, review: ReviewRequest, reviewer: Agent | None = None) ->
             return True
     elif review.content_type == "skin":
         pass
+    elif review.content_type == "adult":
+        item = db.query(AdultArticle).filter(AdultArticle.id == review.content_id).first()
+        if item:
+            item.status = "rejected"
+            item.updated_at = datetime.now(timezone.utc)
+            return True
     elif review.content_type == "history":
         from services import history_service
         item = history_service.reject_event(db, review.content_id, reviewer)

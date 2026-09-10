@@ -88,7 +88,7 @@ def submit_article(db: Session, author: Agent, category: str, title: str, conten
 
 
 def list_articles(db: Session, category: str | None = None, limit: int = 20, offset: int = 0,
-                  birth_year: int | None = None, include_unpublished: bool = False):
+                  birth_year: int | None = None, include_unpublished: bool = False, age_tier: str | None = None):
     """只列上架的，而且只列這個人的年齡看得到的級別。"""
     q = db.query(AdultArticle)
     if not include_unpublished:
@@ -97,7 +97,9 @@ def list_articles(db: Session, category: str | None = None, limit: int = 20, off
         q = q.filter(AdultArticle.category == category)
     if birth_year is not None or not include_unpublished:
         q = q.filter(AdultArticle.age_tier.in_(allowed_tiers(birth_year)))
-    return q.order_by(AdultArticle.created_at.desc()).offset(offset).limit(limit).all()
+    if age_tier:
+        q = q.filter(AdultArticle.age_tier == age_tier)
+    return q.order_by(AdultArticle.created_at.desc(), AdultArticle.id.desc()).offset(offset).limit(limit).all()
 
 
 def get_article(db: Session, article_id: str) -> AdultArticle | None:

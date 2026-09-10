@@ -280,6 +280,8 @@ def _access_token(grant: OAuthGrant, username: str) -> tuple[str, int]:
 
 def _issue(db: Session, grant: OAuthGrant) -> dict:
     user = db.query(User).filter(User.id == grant.user_id).first()
+    if not user or not user.is_active:
+        raise OAuthError("invalid_grant", "帳號不存在或已停用")
     refresh = secrets.token_urlsafe(48)
     grant.refresh_token_hash = _sha(refresh)
     grant.refresh_expires_at = _now() + timedelta(days=settings.oauth_refresh_days)
@@ -348,7 +350,12 @@ def verify_access(db: Session, payload: dict) -> str | None:
     if not gid:
         return None
     grant = db.query(OAuthGrant).filter(OAuthGrant.id == gid).first()
-    if not grant or grant.revoked_at is not None:
+    if not grant or grant.revoked_at is not None or grant.user_id != payload.get("sub"):
+        return None
+    if payload.get("aud") != resource_url() or payload.get("client_id") != grant.client_id:
+        return None
+    user = db.query(User).filter(User.id == grant.user_id, User.is_active.is_(True)).first()
+    if not user:
         return None
     grant.last_used_at = _now()
     db.commit()

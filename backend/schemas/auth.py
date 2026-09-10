@@ -1,4 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def validate_new_password(value: str) -> str:
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("密碼最多 72 個 UTF-8 位元組，中文字會佔多個位元組")
+    return value
 
 
 class RegisterRequest(BaseModel):
@@ -10,6 +16,8 @@ class RegisterRequest(BaseModel):
     anchor_date_1: str | None = Field(default=None, pattern=r"^\d{2}-\d{2}$")  # 月-日
     anchor_date_2: str | None = Field(default=None, pattern=r"^\d{2}-\d{2}$")
     timezone: str | None = Field(default=None, max_length=64)  # IANA 名，前端用 Intl 自動帶；空＝Asia/Taipei
+
+    _password_bytes = field_validator("password")(validate_new_password)
 
 
 class LoginRequest(BaseModel):

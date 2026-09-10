@@ -16,7 +16,7 @@ class ColiveTokenVerifier(TokenVerifier):
         token_id = payload.get("jti")
         db = SessionLocal()
         try:
-            if not bed_service.verify_token_row(db, token_id):
+            if not bed_service.verify_token_row(db, token_id, user_id):
                 return None
         finally:
             db.close()

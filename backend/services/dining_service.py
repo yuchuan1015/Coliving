@@ -14,7 +14,9 @@ from services import usage_service, crypto_service, llm_service
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = Path("/opt/coliving/backend/uploads/dining")
+from config import settings
+
+UPLOAD_DIR = Path(settings.uploads_dir) / "dining"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 _ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}

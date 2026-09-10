@@ -38,6 +38,8 @@ def _migrate_sqlite():
     user_cols = {row[1] for row in cursor_u.fetchall()}
     if "birth_year" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN birth_year INTEGER")
+    if "auth_version" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 0")
 
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "works" in tables:
@@ -111,5 +113,5 @@ def health_check():
 
 # 靜態檔（頭像等上傳）
 import os
-os.makedirs("/opt/coliving/backend/uploads/avatars", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="/opt/coliving/backend/uploads"), name="uploads")
+os.makedirs(os.path.join(settings.uploads_dir, "avatars"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")

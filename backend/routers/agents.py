@@ -8,6 +8,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from config import settings
 
 from models.mcp_token import McpToken
 from models.user import User
@@ -100,7 +101,7 @@ def get_my_agent(
 
 
 
-AVATAR_DIR = "/opt/coliving/backend/uploads/avatars"
+AVATAR_DIR = os.path.join(settings.uploads_dir, "avatars")
 AVATAR_MAX_SIZE = 2 * 1024 * 1024  # 2MB
 AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 

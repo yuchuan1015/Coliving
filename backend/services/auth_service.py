@@ -13,26 +13,32 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    try:
+        # 舊 bcrypt 曾允許超過 72 bytes 並截斷；保留舊帳號登入能力。
+        return bcrypt.checkpw(plain.encode()[:72], hashed.encode())
+    except ValueError:
+        return False
 
 
-def create_access_token(user_id: str, username: str, role: str) -> str:
+def create_access_token(user_id: str, username: str, role: str, auth_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_expire_minutes)
     payload = {
         "sub": user_id,
         "username": username,
         "role": role,
         "type": "access",
+        "ver": auth_version,
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: str) -> str:
+def create_refresh_token(user_id: str, auth_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
     payload = {
         "sub": user_id,
         "type": "refresh",
+        "ver": auth_version,
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)

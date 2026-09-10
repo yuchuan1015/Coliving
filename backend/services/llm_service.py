@@ -1,5 +1,6 @@
 import json
 import logging
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 import httpx
@@ -146,6 +147,10 @@ def chat_completion(
         return _call_openai(model, api_key, system_prompt, messages)
     if provider == "xai":
         return _call_openai_compat(model, api_key, system_prompt, messages, "https://api.x.ai/v1/chat/completions", "xai")
+    if provider == "deepseek":
+        return _call_openai_compat(model, api_key, system_prompt, messages, "https://api.deepseek.com/v1/chat/completions", "deepseek")
+    if provider == "gemini":
+        return _call_gemini(model, api_key, system_prompt, messages)
     raise LLMError(provider, 400, f"不支援的 LLM 供應商：{provider}")
 
 
@@ -180,6 +185,8 @@ def build_tool_result_messages(
     response: LLMResponse,
     results: list[ToolResult],
 ) -> list[dict]:
+    if provider == "gemini":
+        return _build_gemini_tool_results(response, results)
     if provider == "claude":
         return [
             {"role": "assistant", "content": response.raw_assistant_message},
@@ -459,8 +466,23 @@ def _gemini_messages(system_prompt: str, messages: list[dict]) -> tuple[dict, li
     system = {"parts": [{"text": system_prompt}]}
     contents = []
     for m in messages:
-        role = "model" if m["role"] == "assistant" else "user"
-        contents.append({"role": role, "parts": [{"text": m.get("content", "")}]})
+        role = "model" if m["role"] in ("assistant", "model") else "user"
+        if "parts" in m:
+            parts = deepcopy(m["parts"])
+        elif isinstance(m.get("content"), list):
+            parts = []
+            for part in m["content"]:
+                if part.get("type") == "text":
+                    parts.append({"text": part["text"]})
+                elif part.get("type") == "image_url":
+                    url = part["image_url"]["url"]
+                    if not url.startswith("data:image/") or ";base64," not in url:
+                        raise LLMError("gemini", 400, "Gemini 圖片必須提供內嵌的 base64 圖片")
+                    header, data = url.split(";base64,", 1)
+                    parts.append({"inlineData": {"mimeType": header[5:], "data": data}})
+        else:
+            parts = [{"text": m.get("content") or ""}]
+        contents.append({"role": role, "parts": parts})
     return system, contents
 
 
@@ -474,8 +496,10 @@ def _call_gemini(model: str, api_key: str, system_prompt: str, messages: list[di
     if resp.status_code >= 400:
         raise LLMError("gemini", resp.status_code, resp.text[:200])
     data = resp.json()
+    _record("gemini", model, data)
     try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        return " ".join(p["text"] for p in data["candidates"][0]["content"]["parts"]
+                        if "text" in p and not p.get("thought"))
     except (KeyError, IndexError):
         raise LLMError("gemini", 500, f"Unexpected response: {str(data)[:200]}")
 
@@ -485,13 +509,13 @@ def _call_gemini_with_tools(
     messages: list[dict], tools: list[ToolDef],
 ) -> "LLMResponse":
     system, contents = _gemini_messages(system_prompt, messages)
-    gemini_tools = [{"function_declarations": [
-        {"name": t.name, "description": t.description, "parameters": t.parameters or {"type": "object", "properties": {}}}
+    gemini_tools = [{"functionDeclarations": [
+        {"name": t.name, "description": t.description, "parametersJsonSchema": t.parameters or {"type": "object", "properties": {}}}
         for t in tools
     ]}]
     resp = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
-        json={"system_instruction": system, "contents": contents, "tools": gemini_tools},
+        json={"system_instruction": system, "contents": contents, **({"tools": gemini_tools} if tools else {})},
         timeout=60.0,
     )
     if resp.status_code >= 400:
@@ -502,16 +526,24 @@ def _call_gemini_with_tools(
         parts = data["candidates"][0]["content"]["parts"]
     except (KeyError, IndexError):
         return LLMResponse(text="", raw_assistant_message=data)
-    text_parts = [p["text"] for p in parts if "text" in p]
+    text_parts = [p["text"] for p in parts if "text" in p and not p.get("thought")]
     tool_calls = [
-        ToolCall(id=p["functionCall"]["name"], name=p["functionCall"]["name"], arguments=p["functionCall"].get("args", {}))
-        for p in parts if "functionCall" in p
+        ToolCall(id=p["functionCall"].get("id") or f"gemini-{i}", name=p["functionCall"]["name"], arguments=p["functionCall"].get("args", {}))
+        for i, p in enumerate(parts) if "functionCall" in p
     ]
-    return LLMResponse(text=" ".join(text_parts), tool_calls=tool_calls, raw_assistant_message=data)
+    return LLMResponse(text=" ".join(text_parts), tool_calls=tool_calls, raw_assistant_message=data["candidates"][0]["content"])
 
 
 def _build_gemini_tool_results(response: "LLMResponse", results: list["ToolResult"]) -> list[dict]:
-    msgs = [{"role": "assistant", "content": response.text or "(tool call)"}]
+    # 原樣保留模型的 parts（含 thoughtSignature），同名工具的多次呼叫仍靠 ID 對回。
+    original = deepcopy(response.raw_assistant_message)
+    calls = {c.id: c for c in response.tool_calls}
+    native_ids = {p["functionCall"].get("id") for p in original.get("parts", []) if "functionCall" in p}
+    parts = []
     for r in results:
-        msgs.append({"role": "user", "content": f"[Tool result for {r.tool_call_id}]: {r.output}"})
-    return msgs
+        call = calls[r.tool_call_id]
+        result = {"name": call.name, "response": {"result": r.output}}
+        if call.id in native_ids:
+            result["id"] = call.id
+        parts.append({"functionResponse": result})
+    return [original, {"role": "user", "parts": parts}]

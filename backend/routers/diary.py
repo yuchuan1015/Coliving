@@ -38,7 +38,7 @@ def get_diary_entry(
 ):
     agent = _get_agent_or_403(db, current_user)
     entry = diary_service.get_entry(db, agent, entry_id)
-    if not entry:
+    if not entry or entry.private:
         raise HTTPException(status_code=404, detail="找不到日記")
     return diary_service._entry_to_dict(entry)
 

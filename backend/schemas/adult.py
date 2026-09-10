@@ -22,6 +22,8 @@ class ArticleOut(BaseModel):
 
 
 class AdultResponse(BaseModel):
+    has_more: bool = False
+    next_offset: int | None = None
     field_name: str
     articles: list[ArticleOut]
     category_counts: dict[str, int]

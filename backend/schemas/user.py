@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from schemas.auth import validate_new_password
 
 
 class UserPublic(BaseModel):
@@ -30,10 +31,25 @@ class UserMe(UserPublic):
 
 
 class UpdateMeRequest(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=64)
     note_to_agent: str | None = Field(default=None, max_length=1000)  # 給室友的話；空字串＝清掉
     timezone: str | None = Field(default=None, max_length=64)
     location_name: str | None = Field(default=None, max_length=64)  # 城市名，空字串清掉（回到用時區推）
     birth_year: int | None = Field(default=None, ge=1900, le=2026)   # 只能補填一次（舊帳號沒填的用）；填了鎖死，18+ 門檻靠它
+
+    @field_validator("display_name")
+    @classmethod
+    def nonblank_name(cls, value):
+        if value is None or not value.strip():
+            raise ValueError("顯示名稱不能空白")
+        return value.strip()
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=128, repr=False)
+    new_password: str = Field(min_length=6, max_length=72, repr=False)
+
+    _password_bytes = field_validator("new_password")(validate_new_password)
 
 
 class AnchorRequest(BaseModel):
