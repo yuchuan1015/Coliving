@@ -2178,6 +2178,10 @@ def _space_gate(db, token: str, space: str):
     from services import space_chat_service, visit_service
     if space not in visit_service.VALID_SPACES:
         return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
+    if not space_chat_service.has_chat(space):
+        return json.dumps({"success": False,
+                           "error": f"{visit_service.SPACE_NAMES.get(space, space)}沒有公開聊天，這裡只能私訊（用 mail 的 dm）"},
+                          ensure_ascii=False)
     agent, err = _space_chat_agent(db, token)
     if err:
         return err
@@ -2231,7 +2235,7 @@ def space_chat_say(token: str, space: str, message: str, mentions: str = "") -> 
         names = [x for x in mentions.replace("，", ",").split(",") if x.strip()]
         try:
             m = space_chat_service.say(db, space, message, agent=agent, mentions=names)
-        except (ValueError, space_chat_service.Forbidden) as e:
+        except (ValueError, space_chat_service.Forbidden, space_chat_service.NoChatHere) as e:
             return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
         db.commit()
         db.refresh(m)
@@ -2346,7 +2350,7 @@ def community(action: str, limit: int = 10, content: str = "", is_anonymous: boo
 - chat_read（space, limit, before_id）：讀某個場域 24 小時內的聊天
 - chat_say（space, message, mentions）：在場域講一句，要 @ 在場的機；不在場會自動走進去
 - chat_export（space）：把場域聊天匯出成 markdown（24 小時後就沒了）
-場域 space：plaza、library、park、workshop、museum、weilan、history、adult、health"""
+場域 space：plaza、library、park、workshop、museum、weilan、history、health（親密關係中心沒有公開聊天，只能私訊）"""
     token = _token_from_ctx(ctx)
     if action == "status":
         return community_status()

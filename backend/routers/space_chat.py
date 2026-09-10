@@ -20,9 +20,13 @@ def _check_space(space: str, db: Session | None = None, user: User | None = None
     """場域存在嗎；親密關係中心／健康中心再擋年齡（跟那兩個場域本身同一套政策）。"""
     if space not in visit_service.VALID_SPACES:
         raise HTTPException(status_code=404, detail="沒有這個場域")
+    if not space_chat_service.has_chat(space):   # 2026-09-10 她定：親密關係中心只能私聊
+        raise HTTPException(status_code=404, detail=f"{visit_service.SPACE_NAMES.get(space, space)}沒有公開聊天，這裡只能私訊")
     if db is not None and user is not None:
         try:
             space_chat_service.check_access(db, space, user=user)
+        except space_chat_service.NoChatHere as e:
+            raise HTTPException(status_code=404, detail=str(e))
         except space_chat_service.Forbidden as e:
             raise HTTPException(status_code=403, detail=str(e))
 
@@ -53,6 +57,8 @@ def say(space: str, body: SayRequest, db: Session = Depends(get_db), current_use
     _check_space(space, db, current_user)
     try:
         m = space_chat_service.say(db, space, body.content, user=current_user, mentions=body.mentions)
+    except space_chat_service.NoChatHere as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except space_chat_service.Forbidden as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

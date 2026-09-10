@@ -20,6 +20,13 @@ from services import activity_service, adult_service, time_service, visit_servic
 # 受限場域：跟親密關係中心／健康中心同一套年齡政策（2026-09-09 Codex 抓到聊天沒擋，補上）
 RESTRICTED = ("adult", "health")
 
+# 沒有聊天室的場域（2026-09-10 她定）：親密關係中心只能私聊，不開公開聊天
+NO_CHAT = ("adult",)
+
+
+def has_chat(space: str) -> bool:
+    return space in visit_service.VALID_SPACES and space not in NO_CHAT
+
 TTL = timedelta(hours=24)        # 訊息壽命
 STALE = timedelta(hours=24)      # 多久沒動靜當他走了
 MAX_LEN = 1000
@@ -29,9 +36,15 @@ class Forbidden(Exception):
     """年齡／分級擋下來。REST 回 403，MCP 回 error。"""
 
 
+class NoChatHere(Exception):
+    """這個場域沒有公開聊天（只能私聊）。"""
+
+
 def check_access(db: Session, space: str, *, user=None, agent: Agent | None = None) -> None:
     """親密關係中心要滿 12 歲（跟那一區的最低分級一致），健康中心要填出生年；其他場域不擋。
     user 沒給就從 agent 對應的住戶查。"""
+    if space in NO_CHAT:
+        raise NoChatHere(f"{visit_service.SPACE_NAMES.get(space, space)}沒有公開聊天，這裡只能私訊")
     if space not in RESTRICTED:
         return
     if user is None and agent is not None:

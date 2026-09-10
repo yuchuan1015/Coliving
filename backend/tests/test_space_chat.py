@@ -191,22 +191,23 @@ class SpaceChatTest(unittest.TestCase):
         db.commit()
         db.close()
 
-        # ── REST ──
-        for tag, space, code in (("nobirth", "adult", 403), ("nobirth", "health", 403),
-                                 ("minor", "adult", 403), ("minor", "health", 200),
-                                 ("adult", "adult", 200), ("adult", "health", 200)):
+        # ── REST ──（親密關係中心 2026-09-10 起沒有公開聊天，一律 404）
+        for tag, space, code in (("nobirth", "adult", 404), ("nobirth", "health", 403),
+                                 ("minor", "adult", 404), ("minor", "health", 200),
+                                 ("adult", "adult", 404), ("adult", "health", 200)):
             self._as(rows[tag][0])
             for path in (f"/api/spaces/{space}/present", f"/api/spaces/{space}/chat", f"/api/spaces/{space}/chat/export"):
                 self.assertEqual(self.client.get(path).status_code, code, f"{tag} {path}")
             r = self.client.post(f"/api/spaces/{space}/chat", json={"content": "hi", "mentions": [aname]})
-            self.assertEqual(r.status_code, code if code == 403 else 400 if space == "health" else 201, f"{tag} say {space}")
+            expect = code if code in (403, 404) else 400
+            self.assertEqual(r.status_code, expect, f"{tag} say {space}")
         # 公共場域誰都進得去
         self._as(rows["nobirth"][0])
         self.assertEqual(self.client.get("/api/spaces/park/present").status_code, 200)
 
         # ── MCP ──
         M._verify_mcp_token = lambda token: {"nobirth": rows["nobirth"][0], "minor": rows["minor"][0], "adult": rows["adult"][0]}[token]
-        for tag, space, ok in (("nobirth", "adult", False), ("minor", "adult", False), ("adult", "adult", True),
+        for tag, space, ok in (("nobirth", "adult", False), ("minor", "adult", False), ("adult", "adult", False),
                                ("nobirth", "health", False), ("minor", "health", True), ("adult", "park", True)):
             for act, args in (("chat_who", {}), ("chat_read", {})):
                 r = json.loads(M.community(act, ctx=_ctx(tag), space=space, **args))
@@ -216,7 +217,24 @@ class SpaceChatTest(unittest.TestCase):
             r = json.loads(M.community("chat_say", ctx=_ctx(tag), space=space, message="hi", mentions=aname))
             if not ok:
                 self.assertFalse(r["success"])
-                self.assertNotIn("要 @", r["error"])  # 是年齡擋的，不是沒 @ 人
+                self.assertNotIn("要 @", r["error"])  # 是年齡或沒聊天室擋的，不是沒 @ 人
+
+    def test_intimacy_center_has_no_public_chat(self):
+        """2026-09-10 她定：親密關係中心只能私聊，公開聊天整個沒有。"""
+        db = SessionLocal()
+        A = db.query(Agent).filter_by(id=self.aA).first()
+        aname = A.name
+        db.close()
+        self._as(self.uA)
+        for path in ("/api/spaces/adult/present", "/api/spaces/adult/chat", "/api/spaces/adult/chat/export"):
+            r = self.client.get(path)
+            self.assertEqual(r.status_code, 404, path)
+            self.assertIn("只能私訊", r.json()["detail"])
+        r = self.client.post("/api/spaces/adult/chat", json={"content": "hi", "mentions": [aname]})
+        self.assertEqual(r.status_code, 404)
+        # 其他場域照常
+        self.assertEqual(self.client.get("/api/spaces/park/present").status_code, 200)
+        self.assertEqual(self.client.get("/api/spaces/health/present").status_code, 200)
 
 
 if __name__ == "__main__":
