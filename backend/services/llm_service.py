@@ -1,10 +1,12 @@
 import json
+import logging
 from dataclasses import dataclass, field
 
 import httpx
 
 from services.exceptions import LLMError
 
+logger = logging.getLogger(__name__)
 _TIMEOUT = 60.0
 
 
@@ -203,47 +205,61 @@ def build_tool_result_messages(
 # Validate API key (unchanged)
 # ---------------------------------------------------------------------------
 
-def validate_api_key(provider: str, api_key: str) -> bool:
+PROVIDER_NAMES = {"claude": "Anthropic", "openai": "OpenAI", "xai": "xAI", "gemini": "Google", "deepseek": "DeepSeek"}
+
+
+def check_api_key(provider: str, api_key: str) -> tuple[bool, str]:
+    """驗金鑰，回 (可不可以用, 不能用的原因)。
+    2026-09-10：金鑰前後有空白或換行（從網頁複製很常見）以前會直接爆掉，只回一句「驗證失敗」；
+    現在先剪掉空白，而且分得出「供應商說金鑰不對」和「我們連不上供應商」。"""
+    who = PROVIDER_NAMES.get(provider, provider)
+    key = (api_key or "").strip()
+    if not key:
+        return False, "金鑰是空的"
+    if not key.isascii():
+        return False, "金鑰裡有中文或全形字元，你貼到的可能不是金鑰本身"
     try:
         if provider == "claude":
             resp = httpx.get(
                 "https://api.anthropic.com/v1/models",
-                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+                headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
                 timeout=15.0,
             )
-            return resp.status_code == 200
-        if provider == "openai":
-            resp = httpx.get(
-                "https://api.openai.com/v1/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=15.0,
-            )
-            return resp.status_code == 200
-        if provider == "xai":
-            resp = httpx.get(
-                "https://api.x.ai/v1/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=15.0,
-            )
-            return resp.status_code == 200
-        if provider == "gemini":
+        elif provider == "openai":
+            resp = httpx.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {key}"}, timeout=15.0)
+        elif provider == "xai":
+            resp = httpx.get("https://api.x.ai/v1/models", headers={"Authorization": f"Bearer {key}"}, timeout=15.0)
+        elif provider == "gemini":
             resp = httpx.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}",
                 json={"contents": [{"parts": [{"text": "hi"}]}]},
-                timeout=10.0,
+                timeout=15.0,
             )
-            return resp.status_code < 400
-        if provider == "deepseek":
+        elif provider == "deepseek":
             resp = httpx.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=10.0,
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=15.0,
             )
-            return resp.status_code < 400
-        return False
-    except httpx.HTTPError:
-        return False
+        else:
+            return False, f"不支援的供應商：{provider}"
+    except httpx.HTTPError as e:
+        logger.warning("check_api_key transport error for %s: %s", provider, e)
+        return False, f"現在連不上{who}，過一下再試（不一定是金鑰的問題）"
+    except Exception as e:  # noqa: BLE001  金鑰裡有怪字元之類的，不要把技術訊息丟給住戶看
+        logger.warning("check_api_key failed for %s: %s", provider, e)
+        return False, "這串看起來不像金鑰，再複製一次試試"
+
+    if resp.status_code < 400:
+        return True, ""
+    if resp.status_code in (401, 403):
+        return False, f"{who}說這把金鑰無效或沒有權限。確認一下是不是複製到少一段，或用錯了供應商"
+    return False, f"{who}回了 {resp.status_code}，先確認金鑰，或稍後再試"
+
+
+def validate_api_key(provider: str, api_key: str) -> bool:
+    return check_api_key(provider, api_key)[0]
 
 
 # ---------------------------------------------------------------------------

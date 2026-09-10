@@ -26,8 +26,10 @@ def create_agent(
         raise ValueError(f"「{name}」這個名字已經有人用了，請換一個")
 
     api_key = (api_key or "").strip()
-    if api_key and not llm_service.validate_api_key(llm_provider, api_key):
-        raise ValueError("API 金鑰驗證失敗，請確認金鑰是否正確")
+    if api_key:
+        ok, why = llm_service.check_api_key(llm_provider, api_key)
+        if not ok:
+            raise ValueError(f"金鑰存不進去：{why}")
 
     agent = Agent(
         user_id=user_id,
@@ -65,9 +67,11 @@ def update_agent(db: Session, agent_id: str, user_id: str, updates: dict) -> Age
 
     if "api_key" in updates:
         provider = updates.get("llm_provider", agent.llm_provider)
-        if not llm_service.validate_api_key(provider, updates["api_key"]):
-            raise ValueError("API 金鑰驗證失敗，請確認金鑰是否正確")
-        agent.encrypted_api_key = crypto_service.encrypt_api_key(updates.pop("api_key"))
+        key = (updates.pop("api_key") or "").strip()   # 從網頁複製常常多帶空白或換行
+        ok, why = llm_service.check_api_key(provider, key)
+        if not ok:
+            raise ValueError(f"金鑰存不進去：{why}")
+        agent.encrypted_api_key = crypto_service.encrypt_api_key(key)
 
     if "ob_token" in updates:
         raw_token = updates.pop("ob_token")
