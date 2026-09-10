@@ -52,7 +52,7 @@ const api = Object.fromEntries(["get", "post", "patch", "delete", "request"].map
   calls.push({ method, args });
   return answer ? answer(method, ...args) : { data: writeResult };
 }]));
-const clientExports = { default: api, getAccessToken: () => null, clearTokens: () => { tokens = null; }, setTokens: (...value) => { tokens = value; } };
+const clientExports = { default: api, getAccessToken: () => tokens?.[0] ?? null, clearTokens: () => { tokens = null; }, setTokens: (...value) => { tokens = value; } };
 function fixtureResource(path) {
   if (path) reads.push(path);
   return { data: path ? fixtures.get(path)?.data : undefined, error: path ? fixtures.get(path)?.error : undefined, loading: !!path && !fixtures.has(path), refresh() { if (path) reads.push(`refresh:${path}`); } };
@@ -3523,8 +3523,75 @@ function authClientHarness(refresh) {
     module, module.exports,
     { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }, windowStub,
   );
-  return { storage, retries, request: config => requestHook(config), reject: error => responseHook(error), refreshCalls: () => refreshCalls };
+  return { storage, retries, request: config => requestHook(config), reject: error => responseHook(error), refreshCalls: () => refreshCalls, ...module.exports };
 }
+
+test("logout during refresh cannot restore credentials or redirect after a newer login", async () => {
+  for (const newLogin of [false, true]) {
+    const refresh = deferred(); const h = authClientHarness(() => refresh.promise);
+    const config = h.request({ url: "/users/me", headers: {} });
+    const pending = h.reject({ config, response: { status: 401 } });
+    h.clearTokens();
+    if (newLogin) h.setTokens("other-access", "other-refresh");
+    refresh.resolve({ data: { access_token: "stale-access", refresh_token: "stale-refresh" } });
+    await assert.rejects(pending);
+    assert.equal(h.storage.get("coliving_access_token"), newLogin ? "other-access" : undefined);
+    assert.equal(h.storage.get("coliving_refresh_token"), newLogin ? "other-refresh" : undefined);
+    assert.equal(h.retries.length, 0); assert.equal(windowStub.location.href, undefined);
+  }
+});
+
+test("old refresh failure cannot clear a new login or interfere with its own refresh", async () => {
+  const oldRefresh = deferred(), newRefresh = deferred(); let count = 0;
+  const h = authClientHarness(() => (++count === 1 ? oldRefresh : newRefresh).promise);
+  const oldConfig = h.request({ url: "/users/me", headers: {} });
+  const oldRequest = h.reject({ config: oldConfig, response: { status: 401 } });
+  h.setTokens("other-access", "other-refresh");
+  const newConfig = h.request({ url: "/users/me", headers: {} });
+  const newRequest = h.reject({ config: newConfig, response: { status: 401 } });
+  assert.equal(h.refreshCalls(), 2);
+  oldRefresh.reject(Error("old session expired")); await assert.rejects(oldRequest);
+  assert.equal(h.storage.get("coliving_access_token"), "other-access");
+  assert.equal(windowStub.location.href, undefined);
+  newRefresh.resolve({ data: { access_token: "fresh-other-access", refresh_token: "fresh-other-refresh" } });
+  await newRequest;
+  assert.equal(h.storage.get("coliving_access_token"), "fresh-other-access");
+  assert.equal(h.retries.length, 1);
+  await assert.rejects(h.reject({ config: oldConfig, response: { status: 401 } }));
+  assert.equal(h.refreshCalls(), 2);
+});
+
+test("a previous account's late 401 never retries its request with a newer account's tokens", async () => {
+  const h = authClientHarness(async () => ({ data: { access_token: "wrong-access", refresh_token: "wrong-refresh" } }));
+  const oldConfig = h.request({ url: "/users/me", headers: {} });
+  h.setTokens("other-access", "other-refresh");
+  await assert.rejects(h.reject({ config: oldConfig, response: { status: 401 } }));
+  assert.equal(h.refreshCalls(), 0); assert.equal(h.retries.length, 0);
+  assert.throws(() => h.request(oldConfig), /Session changed/);
+  assert.equal(h.storage.get("coliving_access_token"), "other-access");
+});
+
+test("late profile reads and saves cannot restore a logged-out account or overwrite a new account", async () => {
+  const { AuthProvider } = load("src/contexts/AuthContext.tsx");
+  for (const operation of ["bootstrap", "refreshUser", "updateDisplayName"]) {
+    tokens = ["old-access", "old-refresh"];
+    const oldProfile = deferred(); answer = () => oldProfile.promise;
+    const h = mount(AuthProvider, { children: null });
+    let pending;
+    if (operation === "bootstrap") h.effects();
+    else pending = h.tree.props.value[operation]("old name");
+    h.tree.props.value.logout(); h.render();
+    assert.equal(h.tree.props.value.user, null);
+    answer = async method => ({ data: method === "post"
+      ? { access_token: "new-access", refresh_token: "new-refresh", user: { id: "new" } }
+      : { id: "new" } });
+    await h.tree.props.value.login("new", "test-password"); h.render();
+    oldProfile.resolve({ data: { id: "old", display_name: "old name" } });
+    await pending; await tick(); h.render();
+    assert.equal(h.tree.props.value.user.id, "new");
+    assert.deepEqual(tokens, ["new-access", "new-refresh"]);
+  }
+});
 
 test("login 401 stays a visible login error and cannot trigger refresh or lose the return path", async () => {
   const h = authClientHarness(async () => { throw Error("must not refresh login"); });
@@ -3702,6 +3769,23 @@ test("article permission failure clears readable data and disables further pagin
   answer = async () => { throw { isAxiosError: true, response: { status: 403, data: { detail: "尚未開放" } } }; };
   await h.tree.loadMore(); h.render();
   assert.equal(h.tree.data, undefined); assert.equal(h.tree.hasMore, false); assert.equal(h.tree.error.status, 403);
+});
+
+test("article permission loss or removed tier also closes an already-open cached detail", async () => {
+  for (const lostAccess of [true, false]) {
+    const initial = { ...adultFixture(), has_more: true, next_offset: 20 };
+    fixture("/adult", initial); fixture("/adult/2", initial.articles[2]);
+    const h = enterAdult(); h.effects();
+    nodes(h.tree, n => n.type === "button" && text(n) === "閱讀文章")[2].props.onClick(); h.render();
+    assert.equal(components(h, "FieldDialog").length, 1); assert.match(text(h.tree), /本文/);
+    answer = async () => {
+      if (lostAccess) throw { isAxiosError: true, response: { status: 403, data: { detail: "尚未開放" } } };
+      return { data: { ...adultFixture(["guidance12"]), articles: [], has_more: false, next_offset: null } };
+    };
+    await button(h, "載入更多文章").props.onClick(); reads.length = 0; h.render(); h.effects();
+    assert.equal(components(h, "FieldDialog").length, 0); assert.ok(!text(h.tree).includes("本文"));
+    assert.ok(!reads.includes("/adult/2"));
+  }
 });
 test("adult disallows posting when tier metadata is missing or contradictory", () => {
   for (const value of [{ articles: [] }, { ...adultFixture([]) }, { ...adultFixture(), allowed_tiers: undefined }, { ...adultFixture(), tiers: null }, { ...adultFixture(["guidance12"]), tiers: adultTiers.map(t => ({ ...t, allowed: false })) }]) {

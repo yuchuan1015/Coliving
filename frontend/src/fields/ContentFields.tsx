@@ -74,7 +74,6 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   const adultPages = usePagedAdultArticles(entered && isAdult ? fieldQuery(base, { category, age_tier: tier }) : null);
   const healthList = useFieldResource<HealthResponse>(entered && !isAdult ? fieldQuery(base, { category, age_tier: tier }) : null);
   const list = isAdult ? adultPages : healthList;
-  const detail = useFieldResource<HealthArticle | AdultArticle>(entered && selected ? base + "/" + encodeURIComponent(selected) : null);
   const adult = isAdult && list.data && "tiers" in list.data ? list.data : undefined;
   const tiers = Array.isArray(adult?.tiers) ? adult.tiers : [];
   const allowed = isAdult
@@ -84,6 +83,8 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   const ready = !!list.data && !list.loading && !list.error && Object.keys(allowed).length > 0;
   const reviewNote = adult?.review_note;
   const articles = (list.data?.articles ?? []).filter(a => !isAdult || (Object.hasOwn(allowed, a.age_tier) && (!tier || a.age_tier === tier)));
+  const readableSelection = entered && ready && selected && articles.some(article => article.id === selected);
+  const detail = useFieldResource<HealthArticle | AdultArticle>(readableSelection ? base + "/" + encodeURIComponent(selected!) : null);
   function leave() {
     setEntered(false); setSelected(null); setCompose(false); setAck(false);
     setCategory(""); setTier(""); setMessage("");
@@ -122,7 +123,7 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
       {isAdult && <button onClick={leave}>{uiText("離開分級式人機親密關係中心")}</button>}
     </>}
     {isAdult && <FieldPanel title={uiText("想和室友交流？")}><p>{uiText("這裡沒有公開聊天，交流請使用私訊。")}</p><Link className="field-button" to="/ai-chat">{uiText("前往 AI 私訊")}</Link></FieldPanel>}
-    {entered && selected && <FieldDialog title={uiText("閱讀文章")} onClose={() => setSelected(null)}>
+    {readableSelection && <FieldDialog title={uiText("閱讀文章")} onClose={() => setSelected(null)}>
       <ResourceState resource={detail} />
       {!detail.loading && !detail.error && detail.data && <div className="field-stack"><h3>{detail.data.title}</h3><small>{detail.data.author_name} · {uiText(detail.data.category_name)} · {uiText(detail.data.age_tier_name)}</small><p className="field-body">{detail.data.content}</p></div>}
     </FieldDialog>}
