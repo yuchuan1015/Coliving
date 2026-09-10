@@ -17,6 +17,7 @@ import { MailboxPage } from "../../src/pages/MailboxPage";
 import { SchedulesPage } from "../../src/pages/SchedulesPage";
 import { AdoptPage } from "../../src/pages/AdoptPage";
 import { AdminPage } from "../../src/pages/AdminPage";
+import { DMReportsPage } from "../../src/pages/DMReportsPage";
 import { AdvancedAgentPage } from "../../src/pages/AdvancedAgentPage";
 import type { ScheduleOut } from "../../src/api/schedules";
 import { FrameDetail } from "./FrameDetail";
@@ -29,6 +30,11 @@ import { LanguageDocument } from "../../src/i18n/LanguageControl";
 const created = "2026-09-09T03:00:00Z";
 const params = new URLSearchParams(location.search);
 const managementState = params.get("management-state") ?? "ready";
+const reportState = params.get("report-state") ?? "ready";
+let reports = reportState === "empty" ? [] : [
+  { id: "preview-report", reporter: "範例室友甲", reported: "範例室友乙", reason: "本地示範：已經表示不想繼續對話，仍收到重複訊息。", status: "pending", admin_note: null as string | null, created_at: created, resolved_at: null as string | null },
+  { id: "preview-resolved", reporter: "範例室友丙", reported: "範例室友丁", reason: "本地示範：已完成審查的案件。", status: "dismissed", admin_note: "本地示範備註，並非真實案件。", created_at: created, resolved_at: created },
+];
 const previewStats = {
   residents: { total_users: 12, active_users: 8, total_agents: 10 },
   content: { posts: 48, works: 6, book_clubs: 2, book_club_replies: 9, skins: 3, published_skins: 1, announcements: 2 },
@@ -49,6 +55,7 @@ const usageFixture: ChatUsage = {
 let chatMessages = [{ id: "chat-1", role: "assistant", content: "這是本地聊天預覽。右上角可以查看用量面板；範例數字不是正式帳單。", created_at: created }];
 const user: UserMe = { id: "preview-user", username: "preview", display_name: "星際旅人", role: "resident", created_at: created, is_active: true, last_login_at: null, timezone: "Asia/Taipei", note_to_agent: "每次醒來，先看看窗外。\n有喜歡的風景，就帶回來給我看看。" };
 let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "僅供本地展示，不是真實帳號。", llm_provider: "claude", llm_model: "claude-opus-4-6", has_api_key: false, avatar_emoji: "☾", status: "active", ob_enabled: false, external_mcps: [], active_skin_id: null, created_at: created, updated_at: null, dm_code_public: true };
+if (["admin", "reports"].includes(params.get("page") ?? "") && reportState !== "denied") user.role = "admin";
 let photos: CabinPhoto[] = ["life", "memory", "shared"].map((zone, i) => ({ id: String(i), caption: ["範例照片 · 出發前的艙室", "範例照片 · 留下文字的角落", "範例照片 · 等你一起吃飯"][i], url: "/ya-chao-assets/cabin-" + zone + "-v1.webp", is_displayed: i === 0, width: 792, height: 1124, bytes: 100000, created_at: created }));
 let displayedId: string | null = "0";
 let sequence = 3;
@@ -68,7 +75,18 @@ api.defaults.adapter = async config => {
   const path = config.url ?? "", method = config.method ?? "get";
   const payload = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
   let data: unknown;
-  if (method === "get" && (path === "/admin/stats" || (path === "/agents/mine" && params.get("page") === "advanced"))) {
+  if (path.startsWith("/admin/dm-reports")) {
+    const url = new URL(path, "http://preview.invalid");
+    const id = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+    const report = reports.find(row => row.id === id);
+    if (method === "get" && reportState === "loading") await new Promise<never>(() => {});
+    if (reportState === "error" || (reportState === "detail-error" && id) || (reportState === "save-error" && method === "patch")) throw new AxiosError("Preview report failure", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例：讀取或保存暫時失敗，未修改正式資料。" } });
+    if (method === "get" && url.pathname === "/admin/dm-reports") data = { reports: reports.filter(row => row.status === url.searchParams.get("status")) };
+    else if (method === "get" && report) data = { report, messages: [{ sender: report.reporter, content: "本地對話範例：我想先停在這裡，請不要繼續傳訊息。", action: "say", created_at: created }, { sender: report.reported, content: "本地對話範例：這是一段供檢查排版的示範內容。", action: "say", created_at: created }] };
+    else if (method === "patch" && report && ["pending", "upheld", "dismissed"].includes(payload.status)) { reports = reports.map(row => row.id === id ? { ...row, status: payload.status, admin_note: payload.admin_note, resolved_at: payload.status === "pending" ? null : new Date().toISOString() } : row); data = reports.find(row => row.id === id); }
+    else throw Error("Unknown local report operation");
+  }
+  else if (method === "get" && (path === "/admin/stats" || (path === "/agents/mine" && params.get("page") === "advanced"))) {
     if (managementState === "loading") await new Promise<never>(() => {});
     if (managementState === "error" || managementState === "denied") throw new AxiosError("Preview management failure", "ERR_BAD_RESPONSE", config, undefined, { config, status: managementState === "denied" ? 403 : 503, statusText: "Preview", headers: {}, data: {} });
     data = path === "/admin/stats" ? previewStats : agent;
@@ -126,11 +144,11 @@ api.defaults.adapter = async config => {
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ reports: "/admin/dm-reports", admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><LanguageDocument /><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link><Link to="/adopt">領養室友</Link><Link to="/admin">系統儀表板</Link><Link to="/agent/advanced">進階設定</Link></nav>
-  <Routes><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <Routes><Route path="/admin/dm-reports" element={<DMReportsPage />} /><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
 </MemoryRouter></AuthContext.Provider></StrictMode>);

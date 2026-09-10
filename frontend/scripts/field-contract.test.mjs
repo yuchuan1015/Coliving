@@ -1536,6 +1536,111 @@ test("admin report review keeps server verdict and only patches after explicit c
   expectCall("patch", "/admin/dm-reports/r%2F1", { status: "upheld", admin_note: "已確認" });
   await assert.rejects(submit(r, "確認保存審核", { status: "deleted" }), /選擇/);
 });
+test("report route uses the cabin shell and returns to admin, not the home fallback", () => {
+  auth.user.role = "admin";
+  const h = mount(DMReportsPage);
+  const shell = one(h, "CabinUtilityShell");
+  assert.equal(shell.props.code, "REPORTS");
+  assert.equal(shell.props.title, "私訊檢舉審核");
+  const rendered = mount(shell.type, shell.props);
+  click(rendered, "← 系統儀表板"); expectCall("navigate", "/admin");
+  const preview = readFileSync(resolve(root, "scripts/album-preview/preview.tsx"), "utf8");
+  assert.ok(preview.includes('<Route path="/admin/dm-reports" element={<DMReportsPage />} />'));
+  assert.ok(preview.includes('reports: "/admin/dm-reports"'));
+  assert.ok(preview.includes('["admin", "reports"].includes(params.get("page")'));
+});
+test("report filters retain endpoint values while status badges translate and names stay raw", () => {
+  auth.user.role = "admin"; language.setUiLanguage("zh-CN");
+  const p = mount(DMReportsPage), h = mount(one(p, "Reports").type);
+  const report = { id: "report", reporter: "繁體甲", reported: "繁體乙", reason: "保留原文：圖書館", status: "pending", created_at: "2026-09-09T00:00:00Z" };
+  fixture("/admin/dm-reports?status=pending", { reports: [report] }); h.render();
+  assert.match(text(h.tree), /待审核/); assert.match(text(h.tree), /繁體甲/);
+  assert.match(text(h.tree), /保留原文：圖書館/);
+  for (const value of ["upheld", "dismissed", "pending"]) {
+    tab(h, value);
+    assert.equal(reads.at(-1), "/admin/dm-reports?status=" + value);
+    assert.deepEqual(Object.keys(one(h, "FieldTabs").props.options), ["pending", "upheld", "dismissed"]);
+  }
+  assert.equal(calls.length, 0);
+});
+test("report list keeps loading and permission errors distinct from its empty state", () => {
+  auth.user.role = "admin";
+  const h = mount(one(mount(DMReportsPage), "Reports").type);
+  assert.equal(button(h, "更新清單").props.disabled, true);
+  assert.equal(one(h, "ResourceState").props.resource.loading, true);
+  fixture("/admin/dm-reports?status=pending", { reports: [] }); h.render();
+  assert.match(text(h.tree), /目前沒有待審核的檢舉/);
+  assert.equal(button(h, "更新清單").props.disabled, false);
+  click(h, "更新清單"); assert.ok(reads.includes("refresh:/admin/dm-reports?status=pending"));
+  fixtures.set("/admin/dm-reports?status=pending", { error: { status: 403, message: "需要管理員權限" } }); h.render();
+  assert.equal(one(h, "ResourceState").props.resource.error.status, 403);
+  assert.ok(!text(h.tree).includes("目前沒有待審核的檢舉"));
+  assert.equal(nodes(h.tree, n => n.props.className === "reports-item").length, 0);
+  assert.equal(components(h, "Review").length, 0);
+});
+test("report details show escaped conversation text and existing verdict without auto-writing", async () => {
+  auth.user.role = "admin"; language.setUiLanguage("zh-CN");
+  const report = { id: "r/1", reporter: "繁體甲", reported: "繁體乙", reason: "原始理由", status: "dismissed", admin_note: "既有備註", created_at: "2026-09-09T00:00:00Z", resolved_at: "2026-09-10T00:00:00Z" };
+  fixture("/admin/dm-reports?status=pending", { reports: [report] });
+  const list = mount(one(mount(DMReportsPage), "Reports").type);
+  click(list, "查看内容与审核");
+  const review = one(list, "Review");
+  fixture("/admin/dm-reports/r%2F1/messages", { report, messages: [{ sender: "繁體乙", content: '<script>alert("not executable")</script>\n原始對話', created_at: report.created_at }] });
+  const h = mount(review.type, review.props);
+  assert.match(text(h.tree), /相关对话/);
+  assert.ok(text(h.tree).includes('<script>alert("not executable")</script>'));
+  assert.equal(nodes(h.tree, n => n.type === "script" || n.props.dangerouslySetInnerHTML).length, 0);
+  assert.equal(one(h, "FieldSelect").props.value, "dismissed");
+  assert.equal(nodes(h.tree, n => n.type === "textarea")[0].props.defaultValue, "既有備註");
+  assert.equal(nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.required, true);
+  assert.equal(one(h, "FieldForm").props.guarded, true);
+  assert.equal(calls.length, 0);
+  await assert.rejects(submit(h, "确认保存审核", { status: "__proto__" }), /選擇/);
+  assert.equal(calls.length, 0);
+  await submit(h, "确认保存审核", { status: "pending", admin_note: "" });
+  expectCall("patch", "/admin/dm-reports/r%2F1", { status: "pending", admin_note: null });
+});
+test("report detail missing, failed and empty conversation states do not invent evidence", () => {
+  auth.user.role = "admin";
+  fixture("/admin/dm-reports?status=pending", { reports: [{ id: "report", reporter: "甲", reported: "乙" }] });
+  const list = mount(one(mount(DMReportsPage), "Reports").type);
+  click(list, "查看內容與審核"); const review = one(list, "Review");
+  const h = mount(review.type, review.props);
+  assert.equal(one(h, "ResourceState").props.resource.loading, true);
+  assert.equal(components(h, "FieldForm").length, 0);
+  fixtures.set("/admin/dm-reports/report/messages", { error: { status: 404, message: "找不到這筆檢舉" } }); h.render();
+  assert.equal(one(h, "ResourceState").props.resource.error.status, 404);
+  assert.equal(components(h, "FieldForm").length, 0);
+  fixture("/admin/dm-reports/report/messages", { report: { id: "report", reporter: "甲", reported: "乙", status: "pending" }, messages: [] }); h.render();
+  assert.match(text(h.tree), /目前沒有可顯示的對話訊息/);
+  assert.equal(nodes(h.tree, n => n.type === "li").length, 0);
+  assert.equal(calls.length, 0);
+});
+test("review completion and dismissal refresh the list without a second verdict write", () => {
+  auth.user.role = "admin";
+  fixture("/admin/dm-reports?status=pending", { reports: [{ id: "report" }] });
+  const h = mount(one(mount(DMReportsPage), "Reports").type);
+  click(h, "查看內容與審核");
+  one(h, "Review").props.onDone(); h.render();
+  assert.match(text(h.tree), /審核結果已保存/);
+  assert.equal(components(h, "Review").length, 0);
+  assert.equal(reads.at(-1), "/admin/dm-reports?status=pending");
+  assert.ok(reads.includes("refresh:/admin/dm-reports?status=pending"));
+  click(h, "查看內容與審核"); one(h, "FieldDialog").props.onClose(); h.render();
+  assert.equal(components(h, "FieldDialog").length, 0);
+  assert.equal(calls.length, 0);
+});
+test("report styling scopes the native dialog and shared form to the approved cabin tokens", () => {
+  const css = readFileSync(resolve(root, "src/dm-reports.css"), "utf8");
+  assert.match(css, /\.dm-reports, \.dm-reports \.field-dialog/);
+  assert.match(css, /--accent: var\(--album-accent\)/);
+  assert.match(css, /\.dm-reports \.field-input select/);
+  assert.match(css, /max-height: calc\(100dvh - 32px\)/);
+  assert.match(css, /\.dm-reports \.field-dialog::backdrop/);
+  assert.ok(!/(^|\n)\s*(?:body|html|:root|\.field-app|\.field-dialog)\s*[{,]/m.test(css));
+  const source = readFileSync(resolve(root, "src/pages/DMReportsPage.tsx"), "utf8");
+  assert.ok(!/localStorage|sessionStorage|console\.|dangerouslySetInnerHTML/.test(source));
+});
 test("coordinate model differentiates drifting, partial, zero, and missing data", () => {
   assert.equal(coordinates.coordinateView({ drifting: true }).longitude, "—");
   assert.equal(coordinates.coordinateView({ coordinate: { l: 0, b: 0, r: 0 }, partial: true }).latitude, "尚未設定");

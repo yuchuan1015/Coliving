@@ -1,0 +1,33 @@
+/* Cabin management skin; reuse the existing guarded form and native dialog. */
+.dm-reports, .dm-reports .field-dialog { --ink: var(--album-ink); --muted: var(--album-muted); --accent: var(--album-accent); --line: var(--album-line); }
+.dm-reports { display: grid; gap: 24px; min-width: 0; }
+.dm-reports h3 { margin: 0; font-size: 1rem; font-weight: 400; line-height: 1.7; overflow-wrap: anywhere; }
+.dm-reports .field-tabs { flex-wrap: wrap; overflow: visible; padding: 0; gap: 8px; }
+.dm-reports .field-tabs button { flex: 1 1 80px; min-height: 48px; padding: 8px 16px; font-size: .875rem; color: var(--album-muted); }
+.dm-reports .field-tabs button[aria-pressed="true"] { border-color: var(--album-accent); background: #30203f; color: #e6caff; }
+.reports-list, .reports-review, .reports-messages { display: grid; gap: 24px; min-width: 0; }
+.reports-list:empty { display: none; }
+.reports-item { display: grid; gap: 12px; padding: 16px; min-width: 0; border: 1px solid var(--album-line); border-radius: 16px; background: #110c20; }
+.reports-item > button { justify-self: start; }
+.reports-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; color: var(--album-ink); }
+.reports-meta, .reports-notice { margin: 0; color: var(--album-muted); font-size: .875rem; overflow-wrap: anywhere; }
+.reports-empty { padding: 32px 16px; text-align: center; display: grid; gap: 8px; color: var(--album-muted); }
+.dm-reports .field-dialog { min-height: 0; padding: 24px; width: min(680px, calc(100% - 32px)); max-height: calc(100dvh - 32px); background: #100b1d; color: var(--album-ink); border: 1px solid var(--album-line); border-radius: 24px; overflow: auto; overscroll-behavior: contain; }
+.dm-reports .field-dialog::backdrop { background: rgb(6 4 12 / .8); }
+.dm-reports .field-dialog > header { flex-wrap: nowrap; align-items: flex-start; gap: 16px; }
+.dm-reports .field-dialog > header h2 { font-size: 1.125rem; }
+.dm-reports .field-dialog > header button { flex: none; min-width: 48px; min-height: 48px; }
+.dm-reports .field-dialog button { background: #21172f; color: var(--album-ink); border-color: var(--album-line); font-size: .875rem; }
+.dm-reports .field-dialog .primary { min-height: 48px; background: linear-gradient(110deg, #b28adc, #d5bafa); border-color: #bda1dc; color: #22142f; }
+.reports-summary { display: grid; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--album-line); }
+.reports-transcript { display: grid; gap: 16px; padding: 0; margin: 0; list-style: none; }
+.reports-transcript li { padding: 16px; border: 1px solid var(--album-line); border-radius: 16px; background: #171024; min-width: 0; }
+.reports-message-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 8px; color: var(--album-muted); font-size: .875rem; overflow-wrap: anywhere; }
+.reports-message-meta time { font-size: .75rem; }
+.dm-reports .field-form fieldset { gap: 16px; }
+.dm-reports .field-input select, .dm-reports .field-input textarea { background: #120d20; border-color: var(--album-line); color: var(--album-ink); }
+.dm-reports label.field-check { display: flex; align-items: flex-start; gap: 12px; font-size: .875rem; }
+.dm-reports .field-check input { margin-top: 4px; }
+.reports-warning { border-left: 2px solid var(--album-accent); padding: 12px 16px; background: #21172f; font-size: .875rem; color: var(--album-muted); }
+.dm-reports .field-notice { border-color: var(--album-accent); }
+@media (max-width: 380px) { .dm-reports .field-dialog { padding: 16px; } }

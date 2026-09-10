@@ -6,14 +6,14 @@ import "../photo-album.css";
 import "../cabin-utility.css";
 
 /** The album's approved cabin theme, shared by the remaining furniture pages. */
-export function CabinUtilityShell({ title, code, children }: { title: string; code: string; children: ReactNode }) {
+export function CabinUtilityShell({ title, code, children, backTo = "/", backLabel }: { title: string; code: string; children: ReactNode; backTo?: string; backLabel?: string }) {
   useUiLanguage();
   const navigate = useNavigate();
   return <main className="photo-album cabin-utility">
     <div className="photo-album-stack">
       <header className="photo-album-header">
         <div><p className="photo-eyebrow">CABIN / {code}</p><h1>{title}</h1></div>
-        <button type="button" onClick={() => navigate("/")}>{uiText("← 返回艙室")}</button>
+        <button type="button" onClick={() => navigate(backTo)}>{backLabel ?? uiText("← 返回艙室")}</button>
       </header>
       {children}
     </div>
