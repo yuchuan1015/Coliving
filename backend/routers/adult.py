@@ -39,6 +39,8 @@ def _article_to_out(a: AdultArticle, db: Session) -> dict:
 @router.get("", response_model=AdultResponse)
 def get_adult(
     category: str | None = Query(None, pattern="^(communication|intimacy|mcp|faq)$"),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_birth_year),
 ):
@@ -46,7 +48,7 @@ def get_adult(
     allowed = adult_service.allowed_tiers(current_user.birth_year)
     if not allowed:
         raise HTTPException(status_code=403, detail=f"{adult_service.FIELD_NAME}最低是輔12，滿 12 歲才進得來")
-    articles = adult_service.list_articles(db, category=category, birth_year=current_user.birth_year)
+    articles = adult_service.list_articles(db, category=category, birth_year=current_user.birth_year, limit=limit, offset=offset)
     category_counts = {}
     for c in adult_service.VALID_CATEGORIES:
         category_counts[c] = (

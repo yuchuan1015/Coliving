@@ -67,6 +67,11 @@ def _token_from_ctx(ctx) -> str:
 
 
 
+def _is_admin(db, user_id: str) -> bool:
+    u = db.query(User).filter(User.id == user_id).first()
+    return bool(u and u.role == "admin")
+
+
 def _verify_mcp_token(token: str):
     """驗鑰匙。兩種：
     - type=mcp 固定鑰匙：有 jti 的要在 mcp_tokens 表且沒作廢，床位 mcp:<jti>
@@ -778,15 +783,19 @@ def look_at_photo_frame(token: str):
 
 
 def list_pending_reviews(token: str, content_type: str = "") -> str:
-    """查看待審核的投稿清單。content_type 可選 work/exhibit/skin/history，留空看全部。token 由人類提供。"""
+    """查看待審核的投稿清單。content_type 可選 work/exhibit/skin/history，留空看全部。
+    親密關係中心的稿子只有管理員審得到，不會出現在一般住戶的清單裡。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
     db = SessionLocal()
     try:
         from services import review_service
+        is_admin = _is_admin(db, user_id)
         ct = content_type if content_type in review_service.REVIEWABLE_TYPES else None
-        rows = review_service.list_pending(db, ct, limit=50)
+        if ct in review_service.ADMIN_ONLY_TYPES and not is_admin:
+            return json.dumps({"success": False, "error": "這一類只有管理員能審"}, ensure_ascii=False)
+        rows = review_service.list_pending(db, ct, limit=50, is_admin=is_admin)
         result = []
         for r, agent in rows:
             title = review_service.get_content_title(db, r)
@@ -797,7 +806,7 @@ def list_pending_reviews(token: str, content_type: str = "") -> str:
                 "submitter": agent.name,
                 "created_at": r.created_at.isoformat(),
             })
-        counts = review_service.count_pending(db)
+        counts = review_service.count_pending(db, is_admin=is_admin)
         return json.dumps({"success": True, "pending": result, "counts": counts}, ensure_ascii=False)
     finally:
         db.close()
@@ -815,6 +824,8 @@ def read_review_content(token: str, review_id: str) -> str:
         if not row:
             return json.dumps({"success": False, "error": "找不到這筆審核"}, ensure_ascii=False)
         review, agent = row
+        if not review_service.can_review(review.content_type, _is_admin(db, user_id)):
+            return json.dumps({"success": False, "error": "這一類只有管理員能審"}, ensure_ascii=False)
         content = review_service.get_content_for_review(db, review)
         return json.dumps({
             "success": True,
@@ -827,8 +838,9 @@ def read_review_content(token: str, review_id: str) -> str:
         db.close()
 
 
-def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
-    """審核一筆投稿。decision 必須是 approved 或 rejected。note 是審核意見（必填）。審核通過會上架，駁回會通知作者。token 由人類提供。"""
+def submit_review(token: str, review_id: str, decision: str, note: str, age_tier: str = "") -> str:
+    """審核一筆投稿。decision 必須是 approved 或 rejected。note 是審核意見（必填）。審核通過會上架，駁回會通知作者。
+    親密關係中心的稿子只有管理員審得到，通過時可以用 age_tier 指定分級（guidance12／guidance15／restricted）。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -843,12 +855,17 @@ def submit_review(token: str, review_id: str, decision: str, note: str) -> str:
         if not row:
             return json.dumps({"success": False, "error": "找不到這筆審核"}, ensure_ascii=False)
         review, agent = row
+        if not review_service.can_review(review.content_type, _is_admin(db, user_id)):
+            return json.dumps({"success": False, "error": "這一類只有管理員能審"}, ensure_ascii=False)
         if review.status != "pending":
             return json.dumps({"success": False, "error": "這筆已經審核過了"}, ensure_ascii=False)
         reviewer = agent_service.get_user_agent(db, user_id)
         review.reviewer_note = note
         if decision == "approved":
-            review_service.approve(db, review, reviewer)
+            try:
+                review_service.approve(db, review, reviewer, age_tier=age_tier or None)
+            except ValueError as e:
+                return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
         else:
             review_service.reject(db, review, reviewer)
         review_service.notify_author(db, review, decision, note)
@@ -2470,18 +2487,18 @@ def mail(action: str, to_agent_name: str = "", subject: str = "", content: str =
     return json.dumps({"success": False, "error": f"mail 沒有「{action}」這個 action", "actions": ['inbox', 'send', 'delete', 'send_timed', 'dm', 'dm_code', 'dm_list', 'dm_read', 'dm_reply', 'dm_report']}, ensure_ascii=False)
 
 @mcp.tool()
-def review(action: str, content_type: str = '', review_id: str = "", decision: str = "", note: str = "", ctx: Context = None) -> str:
+def review(action: str, content_type: str = '', review_id: str = "", decision: str = "", note: str = "", age_tier: str = "", ctx: Context = None) -> str:
     """審核：待審清單、讀內容、決定。action 可選：
 - pending（content_type）：查看待審核的投稿清單
 - read（review_id）：讀取一筆待審核投稿的完整內容
-- decide（review_id, decision, note）：審核一筆投稿"""
+- decide（review_id, decision, note, age_tier）：審核一筆投稿。親密關係中心的只有管理員審得到，通過時可指定分級"""
     token = _token_from_ctx(ctx)
     if action == "pending":
         return list_pending_reviews(token=token, content_type=content_type)
     elif action == "read":
         return read_review_content(token=token, review_id=review_id)
     elif action == "decide":
-        return submit_review(token=token, review_id=review_id, decision=decision, note=note)
+        return submit_review(token=token, review_id=review_id, decision=decision, note=note, age_tier=age_tier)
     return json.dumps({"success": False, "error": f"review 沒有「{action}」這個 action", "actions": ['pending', 'read', 'decide']}, ensure_ascii=False)
 
 @mcp.tool()

@@ -13,6 +13,13 @@ from models.work import Work
 
 
 REVIEWABLE_TYPES = {"work", "exhibit", "skin", "history", "adult"}
+# 只有管理員能審的類型（2026-09-10 Codex 抓到：親密關係中心的稿子會經過審核清單，
+# 任何住戶都讀得到，連限制級也繞得過去）。其他類型維持社區互審，那是她原本的設計。
+ADMIN_ONLY_TYPES = {"adult"}
+
+
+def can_review(content_type: str, is_admin: bool) -> bool:
+    return is_admin or content_type not in ADMIN_ONLY_TYPES
 
 
 def create_review(db: Session, content_type: str, content_id: str, submitter_id: str) -> ReviewRequest:
@@ -25,9 +32,11 @@ def create_review(db: Session, content_type: str, content_id: str, submitter_id:
     return review
 
 
-def list_pending(db: Session, content_type: str | None = None, limit: int = 50, offset: int = 0):
+def list_pending(db: Session, content_type: str | None = None, limit: int = 50, offset: int = 0, is_admin: bool = False):
     q = db.query(ReviewRequest, Agent).join(Agent, Agent.id == ReviewRequest.submitter_id)
     q = q.filter(ReviewRequest.status == "pending")
+    if not is_admin:
+        q = q.filter(~ReviewRequest.content_type.in_(ADMIN_ONLY_TYPES))   # 一般住戶看不到只有管理員能審的
     if content_type and content_type in REVIEWABLE_TYPES:
         q = q.filter(ReviewRequest.content_type == content_type)
     return q.order_by(ReviewRequest.created_at.asc()).offset(offset).limit(limit).all()
@@ -195,7 +204,7 @@ def reject(db: Session, review: ReviewRequest, reviewer: Agent | None = None) ->
 
 
 def notify_author(db: Session, review: ReviewRequest, decision: str, note: str):
-    type_labels = {"work": "作品", "exhibit": "展品", "skin": "皮膚", "history": "歷史事件"}
+    type_labels = {"work": "作品", "exhibit": "展品", "skin": "皮膚", "history": "歷史事件", "adult": "親密中心文章"}
     decision_labels = {"approved": "通過", "rejected": "未通過"}
 
     title = get_content_title(db, review)
@@ -214,9 +223,11 @@ def notify_author(db: Session, review: ReviewRequest, decision: str, note: str):
     db.add(mail)
 
 
-def count_pending(db: Session) -> dict:
+def count_pending(db: Session, is_admin: bool = False) -> dict:
     counts = {}
     for ct in REVIEWABLE_TYPES:
+        if not is_admin and ct in ADMIN_ONLY_TYPES:
+            continue
         counts[ct] = db.query(ReviewRequest).filter(
             ReviewRequest.status == "pending",
             ReviewRequest.content_type == ct,

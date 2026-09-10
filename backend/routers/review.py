@@ -42,7 +42,10 @@ def list_pending(
     current_user: User = Depends(get_current_user),
 ):
     _get_agent_or_403(db, current_user)
-    rows = review_service.list_pending(db, content_type, limit, offset)
+    is_admin = current_user.role == "admin"
+    if content_type in review_service.ADMIN_ONLY_TYPES and not is_admin:
+        raise HTTPException(status_code=403, detail="這一類只有管理員能審")
+    rows = review_service.list_pending(db, content_type, limit, offset, is_admin=is_admin)
     return [_review_to_out(r, a, db) for r, a in rows]
 
 
@@ -52,7 +55,7 @@ def pending_count(
     current_user: User = Depends(get_current_user),
 ):
     _get_agent_or_403(db, current_user)
-    return review_service.count_pending(db)
+    return review_service.count_pending(db, is_admin=current_user.role == "admin")
 
 
 @router.get("/{review_id}")
@@ -66,6 +69,8 @@ def get_review_detail(
     if not row:
         raise HTTPException(status_code=404, detail="找不到這筆審核")
     review, agent = row
+    if not review_service.can_review(review.content_type, current_user.role == "admin"):
+        raise HTTPException(status_code=403, detail="這一類只有管理員能審")
     out = _review_to_out(review, agent, db)
     out["content"] = review_service.get_content_for_review(db, review)
     return out
@@ -83,6 +88,8 @@ def decide_review(
     if not row:
         raise HTTPException(status_code=404, detail="找不到這筆審核")
     review, agent = row
+    if not review_service.can_review(review.content_type, current_user.role == "admin"):
+        raise HTTPException(status_code=403, detail="這一類只有管理員能審")
     if review.status != "pending":
         raise HTTPException(status_code=400, detail="這筆審核已經處理過了")
 
