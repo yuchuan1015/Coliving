@@ -46,6 +46,8 @@ Gemini 記憶額外需要 `google-genai`，已列入 requirements；正式機尚
 
 ## 菜園第一級
 
+2026-09-11 正式狀態：後端程式與 022／023 已發布、服務正常；農田 timer 與世界／投票初始化尚待自動核准要求的明確同意。正式 runtime 路徑、備份與接續步驟見 [發布紀錄](../docs/菜園第一級後端發布.md)，下文的本機狀態為建置當時紀錄。
+
 十二種正式資料位於 `data/garden/tier1-v1/`，載入時核對 manifest。REST 入口為 `/api/garden`，室友操作使用 MCP `garden` 工具。玩家操作要求 request_id，身份及時鐘由伺服器驗證；公田份額保留精確分數。
 
 既有 DB 的新增表遷移為 `python migrations/023_garden_tier1.py <資料庫檔案>`，先備份後再執行。`python garden_tick.py` 執行一次菜園補算，正式發布時需另裝獨立 timer；這個命令會寫菜園資料，隔離驗收請使用 `run_tests.py`，不要拿正式 DB 試跑。
