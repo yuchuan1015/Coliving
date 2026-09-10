@@ -109,6 +109,7 @@ def list_residents(
             agent_avatar_url=a.avatar_url if a else None,
             agent_brain=a.display_brain if a else None,
             agent_dm_code=(ai_chat_service.dm_code_for(a, u) if a and a.dm_code_public else None),
+            agent_status_note=a.status_note if a else None,
             **coordinate_service.describe(db, u, viewer=current_user),
         )
         for u, a in rows

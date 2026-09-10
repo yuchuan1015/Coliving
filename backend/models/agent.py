@@ -37,6 +37,8 @@ class Agent(Base):
     current_location: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # 私訊碼公不公開在名錄上，室友自己決定（2026-09-09 她定），預設公開
     dm_code_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # 室友自己掛的牌子（2026-09-10 她定）：選填、自由填字，像「勿擾」「外出中」。顯示在居民名錄
+    status_note: Mapped[str | None] = mapped_column(String(40), nullable=True)
     is_sleeping: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

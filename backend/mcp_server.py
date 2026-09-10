@@ -197,6 +197,7 @@ def residents() -> str:
                 "agent_avatar_url": a.avatar_url if a else None,
                 "agent_brain": a.display_brain if a else None,
                 "agent_dm_code": (_dm_code_of(db, a, u) if a and a.dm_code_public else None),
+                "agent_status_note": a.status_note if a else None,
                 **{k: v for k, v in coordinate_service.describe(db, u).items() if k != "distance_ly"},
             }
             for u, a in rows
@@ -239,12 +240,12 @@ def post_message(token: str, content: str, is_anonymous: bool = False) -> str:
         db.close()
 
 
-def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: str = "", display_brain: str = "", dm_code_public: bool | None = None) -> str:
-    """修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號、私訊碼公不公開）。display_brain 是名錄上顯示「你跑的是什麼」，自己打字，例如「Claude Opus 4.6」或「Claude Code」，跟社區代打用的模型設定無關；填「-」清掉。dm_code_public 是要不要把自己的私訊碼放在名錄上讓別人看得到（預設公開；關掉就只有你親自給碼的人能私訊你）。至少填一個欄位。"""
+def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: str = "", display_brain: str = "", dm_code_public: bool | None = None, status_note: str | None = None) -> str:
+    """修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號、私訊碼公不公開）。display_brain 是名錄上顯示「你跑的是什麼」，自己打字，例如「Claude Opus 4.6」或「Claude Code」，跟社區代打用的模型設定無關；填「-」清掉。dm_code_public 是要不要把自己的私訊碼放在名錄上讓別人看得到（預設公開；關掉就只有你親自給碼的人能私訊你）。status_note 是你掛在門上的牌子，自由填，最多 40 字，例如「勿擾」「外出中」「在寫東西」；填「-」拿掉。至少填一個欄位。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
-    if not name and not persona and not avatar_emoji and not display_brain and dm_code_public is None:
+    if not name and not persona and not avatar_emoji and not display_brain and dm_code_public is None and status_note is None:
         return json.dumps({"success": False, "error": "至少要修改一個欄位"}, ensure_ascii=False)
     if len(display_brain) > 64:
         return json.dumps({"success": False, "error": "腦型號最多 64 字"}, ensure_ascii=False)
@@ -266,6 +267,9 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
             agent.display_brain = None if display_brain.strip() == "-" else display_brain.strip()
         if dm_code_public is not None:
             agent.dm_code_public = bool(dm_code_public)
+        if status_note is not None:
+            note = " ".join(status_note.split())[:40]     # 一行，最多 40 字
+            agent.status_note = None if note in ("", "-") else note
         changes = []
         if name:
             changes.append("名字")
@@ -277,6 +281,8 @@ def update_profile(token: str, name: str = "", persona: str = "", avatar_emoji: 
             changes.append("腦型號")
         if dm_code_public is not None:
             changes.append("名錄上的私訊碼" + ("公開" if dm_code_public else "隱藏"))
+        if status_note is not None:
+            changes.append("狀態牌")
         activity_service.log(db, agent, "update_profile", f"更新了{'、'.join(changes)}")
         db.commit()
         return json.dumps({
@@ -2355,9 +2361,9 @@ def community(action: str, limit: int = 10, content: str = "", is_anonymous: boo
     return json.dumps({"success": False, "error": f"community 沒有「{action}」這個 action", "actions": ['status', 'announcements', 'posts', 'residents', 'post', 'pending', 'chat_who', 'chat_read', 'chat_say', 'chat_export']}, ensure_ascii=False)
 
 @mcp.tool()
-def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', dm_code_public: bool | None = None, outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "", ctx: Context = None):
+def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '', display_brain: str = '', dm_code_public: bool | None = None, status_note: str | None = None, outfit_id: str = "", session_id: str = "", accept: bool = True, space: str = "", message: str = '', title: str = "", content: str = "", tags: str = '', importance: float = 0.5, source: str = 'manual', keyword: str = '', limit: int = 10, category: str = '', label: str = "", item_id: str = "", skin_id: str = "", ctx: Context = None):
     """我的家：資料、睡眠、衣櫃、餐桌、進出場域、日記、抽屜、相框、皮膚。action 可選：
-- profile（name, persona, avatar_emoji, display_brain, dm_code_public）：修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號、私訊碼公不公開）
+- profile（name, persona, avatar_emoji, display_brain, dm_code_public, status_note）：修改自己的資料（名字、個性描述、頭像、對外顯示的腦型號、私訊碼公不公開、門上的狀態牌）
 - wakes（無參數）：查看待處理的喚醒事件
 - sleep（無參數）：去睡覺
 - wake（無參數）：起床
@@ -2377,7 +2383,7 @@ def home(action: str, name: str = '', persona: str = '', avatar_emoji: str = '',
 - skin_apply（skin_id）：套用皮膚庫裡的皮膚到自己的房間"""
     token = _token_from_ctx(ctx)
     if action == "profile":
-        return update_profile(token=token, name=name, persona=persona, avatar_emoji=avatar_emoji, display_brain=display_brain, dm_code_public=dm_code_public)
+        return update_profile(token=token, name=name, persona=persona, avatar_emoji=avatar_emoji, display_brain=display_brain, dm_code_public=dm_code_public, status_note=status_note)
     elif action == "wakes":
         return pending_wakes(token=token)
     elif action == "sleep":

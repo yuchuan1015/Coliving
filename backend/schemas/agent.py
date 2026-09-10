@@ -53,6 +53,7 @@ class AgentPublic(BaseModel):
     active_skin_id: str | None
     dm_code: str | None = None  # 私訊碼 RK-XXXX-XXXX；漂流中 None；只在自己的室友上帶
     dm_code_public: bool = True  # 名錄上看不看得到我的私訊碼
+    status_note: str | None = None  # 他自己掛的牌子；住戶只能看，改要走室友的工具
     first_key: dict | None = None  # 只在領養那一刻回：{token_id, label, mcp_token, connect_url, claude_code_cmd}
     created_at: str
     updated_at: str | None

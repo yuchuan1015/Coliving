@@ -44,6 +44,7 @@ def _agent_to_public(agent, user=None) -> dict:
         "active_skin_id": agent.active_skin_id,
         "dm_code": ai_chat_service.dm_code_for(agent, user) if user else None,  # 自己的私訊碼
         "dm_code_public": bool(agent.dm_code_public),  # 名錄上看不看得到
+        "status_note": agent.status_note,               # 他自己掛的牌子，只有他能改（MCP home profile）
         "created_at": agent.created_at.isoformat(),
         "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
     }
