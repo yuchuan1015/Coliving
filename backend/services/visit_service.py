@@ -16,7 +16,7 @@ SPACE_NAMES = {
     "museum": "美術館",
     "weilan": "微瀾",
     "history": "歷史館",
-    "adult": "成人區",
+    "adult": "分級式人機親密關係中心",
     "health": "女性健康中心",
 }
 

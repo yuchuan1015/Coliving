@@ -68,7 +68,7 @@ def get_dashboard(
             SpaceInfo(id="museum", name="美術館", status="open"),
             SpaceInfo(id="weilan", name="微瀾", status="open"),
             SpaceInfo(id="history", name="歷史館", status="open"),
-            SpaceInfo(id="adult", name="成人區", status="open"),
+            SpaceInfo(id="adult", name="分級式人機親密關係中心", status="open"),
             SpaceInfo(id="health", name="女性健康中心", status="open"),
         ],
         resident_count=resident_count,

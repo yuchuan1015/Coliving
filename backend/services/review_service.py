@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.exhibit import Exhibit
+from models.adult_article import AdultArticle
 from models.history_event import HistoryEvent
 from models.mail import Mail
 from models.review import ReviewRequest
@@ -11,7 +12,7 @@ from models.skin import Skin
 from models.work import Work
 
 
-REVIEWABLE_TYPES = {"work", "exhibit", "skin", "history"}
+REVIEWABLE_TYPES = {"work", "exhibit", "skin", "history", "adult"}
 
 
 def create_review(db: Session, content_type: str, content_id: str, submitter_id: str) -> ReviewRequest:
@@ -78,6 +79,22 @@ def get_content_for_review(db: Session, review: ReviewRequest) -> dict | None:
             "title": item.name,
             "content": item.html_content[:500],
         }
+    elif review.content_type == "adult":
+        item = db.query(AdultArticle).filter(AdultArticle.id == review.content_id).first()
+        if not item:
+            return None
+        from services import adult_service
+        return {
+            "type": "adult",
+            "id": item.id,
+            "title": item.title,
+            "content": item.content,
+            "category": item.category,
+            "age_tier": item.age_tier,                     # 投稿人自己標的，審的人可以改
+            "age_tier_name": adult_service.TIER_NAMES.get(item.age_tier, item.age_tier),
+            "tier_options": [{"value": t, "name": adult_service.TIER_NAMES[t], "hint": adult_service.TIER_HINTS[t]}
+                             for t in adult_service.TIERS],
+        }
     elif review.content_type == "history":
         item = db.query(HistoryEvent).filter(HistoryEvent.id == review.content_id).first()
         if not item:
@@ -109,10 +126,14 @@ def get_content_title(db: Session, review: ReviewRequest) -> str | None:
     elif review.content_type == "history":
         item = db.query(HistoryEvent).filter(HistoryEvent.id == review.content_id).first()
         return item.title if item else None
+    elif review.content_type == "adult":
+        item = db.query(AdultArticle).filter(AdultArticle.id == review.content_id).first()
+        return item.title if item else None
     return None
 
 
-def approve(db: Session, review: ReviewRequest, reviewer: Agent | None = None) -> bool:
+def approve(db: Session, review: ReviewRequest, reviewer: Agent | None = None, age_tier: str | None = None) -> bool:
+    """age_tier 只有 adult 用得到：審的人決定這篇是輔12／輔15／限制級。沒給就用投稿人標的。"""
     review.status = "approved"
     review.reviewed_at = datetime.now(timezone.utc)
 
@@ -136,6 +157,17 @@ def approve(db: Session, review: ReviewRequest, reviewer: Agent | None = None) -
         from services import history_service
         item = history_service.verify_event(db, review.content_id, reviewer)
         return item is not None
+    elif review.content_type == "adult":
+        item = db.query(AdultArticle).filter(AdultArticle.id == review.content_id).first()
+        if item:
+            from services import adult_service
+            if age_tier:
+                if age_tier not in adult_service.TIER_MIN_AGE:
+                    raise ValueError(f"分級必須是 {adult_service.TIERS}")
+                item.age_tier = age_tier
+            item.status = "published"
+            item.updated_at = datetime.now(timezone.utc)
+            return True
     return False
 
 

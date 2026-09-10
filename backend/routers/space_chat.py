@@ -17,7 +17,7 @@ class SayRequest(BaseModel):
 
 
 def _check_space(space: str, db: Session | None = None, user: User | None = None):
-    """場域存在嗎；成人區／健康中心再擋年齡（跟那兩個場域本身同一套政策）。"""
+    """場域存在嗎；親密關係中心／健康中心再擋年齡（跟那兩個場域本身同一套政策）。"""
     if space not in visit_service.VALID_SPACES:
         raise HTTPException(status_code=404, detail="沒有這個場域")
     if db is not None and user is not None:

@@ -172,11 +172,11 @@ class SpaceChatTest(unittest.TestCase):
         self.assertEqual(len([x for x in p["space_mentions"] if x["space"] == "workshop"]), 1)
 
     def test_restricted_spaces_age_gate(self):
-        """成人區要滿 18、健康中心要填出生年；REST 和 MCP 兩條路都要擋。"""
+        """親密關係中心要滿 12（跟它的最低分級一致）、健康中心要填出生年；REST 和 MCP 兩條路都要擋。"""
         db = SessionLocal()
         # 沒填出生年、未成年、成年 三種人
         rows = {}
-        for tag, by in (("nobirth", None), ("minor", 2015), ("adult", 1990)):
+        for tag, by in (("nobirth", None), ("minor", 2019), ("adult", 1990)):   # 2019 出生＝7 歲，連輔12 都不到
             u = User(username=f"g_{tag}_{os.urandom(2).hex()}", display_name=tag, hashed_password="x", birth_year=by)
             db.add(u)
             db.flush()

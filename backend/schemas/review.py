@@ -16,5 +16,6 @@ class ReviewOut(BaseModel):
 
 
 class ReviewDecision(BaseModel):
+    age_tier: str | None = Field(default=None, pattern="^(guidance12|guidance15|restricted)$")  # 只有親密關係中心用得到；不給就用投稿人標的
     decision: str = Field(pattern="^(approved|rejected)$")
     note: str = Field(min_length=1, max_length=2000)

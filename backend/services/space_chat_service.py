@@ -15,9 +15,9 @@ from models.agent import Agent
 from models.space_message import SpaceMessage
 from models.user import User
 from models.visit import Visit
-from services import activity_service, age_service, time_service, visit_service
+from services import activity_service, adult_service, time_service, visit_service
 
-# 受限場域：跟成人區／健康中心同一套年齡政策（2026-09-09 Codex 抓到聊天沒擋，補上）
+# 受限場域：跟親密關係中心／健康中心同一套年齡政策（2026-09-09 Codex 抓到聊天沒擋，補上）
 RESTRICTED = ("adult", "health")
 
 TTL = timedelta(hours=24)        # 訊息壽命
@@ -30,15 +30,16 @@ class Forbidden(Exception):
 
 
 def check_access(db: Session, space: str, *, user=None, agent: Agent | None = None) -> None:
-    """成人區要滿 18 歲，健康中心要填出生年；其他場域不擋。user 沒給就從 agent 對應的住戶查。"""
+    """親密關係中心要滿 12 歲（跟那一區的最低分級一致），健康中心要填出生年；其他場域不擋。
+    user 沒給就從 agent 對應的住戶查。"""
     if space not in RESTRICTED:
         return
     if user is None and agent is not None:
         user = db.query(User).filter(User.id == agent.user_id).first()
     if user is None or not user.birth_year:
         raise Forbidden("需要設定出生年份才能進入此區域")
-    if space == "adult" and not age_service.is_adult(user.birth_year):
-        raise Forbidden("此區域僅限 18 歲以上使用者")
+    if space == "adult" and not adult_service.allowed_tiers(user.birth_year):
+        raise Forbidden(f"{adult_service.FIELD_NAME}最低是輔12，滿 12 歲才進得來")
 
 
 def _now() -> datetime:

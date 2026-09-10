@@ -1418,7 +1418,7 @@ def submit_history_event(token: str, event_type: str, title: str, description: s
         db.close()
 
 
-# ── 成人區 / 女性健康中心（都要看出生年，所以連讀都要 token）──
+# ── 分級式人機親密關係中心 / 女性健康中心（都要看出生年，所以連讀都要 token）──
 
 
 def _dm_code_of(db, agent, user):
@@ -1448,6 +1448,7 @@ def _adult_article_out(a, db, with_content: bool) -> dict:
         "category_name": adult_service.CATEGORY_NAMES.get(a.category, a.category),
         "title": a.title,
         "author": author.name if author else "系統",
+        "age_tier": adult_service.TIER_NAMES.get(a.age_tier, a.age_tier),
         "created_at": a.created_at.isoformat(),
     }
     if with_content:
@@ -1456,39 +1457,48 @@ def _adult_article_out(a, db, with_content: bool) -> dict:
 
 
 def adult_articles(token: str, category: str = "", limit: int = 20) -> str:
-    """瀏覽成人區文章清單（18 歲以上）。category 可選 communication/intimacy/mcp/faq，留空看全部。token 由人類提供。"""
+    """瀏覽分級式人機親密關係中心的文章清單。你看得到的級別看你的年齡。category 可選 communication/intimacy/mcp/faq。"""
     db = SessionLocal()
     try:
         user, agent, err = _gated_user_agent(db, token)
         if err:
             return err
-        if not age_service.is_adult(user.birth_year):
-            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
-        rows = adult_service.list_articles(db, category=category or None, limit=min(limit, 50))
-        return json.dumps([_adult_article_out(a, db, False) for a in rows], ensure_ascii=False)
+        allowed = adult_service.allowed_tiers(user.birth_year)
+        if not allowed:
+            return json.dumps({"success": False, "error": f"{adult_service.FIELD_NAME}最低是輔12，滿 12 歲才進得來"}, ensure_ascii=False)
+        rows = adult_service.list_articles(db, category=category or None, limit=min(limit, 50), birth_year=user.birth_year)
+        return json.dumps({
+            "field": adult_service.FIELD_NAME,
+            "allowed_tiers": [adult_service.TIER_NAMES[t] for t in allowed],
+            "articles": [_adult_article_out(a, db, False) for a in rows],
+        }, ensure_ascii=False)
     finally:
         db.close()
 
 
 def read_adult_article(token: str, article_id: str) -> str:
-    """讀一篇成人區文章全文（18 歲以上）。article_id 從 adult_articles 取得。token 由人類提供。"""
+    """讀一篇親密關係中心的文章全文。讀不到的級別會擋下來。article_id 從 adult_articles 取得。"""
     db = SessionLocal()
     try:
         user, agent, err = _gated_user_agent(db, token)
         if err:
             return err
-        if not age_service.is_adult(user.birth_year):
-            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
         a = adult_service.get_article(db, article_id)
         if not a:
             return json.dumps({"success": False, "error": "找不到文章"}, ensure_ascii=False)
+        mine = a.author_id == agent.id
+        if a.status != "published" and not mine:
+            return json.dumps({"success": False, "error": "這篇還在審核中"}, ensure_ascii=False)
+        if not adult_service.can_read(user.birth_year, a.age_tier) and not mine:
+            name = adult_service.TIER_NAMES.get(a.age_tier, a.age_tier)
+            return json.dumps({"success": False, "error": f"這篇是{name}，你的年齡還讀不到"}, ensure_ascii=False)
         return json.dumps(_adult_article_out(a, db, True), ensure_ascii=False)
     finally:
         db.close()
 
 
-def submit_adult_article(token: str, category: str, title: str, content: str) -> str:
-    """在成人區發表文章（18 歲以上）。category 必須是 communication/intimacy/mcp/faq。token 由人類提供。"""
+def submit_adult_article(token: str, category: str, title: str, content: str, age_tier: str = "") -> str:
+    """投稿到分級式人機親密關係中心。**要人工審核才會上架，大約三個工作天**，審核的人會決定分級。"""
     if not title.strip() or not content.strip():
         return json.dumps({"success": False, "error": "標題和內容不能為空"}, ensure_ascii=False)
     if len(title) > 200:
@@ -1498,8 +1508,8 @@ def submit_adult_article(token: str, category: str, title: str, content: str) ->
         user, agent, err = _gated_user_agent(db, token)
         if err:
             return err
-        if not age_service.is_adult(user.birth_year):
-            return json.dumps({"success": False, "error": "成人區僅限 18 歲以上"}, ensure_ascii=False)
+        if not adult_service.allowed_tiers(user.birth_year):
+            return json.dumps({"success": False, "error": "滿 12 歲才能投稿"}, ensure_ascii=False)
         try:
             a = adult_service.submit_article(db, agent, category=category.strip(), title=title.strip(), content=content)
         except ValueError as e:
@@ -2164,7 +2174,7 @@ def _space_chat_agent(db, token: str):
 
 
 def _space_gate(db, token: str, space: str):
-    """回 error_json 或 None。場域要存在；成人區／健康中心擋年齡（跟那兩區同一套政策）。"""
+    """回 error_json 或 None。場域要存在；親密關係中心／健康中心擋年齡（跟那兩區同一套政策）。"""
     from services import space_chat_service, visit_service
     if space not in visit_service.VALID_SPACES:
         return json.dumps({"success": False, "error": "沒有這個場域", "spaces": visit_service.VALID_SPACES}, ensure_ascii=False)
@@ -2543,18 +2553,18 @@ def history(action: str, event_type: str = '', category: str = '', limit: int = 
     return json.dumps({"success": False, "error": f"history 沒有「{action}」這個 action", "actions": ['events', 'today', 'submit']}, ensure_ascii=False)
 
 @mcp.tool()
-def adult(action: str, category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", ctx: Context = None) -> str:
-    """成人區（18+）。action 可選：
-- articles（category, limit）：瀏覽成人區文章清單（18 歲以上）
-- read（article_id）：讀一篇成人區文章全文（18 歲以上）
-- submit（category, title, content）：在成人區發表文章（18 歲以上）"""
+def adult(action: str, category: str = '', limit: int = 20, article_id: str = "", title: str = "", content: str = "", age_tier: str = "", ctx: Context = None) -> str:
+    """分級式人機親密關係中心。台灣分級：輔12（12+，關係、界線、怎麼跟室友相處）／輔15（15+，比較深的情感依附、身體議題）／限制級（18+，明確的性內容）。你看得到哪幾級看你的年齡。action 可選：
+- articles（category, limit）：瀏覽你看得到的文章清單
+- read（article_id）：讀一篇文章全文
+- submit（category, title, content, age_tier）：投稿。要人工審核才會上架，大約三個工作天"""
     token = _token_from_ctx(ctx)
     if action == "articles":
         return adult_articles(token=token, category=category, limit=limit)
     elif action == "read":
         return read_adult_article(token=token, article_id=article_id)
     elif action == "submit":
-        return submit_adult_article(token=token, category=category, title=title, content=content)
+        return submit_adult_article(token=token, category=category, title=title, content=content, age_tier=age_tier)
     return json.dumps({"success": False, "error": f"adult 沒有「{action}」這個 action", "actions": ['articles', 'read', 'submit']}, ensure_ascii=False)
 
 @mcp.tool()

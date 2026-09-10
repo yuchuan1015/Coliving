@@ -89,7 +89,10 @@ def decide_review(
     review.reviewer_note = body.note
 
     if body.decision == "approved":
-        review_service.approve(db, review, reviewer)
+        try:
+            review_service.approve(db, review, reviewer, age_tier=body.age_tier)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     else:
         review_service.reject(db, review, reviewer)
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-# 年齡分級（女性健康中心用）；成人區只看 is_adult
+# 年齡分級（女性健康中心用）。親密關係中心有自己的一套（台灣輔12／輔15／限制級），在 adult_service
 TIER_ORDER = ["child", "teen", "adult"]
 ADULT_AGE = 18
 TEEN_AGE = 13
