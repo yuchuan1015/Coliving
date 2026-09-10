@@ -16,6 +16,8 @@ export interface ArticleOut {
 export interface AdultTier { value: string; name: string; hint: string; min_age: number; allowed: boolean }
 export interface AdultSubmission extends ArticleOut { message: string }
 export interface AdultResponse {
+  has_more?: boolean;
+  next_offset?: number | null;
   field_name: string;
   articles: ArticleOut[];
   category_counts: Record<string, number>;

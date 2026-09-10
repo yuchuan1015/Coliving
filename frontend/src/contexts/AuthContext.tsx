@@ -1,5 +1,5 @@
 import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
-import { getMe, login as apiLogin, register as apiRegister, updateLocation as apiUpdateLocation, updateBirthYear as apiUpdateBirthYear } from "../api/auth";
+import { getMe, login as apiLogin, register as apiRegister, updateLocation as apiUpdateLocation, updateBirthYear as apiUpdateBirthYear, updateDisplayName as apiUpdateDisplayName } from "../api/auth";
 import { clearTokens, getAccessToken, setTokens } from "../api/client";
 import type { UserMe } from "../types";
 
@@ -12,6 +12,7 @@ interface AuthContextType {
   updateLocation: (city: string) => Promise<UserMe>;
   updateBirthYear: (year: number) => Promise<UserMe>;
   refreshUser: () => Promise<UserMe>;
+  updateDisplayName: (name: string) => Promise<UserMe>;
 }
 
 export const AuthContext = createContext<AuthContextType>(null!);
@@ -66,9 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async () => {
     const saved = await getMe(); setUser(saved); return saved;
   }, []);
+  const updateDisplayName = useCallback(async (name: string) => {
+    const saved = await apiUpdateDisplayName(name); setUser(saved); return saved;
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateLocation, updateBirthYear, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateLocation, updateBirthYear, refreshUser, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   );

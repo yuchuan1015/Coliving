@@ -987,7 +987,7 @@ test("both settings surfaces reuse the timezone picker; registration still detec
 test("account settings uses the approved cabin panels and preserves save locking and existing navigation", () => {
   const h = mount(load("src/pages/AccountSettingsPage.tsx").AccountSettingsPage);
   assert.equal(h.tree.props.className, "photo-album cabin-utility account-settings");
-  assert.equal(nodes(h.tree, n => n.type === "section" && n.props.className === "photo-panel").length, 3);
+  assert.equal(nodes(h.tree, n => n.type === "section" && n.props.className === "photo-panel").length, 5);
   assert.equal(one(h, "Link").props.to, "/outside");
   one(h, "TimezoneSettings").props.onBusyChange(true); h.render();
   assert.equal(nodes(h.tree, n => n.type === "fieldset")[0].props.disabled, true);
@@ -3589,12 +3589,119 @@ test("adult uses backend field name, tier names and permissions without computin
   const frame = mount(shared.FieldFrame, one(h, "FieldFrame").props);
   assert.match(text(frame.tree), /後端命名測試/); assert.equal(components(frame, "SpaceChat").length, 0);
 });
-test("adult local tier filter sends no unsupported age_tier query and uses only authorized batch", () => {
+test("adult tier filter asks the backend to filter before pagination", () => {
   fixture("/adult", adultFixture()); const h = enterAdult(); reads.length = 0;
+  fixture("/adult?age_tier=guidance15", { ...adultFixture(), articles: adultFixture().articles.filter(a => a.age_tier === "guidance15") });
   tab(h, "guidance15", 1);
-  assert.deepEqual(reads, ["/adult"]);
+  assert.deepEqual(reads, ["/adult?age_tier=guidance15"]);
   assert.match(text(h.tree), /文章-guidance15/); assert.ok(!text(h.tree).includes("文章-guidance12"));
-  assert.match(text(h.tree), /目前載入的文章/);
+  assert.ok(!text(h.tree).includes("目前載入的文章"));
+});
+
+const { DisplayNameSettings, PasswordSettings } = load("src/components/AccountProfileSettings.tsx");
+const { usePagedAdultArticles } = load("src/hooks/usePagedAdultArticles.ts");
+function fillPassword(h, old = "old-password", password = "new-password", confirm = password) {
+  const fields = nodes(h.tree, n => n.type === "input");
+  [old, password, confirm].forEach((value, i) => fields[i].props.onChange({ target: { value } }));
+  h.render();
+}
+test("display name saves trimmed text once, updates the profile and preserves draft on failure", async () => {
+  const request = deferred();
+  auth.updateDisplayName = name => { calls.push({ method: "name", args: [name] }); return request.promise; };
+  const h = mount(DisplayNameSettings);
+  nodes(h.tree, n => n.type === "input")[0].props.onChange({ target: { value: "  新名字  " } }); h.render();
+  const submit = h.tree.props.onSubmit;
+  const pending = submit({ preventDefault() {} }); await submit({ preventDefault() {} });
+  assert.deepEqual(calls, [{ method: "name", args: ["新名字"] }]);
+  request.resolve({ ...auth.user, display_name: "新名字" }); await pending; h.render();
+  assert.match(text(h.tree), /已更新/);
+  assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, "新名字");
+  auth.updateDisplayName = async () => { throw { isAxiosError: true, response: { status: 400, data: { detail: "保存失敗" } } }; };
+  h.render();
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /保存失敗/);
+  assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, "新名字");
+});
+test("password mismatch cannot write, success clears credentials and reloads login once", async () => {
+  tokens = ["old-access", "old-refresh"];
+  const h = mount(PasswordSettings);
+  fillPassword(h, "old-password", "new-password", "different");
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /不一致/); assert.equal(calls.length, 0);
+  fillPassword(h);
+  const request = deferred(); answer = () => request.promise;
+  const submit = h.tree.props.onSubmit;
+  const pending = submit({ preventDefault() {} }); await submit({ preventDefault() {} });
+  assert.equal(calls.length, 1);
+  expectCall("post", "/users/me/password", { old_password: "old-password", new_password: "new-password" });
+  request.resolve({ data: { reauthenticate: true } }); await pending; h.render();
+  assert.equal(tokens, null);
+  assert.equal(calls.filter(c => c.method === "redirect").length, 1);
+  assert.deepEqual(calls.at(-1).args, ["/login?password=changed"]);
+  assert.ok(nodes(h.tree, n => n.type === "input").every(n => n.props.value === ""));
+});
+test("password wrong-current error preserves draft; uncertain save never retries", async () => {
+  const h = mount(PasswordSettings); fillPassword(h);
+  answer = async () => { throw { isAxiosError: true, response: { status: 400, data: { detail: "目前的密碼不正確" } } }; };
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /目前的密碼不正確/);
+  assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, "old-password");
+  answer = async () => { throw new Error("connection lost"); };
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.match(text(h.tree), /密碼可能已更新/);
+  assert.equal(button(h, "更新密碼").props.disabled, true);
+  assert.ok(nodes(h.tree, n => n.type === "input").every(n => n.props.value === ""));
+  const count = calls.length; await h.tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(calls.length, count);
+});
+test("password utf8 limit and simplified copy do not alter credential values", async () => {
+  const h = mount(PasswordSettings); fillPassword(h, "old-password", "密".repeat(25));
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.equal(calls.length, 0); assert.match(text(h.tree), /密碼太長/);
+  fillPassword(h, "繁體舊密碼", "繁體新密碼"); language.setUiLanguage("zh-CN"); h.render();
+  assert.match(text(h.tree), /修改密码/);
+  assert.equal(nodes(h.tree, n => n.type === "input")[1].props.value, "繁體新密碼");
+});
+test("article load-more appends unique entries, locks double clicks and stops at the end", async () => {
+  const initial = { ...adultFixture(), has_more: true, next_offset: 20 };
+  fixture("/adult", initial);
+  const h = mount(() => usePagedAdultArticles("/adult")); h.effects();
+  const request = deferred(); answer = () => request.promise;
+  const pending = h.tree.loadMore(); await h.tree.loadMore();
+  assert.equal(calls.length, 1);
+  expectCall("get", "/adult?limit=20&offset=20");
+  request.resolve({ data: { ...initial, articles: [initial.articles[0], { ...initial.articles[0], id: "next", title: "next" }], has_more: false, next_offset: null } });
+  await pending; h.render();
+  assert.equal(h.tree.data.articles.length, 4); assert.equal(h.tree.hasMore, false);
+  await h.tree.loadMore(); assert.equal(calls.length, 1);
+});
+test("article failed next page keeps prior entries and retries the same offset", async () => {
+  fixture("/adult", { ...adultFixture(), has_more: true, next_offset: 20 });
+  const h = mount(() => usePagedAdultArticles("/adult")); h.effects();
+  answer = async () => { throw new Error("offline"); };
+  await h.tree.loadMore(); h.render();
+  assert.equal(h.tree.data.articles.length, 3); assert.match(h.tree.moreError.message, /offline/);
+  answer = async () => ({ data: { ...adultFixture(), articles: [], has_more: false, next_offset: null } });
+  await h.tree.loadMore(); h.render();
+  assert.equal(calls.at(-1).args[0], "/adult?limit=20&offset=20"); assert.equal(h.tree.hasMore, false);
+});
+test("article query change and unmount discard a late page response", async () => {
+  fixture("/adult", { ...adultFixture(), has_more: true, next_offset: 20 });
+  const props = { path: "/adult" }; const h = mount(({ path }) => usePagedAdultArticles(path), props); h.effects();
+  const request = deferred(); answer = () => request.promise;
+  const pending = h.tree.loadMore();
+  props.path = "/adult?age_tier=guidance12"; fixture(props.path, { ...adultFixture(), articles: [] }); h.render(); h.effects();
+  assert.equal(calls[0].args[1].signal.aborted, true);
+  request.resolve({ data: { ...adultFixture(), has_more: false } }); await pending; h.render();
+  assert.deepEqual(h.tree.data.articles, []);
+  h.dispose();
+});
+test("article permission failure clears readable data and disables further paging", async () => {
+  fixture("/adult", { ...adultFixture(), has_more: true, next_offset: 20 });
+  const h = mount(() => usePagedAdultArticles("/adult")); h.effects();
+  answer = async () => { throw { isAxiosError: true, response: { status: 403, data: { detail: "尚未開放" } } }; };
+  await h.tree.loadMore(); h.render();
+  assert.equal(h.tree.data, undefined); assert.equal(h.tree.hasMore, false); assert.equal(h.tree.error.status, 403);
 });
 test("adult disallows posting when tier metadata is missing or contradictory", () => {
   for (const value of [{ articles: [] }, { ...adultFixture([]) }, { ...adultFixture(), allowed_tiers: undefined }, { ...adultFixture(), tiers: null }, { ...adultFixture(["guidance12"]), tiers: adultTiers.map(t => ({ ...t, allowed: false })) }]) {

@@ -8,9 +8,10 @@ import { CATEGORY_LABELS as WORK_CATEGORIES, type WorkOut, type WorkDetail, type
 import { FLOOR_LABELS, MEDIA_LABELS, type MuseumResponse, type ExhibitDetail, type ExhibitOut } from "../api/museum";
 import { TYPE_LABELS, type HistoryResponse, type EventOut, type TodayResponse } from "../api/history";
 import { CATEGORY_LABELS as HEALTH_CATEGORIES, AGE_TIER_LABELS, type HealthResponse, type ArticleOut as HealthArticle } from "../api/healthCenter";
-import { CATEGORY_LABELS as ADULT_CATEGORIES, type AdultResponse, type ArticleOut as AdultArticle } from "../api/adult";
+import { CATEGORY_LABELS as ADULT_CATEGORIES, type ArticleOut as AdultArticle } from "../api/adult";
 import { ConfirmAction, FieldDialog, FieldForm, FieldFrame, FieldInput, FieldPanel, FieldSelect, FieldTabs, FieldText, ResourceState } from "./shared";
 import { fieldTime, fieldQuery, formText, safeLink, useFieldResource } from "./fieldData";
+import { usePagedAdultArticles } from "../hooks/usePagedAdultArticles";
 
 export function LibraryField() {
   useUiLanguage();
@@ -70,8 +71,9 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   const isAdult = kind === "adult";
   const base = isAdult ? "/adult" : "/health-center";
   const categories = isAdult ? ADULT_CATEGORIES : HEALTH_CATEGORIES;
-  // Adult API supports category only. Tier filtering is over the server-authorized batch.
-  const list = useFieldResource<HealthResponse | AdultResponse>(entered ? fieldQuery(base, { category, ...(!isAdult ? { age_tier: tier } : {}) }) : null);
+  const adultPages = usePagedAdultArticles(entered && isAdult ? fieldQuery(base, { category, age_tier: tier }) : null);
+  const healthList = useFieldResource<HealthResponse>(entered && !isAdult ? fieldQuery(base, { category, age_tier: tier }) : null);
+  const list = isAdult ? adultPages : healthList;
   const detail = useFieldResource<HealthArticle | AdultArticle>(entered && selected ? base + "/" + encodeURIComponent(selected) : null);
   const adult = isAdult && list.data && "tiers" in list.data ? list.data : undefined;
   const tiers = Array.isArray(adult?.tiers) ? adult.tiers : [];
@@ -100,10 +102,9 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
         </div>)}</div>{reviewNote && <p className="field-notice">{uiText(reviewNote)}</p>}</>
           : list.data && <p role="alert">{uiText("暫時未取得分級資料，請重新讀取；現在不會開放投稿。")}</p>}
       </FieldPanel>}
-      <FieldTabs options={{ "": uiText("全部"), ...uiOptions(categories) }} value={category} onChange={setCategory} />
+      <FieldTabs options={{ "": uiText("全部"), ...uiOptions(categories) }} value={category} onChange={value => { setCategory(value); setSelected(null); }} />
       {list.data && <>{!isAdult && <p className="field-notice">{uiText("帳號分級：")}{uiText(AGE_TIER_LABELS[userTier ?? ""] ?? "未提供")}{uiText("。只顯示後端允許的內容。")}</p>}
-        <FieldTabs options={{ "": uiText("全部可讀分級"), ...uiOptions(allowed) }} value={tier} onChange={setTier} />
-        {isAdult && tier && <small>{uiText("分級篩選套用於目前載入的文章。")}</small>}
+        <FieldTabs options={{ "": uiText("全部可讀分級"), ...uiOptions(allowed) }} value={tier} onChange={value => { setTier(value); setSelected(null); }} />
       </>}
       {message && <p className="field-notice" role="status">{uiText(message)}</p>}
       <FieldPanel title={isAdult ? uiText("文章與交流") : uiText("知識與陪伴")} action={<button disabled={!ready} onClick={() => setCompose(true)}>{uiText("投稿文章")}</button>}>
@@ -113,6 +114,10 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
           <small>{a.author_name ?? uiText("系統")} · {fieldTime(a.created_at)}</small>
           <button onClick={() => setSelected(a.id)}>{uiText("閱讀文章")}</button>
         </article>)}</div>}
+        {isAdult && adultPages.moreError && <p role="alert">{uiText(adultPages.moreError.message)}</p>}
+        {isAdult && !list.loading && !list.error && adultPages.hasMore && <button disabled={adultPages.loadingMore} onClick={adultPages.loadMore}>
+          {uiText(adultPages.loadingMore ? "正在載入…" : adultPages.moreError ? "重試載入更多" : "載入更多文章")}
+        </button>}
       </FieldPanel>
       {isAdult && <button onClick={leave}>{uiText("離開分級式人機親密關係中心")}</button>}
     </>}
