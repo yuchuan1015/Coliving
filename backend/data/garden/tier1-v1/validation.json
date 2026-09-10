@@ -1,0 +1,109 @@
+{
+  "version": "1.0",
+  "validated_at": "2026-09-11",
+  "crop_count": 12,
+  "data_validation_passed": true,
+  "profile_checks": [
+    {
+      "crop_id": "daikon",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 44550,
+      "mature_cycle_yield_g": 44550,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "carrot",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 40000,
+      "mature_cycle_yield_g": 40000,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "potato",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 11906,
+      "mature_cycle_yield_g": 11906,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "kohlrabi",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 17554,
+      "mature_cycle_yield_g": 17554,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "pak_choi",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 33750,
+      "mature_cycle_yield_g": 33750,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "water_spinach",
+      "batches_per_production_cycle": 6,
+      "first_cycle_yield_g": 21276,
+      "mature_cycle_yield_g": 21276,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "cauliflower",
+      "batches_per_production_cycle": 1,
+      "first_cycle_yield_g": 15000,
+      "mature_cycle_yield_g": 15000,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "broccoli",
+      "batches_per_production_cycle": 16,
+      "first_cycle_yield_g": 9440,
+      "mature_cycle_yield_g": 9440,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "cucumber",
+      "batches_per_production_cycle": 42,
+      "first_cycle_yield_g": 36000,
+      "mature_cycle_yield_g": 36000,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "tomato",
+      "batches_per_production_cycle": 36,
+      "first_cycle_yield_g": 10886,
+      "mature_cycle_yield_g": 10886,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "petite_oyster_mushroom",
+      "batches_per_production_cycle": 6,
+      "first_cycle_yield_g": 11932,
+      "mature_cycle_yield_g": 11932,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    },
+    {
+      "crop_id": "vegetable_fern",
+      "batches_per_production_cycle": 52,
+      "first_cycle_yield_g": 15046,
+      "mature_cycle_yield_g": 15996,
+      "core_fields_complete": true,
+      "time_and_quantity_checks_passed": true
+    }
+  ],
+  "shared_rule_consistency_passed": true,
+  "exact_half_and_equal_share_examples_checked": true,
+  "backend_acceptance_cases_prepared": 34,
+  "backend_tests_executed": false,
+  "deployment_performed": false
+}

@@ -2697,6 +2697,58 @@ def reading(action: str, book_id: str = "", page: int = 0, paragraph_idx: int = 
     return json.dumps({"success": False, "error": f"reading 沒有「{action}」這個 action", "actions": ['shelf', 'read', 'highlight', 'note']}, ensure_ascii=False)
 
 
+@mcp.tool()
+def garden(action: str, plot_id: str | None = None, request_id: str | None = None,
+           planting_id: str | None = None, batch_id: str | None = None,
+           crop_id: str | None = None, proposal_id: str | None = None,
+           reason: str | None = None, accept: bool | None = None,
+           vote_id: str | None = None, actions_json: str = "",
+           owner: str = "agent", limit: int = 100, offset: int = 0,
+           ctx: Context = None) -> str:
+    """菜園：以已認證的 AI 室友身分操作。action 可選：
+- status / private：自己的四塊私田、批次及照顧需求
+- public：公田現況與本輪投票
+- inventory（owner=agent 或 user, limit, offset）：同戶分開記帳的倉庫
+- progress：同戶作物圖鑑進度
+- plant（plot_id, crop_id, request_id）：私田種植
+- water / care（plot_id, planting_id, request_id）：澆水／照顧，依田地權限執行
+- harvest（plot_id, planting_id, batch_id, request_id）：私田當批剩餘實際採收
+- propose_clear（plot_id, planting_id, reason, request_id）：提出共同清除
+- consent_clear（plot_id, planting_id, proposal_id, accept, request_id）：同意或拒絕清除
+- revoke_clear（plot_id, planting_id, proposal_id, request_id）：撤回清除
+- clear_dead_crop（plot_id, planting_id, request_id）：清除死亡私田作物
+- vote（plot_id, vote_id, crop_id, request_id）：公田投票，每身分一票
+- actions（actions_json）：1 到 4 筆上述動作的 JSON 陣列，每筆獨立交易並依輸入順序回報
+所有寫入都需要 request_id；不確定結果時以相同 request_id 和相同內容重試。
+plot_id、planting_id、batch_id、proposal_id、vote_id 請使用查詢回傳的 ID。
+時間和身分由伺服器決定。只限自己的私田；公田種植、採收和整輪清除由系統處理。"""
+    from services import garden_mcp
+
+    user_id = _verify_mcp_token(_token_from_ctx(ctx))
+    if not user_id:
+        return json.dumps(garden_mcp.error_result("unauthorized", "無效或已失效的 MCP 憑證", 401), ensure_ascii=False)
+    db = SessionLocal()
+    try:
+        result = garden_mcp.dispatch(
+            db, user_id, action=action, plot_id=plot_id, request_id=request_id,
+            planting_id=planting_id, batch_id=batch_id, crop_id=crop_id,
+            proposal_id=proposal_id, reason=reason, accept=accept, vote_id=vote_id,
+            actions_json=actions_json, owner=owner, limit=limit, offset=offset,
+        )
+        return json.dumps(result, ensure_ascii=False)
+    finally:
+        db.close()
+
+
+# MCP 2.0's generated argument model otherwise ignores unknown top-level
+# fields. Scope strict validation to this tool; other tools keep their behavior.
+_garden_tool = mcp._tool_manager.get_tool("garden")
+_garden_arguments = _garden_tool.fn_metadata.arg_model
+_garden_arguments.model_config.update(extra="forbid", strict=True)
+_garden_arguments.model_rebuild(force=True)
+_garden_tool.parameters = _garden_arguments.model_json_schema(by_alias=True)
+
+
 class RequireCredential:
     """/mcp 沒帶任何憑證 → 401 + WWW-Authenticate（讓 Claude.ai 這種客戶端知道要走 OAuth）；
     帶了 OAuth token 但過期／撤銷 → 401 invalid_token（讓客戶端拿 refresh 換新）。固定鑰匙帶了就放進去，tool 自己驗。"""

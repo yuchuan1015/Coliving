@@ -1,0 +1,1876 @@
+{
+  "version": "1.0",
+  "tier": 1,
+  "data_complete": true,
+  "ready_for_backend": true,
+  "production_ready": false,
+  "time_multiplier": 7,
+  "scope": "十二種遊戲設定v1；已區分來源/推算/遊戲值，供正式後端實作使用。",
+  "crops": [
+    {
+      "id": "daikon",
+      "name": "白蘿蔔",
+      "category": "根菜類",
+      "profile": "台中2號（板葉杙仔群）；露地土耕，45×20cm株行距；直播後間拔留1株；成熟肉質根，整根一次拔收",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 66,
+        "productive_area_m2": 6,
+        "note": "6m²有效栽培面積按每株0.45×0.20m²向下取整為66株。容量是v1幾何配置，非出苗率；不另要求玩家逐株播種。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 63,
+        "first_harvest_days": 63
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          63
+        ],
+        "yield_g_per_plot_by_batch": [
+          44550
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "一株一次成熟根，依66株×675g得到本地本作潛在總量44550g，僅生成一批。無再生或續採，repeat_cycle_days=0表示不適用；完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "穩定供水與排水、土壤通氣；避免乾濕劇變裂根及拖延採收空心。施肥與間拔納入既有照顧。偏好月份不限制全年選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊2.5坪私田約8.25m²，v1固定其中6m²為有效栽培面積、其餘約2.25m²為作業空間。這是共用遊戲配置；公田按實際有效面積或容量等比例換算，不把整地收量再乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "保留台中2號根用鮮食型，來源平均根重675g；不是葉用台中1號。",
+          "source_urls": [
+            "https://www.tcdares.gov.tw/files/tdais/web_structure/12512/A01_1.pdf",
+            "https://www.tcdares.gov.tw/theme_data.php?id=12150&print=Y&sub_theme=announcement&theme=news"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "品種來源播種至首收60–63栽培日，v1選63日。種子直播無獨立移植育苗階段，因此nursery_days=0；萌芽仍包含在63日內。理想現實等待最後只算63÷7=9日。",
+          "source_urls": [
+            "https://www.tcdares.gov.tw/files/tdais/web_structure/12512/A01_1.pdf"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "沿用板葉型蘿蔔行距45cm、株距20cm：floor(6/(0.45×0.20))=66株。將一般板葉型密度用於台中2號是v1栽培近似。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/蘿蔔/其他/蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "育成資料平均根重675g；66×675=44550g/地/作，已為正偶數g，取整誤差0g。這是跨來源密度×平均根重的潛在收量，非同田商品產量實測；實際照顧損失由共用模型另扣。",
+          "source_urls": [
+            "https://www.tcdares.gov.tw/theme_data.php?id=12150&print=Y&sub_theme=announcement&theme=news",
+            "https://kmweb.moa.gov.tw/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/蘿蔔/其他/蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "care.water_profile",
+          "basis": "game_balance",
+          "explanation": "來源要求土壤水分稳定並排水，v1映射standard照顧型；不新增澆水流程或宣稱通用需水公升數。",
+          "source_urls": [
+            "https://www.tcdares.gov.tw/files/tdais/web_structure/12512/A01_1.pdf"
+          ]
+        },
+        {
+          "field": "care.preferred_months",
+          "basis": "reference",
+          "explanation": "台中2號適合臺灣中南部平地4–10月栽培，v1以此作偏好月份；不作種植資格鎖。",
+          "source_urls": [
+            "https://www.tcdares.gov.tw/files/tdais/web_structure/12512/A01_1.pdf"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "一次性作收只生成1個成熟批次；clock=independent表示沿種植累計有效生長時間成熟。續採/再生不適用，故repeat_cycle_days=0且無後續offset。agent或公田系統完成餘量採收後此作結束並empty；偷取不重設生長或代替採收餘量。",
+          "source_urls": []
+        }
+      ],
+      "summary": "台中2號白蘿蔔，每地66株；理想63個栽培日成熟，一次可收44.55kg，採完本作結束。",
+      "profile_details": {
+        "cultivar": "台中2號（板葉杙仔群）",
+        "cultivation_system": "露地土耕，45×20cm株行距；直播後間拔留1株",
+        "harvest_target": "成熟肉質根，整根一次拔收"
+      }
+    },
+    {
+      "id": "carrot",
+      "name": "胡蘿蔔",
+      "category": "根菜類",
+      "profile": "向陽2號（五寸型根用）；冷涼季露地高畦土耕，行距25cm、終株距15cm，種子直播；成熟肉質根，一株一根一次拔收",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 160,
+        "productive_area_m2": 6,
+        "note": "以淨栽培株行距25×15cm換算160株。舊證據1.35m連溝畦的整畦密度不再套在6m²淨面積上，避免重扣已另留的作業空間。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 110,
+        "first_harvest_days": 110
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          110
+        ],
+        "yield_g_per_plot_by_batch": [
+          40000
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "向陽2號約250g/根，v1按160株計40000g/地/作，只生成一次成熟根收成。無續採或再生；repeat_cycle_days=0表示不適用，完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2
+        ],
+        "note": "萌芽前保濕，膨根期維持水分穩定並排水；土要深鬆，避免土塊及未腐熟基肥。疏苗與施肥納入既有照顧。全年可選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊2.5坪私田約8.25m²，v1固定其中6m²為有效栽培面積、其餘約2.25m²為作業空間。這是共用遊戲配置；公田按實際有效面積或容量等比例換算，不把整地收量再乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "採向陽2號，臺中場品種介紹約250g/成熟根；不使用小胡蘿蔔的早收方案。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/document/279899/ebdc751f96ceec302b4adcd40a2e4b3c_v1.pdf"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "一般根用胡蘿蔔播種後100–120栽培日，v1取中點110日並套用向陽2號。直播沒有獨立移植育苗階段，nursery_days=0；發芽已計入110日。理想現實等待為110÷7約15.714日。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/胡蘿蔔/其他/胡蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "來源行距25cm、株距15cm。v1的6m²已排除作業空間，採floor(6/(0.25×0.15))=160株淨面積推算；不使用含畦溝1.35m模組再扣一次通道。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/胡蘿蔔/其他/胡蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "向陽2號規格約250g/根，160×250=40000g/地/作，正偶數g且取整誤差0g。密度與根重來自不同資料，此為v1潛在收量，不代表160株必定全達規格。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/document/279899/ebdc751f96ceec302b4adcd40a2e4b3c_v1.pdf",
+            "https://kmweb.moa.gov.tw/subject/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/胡蘿蔔/其他/胡蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "care.water_profile",
+          "basis": "game_balance",
+          "explanation": "按萌芽前不可乾燥及膨根期避免乾濕波動的條件，v1選moist；不代表需積水。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/胡蘿蔔/其他/胡蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "care.preferred_months",
+          "basis": "game_balance",
+          "explanation": "依18–21°C冷涼生育偏好，v1將菜園10月至翌年2月設為偏好月。此為季節映射，不是向陽2號精確月別試驗，也不限制其他月份選種。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/techcd/作物病蟲害與肥培管理技術資料/蔬菜/根莖菜類/胡蘿蔔/其他/胡蘿蔔-基本資料.htm"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "一次性作收只生成1個成熟批次；clock=independent表示沿種植累計有效生長時間成熟。續採/再生不適用，故repeat_cycle_days=0且無後續offset。agent或公田系統完成餘量採收後此作結束並empty；偷取不重設生長或代替採收餘量。",
+          "source_urls": []
+        }
+      ],
+      "summary": "向陽2號胡蘿蔔，每地160株；理想110個栽培日成熟，一次可收40kg，採完本作結束。",
+      "profile_details": {
+        "cultivar": "向陽2號（五寸型根用）",
+        "cultivation_system": "冷涼季露地高畦土耕，行距25cm、終株距15cm，種子直播",
+        "harvest_target": "成熟肉質根，一株一根一次拔收"
+      }
+    },
+    {
+      "id": "potato",
+      "name": "馬鈴薯",
+      "category": "莖菜類",
+      "profile": "中熟至中晚熟鮮食主作型；冷涼環境露地土耕，行距76.2cm、株距30.48cm，培土避光；成熟塊莖集中挖收",
+      "starter_kind": "seed_tuber",
+      "capacity": {
+        "unit": "plant",
+        "count": 25,
+        "productive_area_m2": 6,
+        "note": "健康種薯每穴形成1株；6m²按76.2×30.48cm配置向下取整25株。不是25顆最終馬鈴薯，塊莖按總重計收。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 105,
+        "first_harvest_days": 105
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          105
+        ],
+        "yield_g_per_plot_by_batch": [
+          11906
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "成熟主作薯一次挖收，v1以25株及來源行產量中點校準為11906g/地/作。無新薯提前採或後續再挖批次；repeat_cycle_days=0表示不適用，完成後empty。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2
+        ],
+        "note": "健康種薯、穩定供水與排水，結薯期不缺水；培土遮住塊莖。正常成熟枯葉不直接判為病死。全年可選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊2.5坪私田約8.25m²，v1固定其中6m²為有效栽培面積、其餘約2.25m²為作業空間。這是共用遊戲配置；公田按實際有效面積或容量等比例換算，不把整地收量再乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "使用合格健康種薯，中熟至中晚熟鮮食主作型；每種塊原建議1.5–2oz且有1–3芽眼。v1按成熟主作收，不混入6–8週新薯採收。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "來源成熟期90–120栽培日，v1取中點105日；種薯已可種植，nursery_days=0。成熟期不額外強加枯死後14日耐貯處理，v1不另模擬貯藏熟化。最後105÷7=15現實日。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "來源範圍8–12英吋株距、24–36英吋行距；選12×30英吋=0.3048×0.762m，floor(6/(0.3048×0.762))=25株。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "原始整作行產量6–15lb/10ft，v1選中點10.5lb/10ft；所選12英吋株距下10ft容10株，故25株原推算=25×(10.5×0.45359237/10)×1000=11906.7997125g。按最接近正偶數2g單位校準為11906g，誤差0.7997125g<2g。行产量只換成一次整地總量，不再乘株數。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "care.water_profile",
+          "basis": "game_balance",
+          "explanation": "來源要求塊莖膨大期水分充足但勿過乾過濕，v1映射standard；培土及施肥由既有照顧處理。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "care.preferred_months",
+          "basis": "game_balance",
+          "explanation": "依土溫高於約26.67°C抑制結薯的冷涼需求，v1菜園10月至翌年2月為偏好月；不是照抄美國春季播種月份，全年仍可選。",
+          "source_urls": [
+            "https://www.extension.umd.edu/resource/growing-potatoes-home-garden"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "一次性作收只生成1個成熟批次；clock=independent表示沿種植累計有效生長時間成熟。續採/再生不適用，故repeat_cycle_days=0且無後續offset。agent或公田系統完成餘量採收後此作結束並empty；偷取不重設生長或代替採收餘量。",
+          "source_urls": []
+        }
+      ],
+      "summary": "健康種薯主作型，每地25株；理想105個栽培日成熟，一次可收11.906kg，採完本作結束。",
+      "profile_details": {
+        "cultivar": "中熟至中晚熟鮮食主作型",
+        "cultivation_system": "冷涼環境露地土耕，行距76.2cm、株距30.48cm，培土避光",
+        "harvest_target": "成熟塊莖集中挖收"
+      }
+    },
+    {
+      "id": "kohlrabi",
+      "name": "球莖甘藍",
+      "category": "莖菜類",
+      "profile": "早生嫩球莖鮮食型；種子穴盤育苗後露地土耕；株距15.24cm、行距30.48cm；直徑約6–7cm的嫩肥大莖，一株一莖",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 129,
+        "productive_area_m2": 6,
+        "note": "6m²依15.24×30.48cm株行距向下取整129株；育苗是種植內部流程，不另外占玩家一塊田或要求移植按鈕。"
+      },
+      "timing": {
+        "nursery_days": 28,
+        "growing_days_to_first": 57,
+        "first_harvest_days": 85
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          85
+        ],
+        "yield_g_per_plot_by_batch": [
+          17554
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "一次採嫩肥大莖；v1以129株及來源行產量中點校準為17554g/地/作。非葉用割採，無再生批次；repeat_cycle_days=0表示不適用，完成採收後empty。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          10,
+          11,
+          12,
+          1,
+          2,
+          3
+        ],
+        "note": "保持土壤均勻濕潤、排水與充足光照；適時補肥，球莖仍嫩時採收以免粗硬木質化。育苗照顧整合在同一倒數內；全年可選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊2.5坪私田約8.25m²，v1固定其中6m²為有效栽培面積、其餘約2.25m²為作業空間。這是共用遊戲配置；公田按實際有效面積或容量等比例換算，不把整地收量再乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "採早生型，臺灣資料嫩球莖6–7cm適收；不把晚生種定植後80–100日或結球甘藍混入。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=76",
+            "https://kmweb.moa.gov.tw/index.php?ctNode=1581&mp=1&rowId=1058&xItem=1099732"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "來源育苗25–30栽培日至5–6片本葉，早生種定植後55–60日首收。v1分別選28及57日，first_harvest_days=28+57=85，屬跨來源合理栽培近似。種植倒數包含育苗，最後只算85÷7約12.143現實日。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=76",
+            "https://kmweb.moa.gov.tw/index.php?ctNode=1581&mp=1&rowId=1058&xItem=1099732"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "USU建議株距6英吋、行距1ft，即0.1524×0.3048m；floor(6/(0.1524×0.3048))=129株。用於臺灣早生型屬v1密度近似。",
+          "source_urls": [
+            "https://extension.usu.edu/yardandgarden/research/kohlrabi-in-the-garden"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "USU原始整作行產量5–7lb/10ft，v1取中點6lb；6英吋株距下10ft容20株。129株原推算=129×(6×0.45359237/20)×1000=17554.024719g。校準最接近正偶數為17554g，誤差0.024719g<2g。來源未細分帶葉與去葉稱重，v1將此作可入倉球莖重量的遊戲近似。",
+          "source_urls": [
+            "https://extension.usu.edu/yardandgarden/research/kohlrabi-in-the-garden"
+          ]
+        },
+        {
+          "field": "care.water_profile",
+          "basis": "game_balance",
+          "explanation": "來源要求頻繁而穩定供水，v1選moist；維持濕潤但不積水，不把美國mm/週照搬成每次按鈕給水量。",
+          "source_urls": [
+            "https://extension.usu.edu/yardandgarden/research/kohlrabi-in-the-garden",
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=76"
+          ]
+        },
+        {
+          "field": "care.preferred_months",
+          "basis": "game_balance",
+          "explanation": "依生長適溫15–20°C，v1映射菜園10月至翌年3月為偏好月；不把產季當精確播種月，也不限制全年選種。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=76"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "一次性作收只生成1個成熟批次；clock=independent表示沿種植累計有效生長時間成熟。續採/再生不適用，故repeat_cycle_days=0且無後續offset。agent或公田系統完成餘量採收後此作結束並empty；偷取不重設生長或代替採收餘量。",
+          "source_urls": []
+        }
+      ],
+      "summary": "早生球莖甘藍，每地129株；育苗28日加生長57日，共85個栽培日，一次可收17.554kg。",
+      "profile_details": {
+        "cultivar": "早生嫩球莖鮮食型",
+        "cultivation_system": "種子穴盤育苗後露地土耕；株距15.24cm、行距30.48cm",
+        "harvest_target": "直徑約6–7cm的嫩肥大莖，一株一莖"
+      }
+    },
+    {
+      "id": "pak_choi",
+      "name": "小白菜",
+      "category": "葉菜類",
+      "profile": "翠鳳蚵仔白型不結球白菜；種子直播，整株一次採收",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 150,
+        "productive_area_m2": 6,
+        "note": "按20×20cm遊戲株行距配置150株。每地收量已含150株，不能再次乘株數。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 33,
+        "first_harvest_days": 33
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          33
+        ],
+        "yield_g_per_plot_by_batch": [
+          33750
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "第33栽培日形成單批整株收成；收完即完成這次種植。150株×225g＝33750g，沒有側葉續採。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          3,
+          4,
+          5,
+          9,
+          10,
+          11
+        ],
+        "note": "土壤保持濕潤並能排水，給足日照；基礎疏苗與均衡養分由照顧狀態處理。全年可種，春秋較順。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊私田約8.25m²，v1指定6m²有效栽培，其餘留作業空間；公田只按其有效面積/容量比例換算一次，不再把本卡每地量乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "所有數值均為栽培日，育苗包含在種植倒數內，最後除以7才是現實等待；全年可種，不新增季節資格鎖。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "農友種苗翠鳳為蚵仔白類，播種至採收30–35栽培日，原文植株重200–250g。採整株遊戲收量，未另捏造去根率。",
+          "source_urls": [
+            "https://www.knownyou.com.tw/faqpage.jsp?fid=9C8B16EC5695090B8AB8E3428C1AEBDBC057&kind=C"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "6m²÷(0.20m×0.20m)＝150株。20×20cm取同公司同類蚵仔白阿鳳的株行距參考，作翠鳳v1配置，非翠鳳同田實測密度。",
+          "source_urls": [
+            "https://www.knownyou.com.tw/faqpage.jsp?fid=9C8B16EC5695090B8AB8E3428C1AEBDBC057&kind=C"
+          ]
+        },
+        {
+          "field": "timing.growing_days_to_first",
+          "basis": "game_balance",
+          "explanation": "30–35栽培日範圍內取33日；直播無獨立育苗移植期。",
+          "source_urls": [
+            "https://www.knownyou.com.tw/faqpage.jsp?fid=9C8B16EC5695090B8AB8E3428C1AEBDBC057&kind=C",
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=1"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "翠鳳原文200–250g/植株，v1取中間225g；225×150＝33750g/地，已為正偶數，2g校準誤差0g。",
+          "source_urls": [
+            "https://www.knownyou.com.tw/faqpage.jsp?fid=9C8B16EC5695090B8AB8E3428C1AEBDBC057&kind=C"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "一般小白菜生長適溫20–30°C、需濕潤不積水；v1把3–5月與9–11月列偏好月份。月份為臺灣季節遊戲映射，不是全年種植限制。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/event/kmgreening/guide.php?func=view&id=1"
+          ]
+        }
+      ],
+      "summary": "約33栽培日整株收一次；每地150株、約33.75公斤，收完騰空。"
+    },
+    {
+      "id": "water_spinach",
+      "name": "空心菜",
+      "category": "葉菜類",
+      "profile": "青骨大葉再生型；旱地插穗畦作，留基部割採六輪",
+      "starter_kind": "cutting",
+      "capacity": {
+        "unit": "plant",
+        "count": 240,
+        "productive_area_m2": 6,
+        "note": "25×20cm約120叢，每叢兩枝插穗，共240株配置。產量按6m²一次計算，叢數/株數僅為種植容量，不再乘入收量。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 23,
+        "first_harvest_days": 23
+      },
+      "harvest": {
+        "mode": "regrow",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          23,
+          44,
+          65,
+          86,
+          107,
+          128
+        ],
+        "yield_g_per_plot_by_batch": [
+          3546,
+          3546,
+          3546,
+          3546,
+          3546,
+          3546
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "首採23栽培日，此後由agent收完前批餘量後再長21栽培日；公田由系統實收後計。偷取不啟動再生、不重設倒數。前三批按外地研究三次合計取均量，後三批等量為明示v1遊戲外推；六批合計21276g。最後一批收完記production_complete；不是死亡，私田清除沿原雙方同意規則，公田整輪結束才系統清理投票。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "水分要足、日照要好；割採留基部，割後養分與水分由共用照顧狀態處理。插穗與土耕基礎配置不增加玩家操作。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊私田約8.25m²，v1指定6m²有效栽培，其餘留作業空間；公田只按其有效面積/容量比例換算一次，不再把本卡每地量乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "所有數值均為栽培日，育苗包含在種植倒數內，最後除以7才是現實等待；全年可種，不新增季節資格鎖。",
+          "source_urls": []
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "臺灣扦插參考株行距20×25cm、每叢2插穗；6÷(0.20×0.25)×2＝240株。實際畦溝已統一留在6m²外的作業空間，容量為遊戲理想配置。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "插穗直接開始，育苗0；臺灣旱田插穗首採20–25栽培日取23日，沒有另加種子苗育苗期。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf"
+          ]
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "game_balance",
+          "explanation": "23＋21×n，n＝0..5。21日採官方教材每3週割採參考；after_harvest的相鄰21日差是前批實收後的再生倒數，延遲採收會順延後續。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf",
+            "https://fae.moa.gov.tw/files/topics/3010/A02_2.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "Regmi等2024表8廄肥處理三次合計17.73t/ha：17.73×1000÷10000÷3＝0.591kg/m²/批；6×0.591×1000＝3546g/地/批，為正偶數，取整誤差0g。該研究為尼泊爾30日種子苗、50×30cm，轉作臺灣插穗的跨來源產量代理，沒有假稱本型同田實測。",
+          "source_urls": [
+            "https://aedc.com.my/archives/2aedc2024/2aedc2024-85-91.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch[3:6]",
+          "basis": "game_balance",
+          "explanation": "原產量研究只觀察3採。v1第4–6批沿用3546g/批平均量，參照臺灣約6次有效割採，明示有限生產期外推；6×3546＝21276g，不偽造逐輪老化曲線或死亡日。",
+          "source_urls": [
+            "https://aedc.com.my/archives/2aedc2024/2aedc2024-85-91.pdf",
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "reference",
+          "explanation": "臺灣原PDF印刷頁408的10000–12000kg/10公畝/批量級仍存疑，未採用且未偷偷更改原單位。數值原樣保留於tier1_evidence。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf"
+          ]
+        },
+        {
+          "field": "harvest.end_behavior",
+          "basis": "game_balance",
+          "explanation": "六輪為本版年生生產期選擇，領完最後餘量才production_complete；清除權限與健康植株的原有雙方同意規則一致。",
+          "source_urls": []
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "來源生育適溫26–32°C、旱地需足水日照；v1把4–10月列偏好，不新增月份種植鎖。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/knowledge_discuss/41831/A02_1.pdf"
+          ]
+        }
+      ],
+      "summary": "23栽培日首採，收完再長21日；六輪各約3.55公斤，整輪約21.28公斤。"
+    },
+    {
+      "id": "cauliflower",
+      "name": "花椰菜",
+      "category": "花菜類",
+      "profile": "夏雲極早生鬆花球型；種子穴盤育苗後土耕，一株只收主花球",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 20,
+        "productive_area_m2": 6,
+        "note": "採極早生65×45cm參考，floor(6÷0.2925)＝20株。這份v1明確採夏雲整套，不混用原早生定植後60日與75×50cm。"
+      },
+      "timing": {
+        "nursery_days": 23,
+        "growing_days_to_first": 37,
+        "first_harvest_days": 60
+      },
+      "harvest": {
+        "mode": "single",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          60
+        ],
+        "yield_g_per_plot_by_batch": [
+          15000
+        ],
+        "end_behavior": "empty",
+        "repeat_cycle_days": 0,
+        "note": "播種起算60栽培日已含23日育苗；主花球每株750g×20株＝15000g/地。一批收完結束，不追加青花菜側球。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "note": "定植及花球形成期間供水穩定，土壤能排水，保持日照；育苗馴化與必要覆球由基礎配置和照顧狀態處理，不新增按鈕。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊私田約8.25m²，v1指定6m²有效栽培，其餘留作業空間；公田只按其有效面積/容量比例換算一次，不再把本卡每地量乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "所有數值均為栽培日，育苗包含在種植倒數內，最後除以7才是現實等待；全年可種，不新增季節資格鎖。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "v1正式選夏雲極早生型：官方明列播種後60日採收、700–800g/花球、4–8月播種。這是對既有候選的明確採用；原早生型留在研究檔，不混入本卡。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/map/food_item.php?id=106&type=AS01"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "極早生類參考65×45cm；floor(6÷(0.65×0.45))＝20株。採類型密度配置夏雲，非聲稱品種專屬實驗。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=30125"
+          ]
+        },
+        {
+          "field": "timing.nursery_days",
+          "basis": "game_balance",
+          "explanation": "一般花椰菜育苗21–25栽培日，v1取23日；只分拆種植內部倒數，玩家不需另點定植。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=30125"
+          ]
+        },
+        {
+          "field": "timing.growing_days_to_first",
+          "basis": "game_balance",
+          "explanation": "v1為保持夏雲播種到採收共60栽培日，遊戲分段為育苗23日＋田間37日；37＝60−23是內部分段推算，非來源實測夏雲定植到採收37日，60日不再重加育苗。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/map/food_item.php?id=106&type=AS01",
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=30125"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "原花球700–800g，取中間750g；20×750＝15000g/地，已為正偶數，取整誤差0g。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/map/food_item.php?id=106&type=AS01"
+          ]
+        },
+        {
+          "field": "care.preferred_months",
+          "basis": "reference",
+          "explanation": "取夏雲明列4–8月播種適期作偏好；v1全年仍可選種，非偏好月份只由共用季節狀態調節。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/map/food_item.php?id=106&type=AS01"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "reference",
+          "explanation": "花椰菜營養生長後期與花球形成期需足水，定植灌足且排水良好；末次追肥以開始著蕾為界。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=30125"
+          ]
+        }
+      ],
+      "summary": "夏雲型含育苗共60栽培日；20株一次收主花球，約15公斤。"
+    },
+    {
+      "id": "broccoli",
+      "name": "青花菜",
+      "category": "花菜類",
+      "profile": "早熟主球加側球型；種子育苗後土耕，先收主球再收小側球批",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 16,
+        "productive_area_m2": 6,
+        "note": "v1用50×75cm配置16株，落於Maryland參考株距16–24吋、行距24–30吋內；每地產量已乘16株。"
+      },
+      "timing": {
+        "nursery_days": 45,
+        "growing_days_to_first": 60,
+        "first_harvest_days": 105
+      },
+      "harvest": {
+        "mode": "regrow",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          105,
+          135,
+          138,
+          141,
+          144,
+          147,
+          150,
+          153,
+          156,
+          159,
+          162,
+          165,
+          168,
+          171,
+          174,
+          177
+        ],
+        "yield_g_per_plot_by_batch": [
+          7200,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148,
+          150,
+          150,
+          148
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "主球105栽培日成熟，agent實收完主球後才計30日，第一側球批成熟；其後每次收完餘量再計3日。公田用系統實收時間。每批是當次生成的新成熟小側球，未暗中採收或14日聚合；偷取不代替採完餘量。側球15批總2240g，主球7200g，整輪9440g。理想最末177日；延遲實收會順延。末批收完記production_complete而非死亡，私田清除沿原雙方同意規則。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          10,
+          11,
+          12
+        ],
+        "note": "保持均勻水分、充足日照，偏涼時較順；主球採完保留下方葉片與腋芽，供水與補充養分由共用照顧狀態處理。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每塊私田約8.25m²，v1指定6m²有效栽培，其餘留作業空間；公田只按其有效面積/容量比例換算一次，不再把本卡每地量乘株數。",
+          "source_urls": []
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "所有數值均為栽培日，育苗包含在種植倒數內，最後除以7才是現實等待；全年可種，不新增季節資格鎖。",
+          "source_urls": []
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "Maryland株距16–24吋、行距24–30吋；v1取50×75cm，6÷(0.50×0.75)＝16株。無額外成活率推測。",
+          "source_urls": [
+            "https://extension.umd.edu/resource/growing-broccoli-home-garden"
+          ]
+        },
+        {
+          "field": "timing.nursery_days",
+          "basis": "game_balance",
+          "explanation": "USU建議育苗6–7週，即42–49栽培日，取45日；育苗包含種植倒數。",
+          "source_urls": [
+            "https://extension.usu.edu/yardandgarden/research/broccoli-in-the-garden"
+          ]
+        },
+        {
+          "field": "timing.growing_days_to_first",
+          "basis": "game_balance",
+          "explanation": "Maryland定植到主收55–65栽培日，v1取60日；總45＋60＝105栽培日。",
+          "source_urls": [
+            "https://extension.umd.edu/resource/growing-broccoli-home-garden"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch[0]",
+          "basis": "game_balance",
+          "explanation": "土耳其Bilen 2008表13主球444.93/459.37g，中間452.15g；v1明示平衡值450g/株，16×450＝7200g/地，入帳取整誤差0g。450相對452.15的差是模型平衡選值，不假稱2g入帳取整。",
+          "source_urls": [
+            "https://orgprints.org/id/eprint/20525/1/emre%20bilen%20master%20thesis.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch[1:16]",
+          "basis": "game_balance",
+          "explanation": "同論文圖13側球累計約3900–4000kg/ha、主球12500–12800kg/ha，側/主比約0.30–0.32；取0.31。16株×450g×0.31＝2232g側球整期參考。v1按既有研究模型選140g/株總額度，即2240g/地，8g差為整期平衡校準，非觀測精確值。",
+          "source_urls": [
+            "https://orgprints.org/id/eprint/20525/1/emre%20bilen%20master%20thesis.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch[1:16]",
+          "basis": "game_balance",
+          "explanation": "將2240g側球總額度均分15批，每批理論149.333333g；前14批以150、150、148的正偶數序列分配，共2092g，末批補取整餘額2240−2092＝148g，保持側球總額2240g及主側總額9440g。單批入帳偏差為＋0.666667或－1.333333g，均小於2g；每批不是把整期140g/株重發。",
+          "source_urls": []
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "game_balance",
+          "explanation": "首側球等待取CSU主球採除後約1月＝30栽培日；隨後用3日短批次，落於UF/IFAS成熟側球2–4日採收參考。15批為v1有限生產期選擇；最後一批在理想主收後30＋14×3＝72日，落於一般40–80日採收期範圍。不同來源合成的遊戲模型，不冒稱相同品種逐批實測。",
+          "source_urls": [
+            "https://growgive.extension.colostate.edu/wp-content/uploads/sites/63/2023/12/HESE-Broccoli-2.pdf",
+            "https://edis.ifas.ufl.edu/publication/MV031"
+          ]
+        },
+        {
+          "field": "harvest.clock",
+          "basis": "game_balance",
+          "explanation": "選regrow/after_harvest把主球採除及每批側芽採後再生表達在同一簡單時鐘：前批餘量未由agent收完就不啟動下一輪；偷取不重設或啟動計時。這是小批再生玩法簡化，不採文獻曲線的14日暗採聚合。",
+          "source_urls": []
+        },
+        {
+          "field": "harvest.end_behavior",
+          "basis": "game_balance",
+          "explanation": "一批主球＋15批側球為v1生產期，最後實收後production_complete；不宣稱植株死亡、不改健康私田清除權限。",
+          "source_urls": []
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "偏涼、均勻土壤水分有利主球與側球；v1偏好10月至翌年3月，全年可種，照顧與季節共用主窗口狀態模型。",
+          "source_urls": [
+            "https://extension.usu.edu/yardandgarden/research/broccoli-in-the-garden",
+            "https://extension.umd.edu/resource/growing-broccoli-home-garden"
+          ]
+        }
+      ],
+      "summary": "含育苗105栽培日先收7.2公斤主球；實收後30日開始側球，再每3日收一小批，整輪約9.44公斤。"
+    },
+    {
+      "id": "cucumber",
+      "name": "小黃瓜",
+      "category": "果菜類",
+      "profile": "台南1號（單為結果花胡瓜）；種子穴盤育苗，完整根團定植；簡易溫網室土耕，高畦雙行立架；支柱與瓜網由基礎地塊配置；鲜嫩小胡瓜；整地成熟果重量分批入帳",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 14,
+        "productive_area_m2": 6,
+        "note": "以官方畦植配置推算約2.35–2.96株/m²，v1取低密度並向下取整為14株。此容量用於植株配置；整地產量按6m²×面積產量計，不再乘14。"
+      },
+      "timing": {
+        "nursery_days": 9,
+        "growing_days_to_first": 35,
+        "first_harvest_days": 44
+      },
+      "harvest": {
+        "mode": "continuous",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85
+        ],
+        "yield_g_per_plot_by_batch": [
+          428,
+          430,
+          428,
+          428,
+          428,
+          430,
+          428,
+          858,
+          856,
+          858,
+          856,
+          858,
+          856,
+          858,
+          1286,
+          1286,
+          1286,
+          1284,
+          1286,
+          1286,
+          1286,
+          1286,
+          1286,
+          1286,
+          1284,
+          1286,
+          1286,
+          1286,
+          858,
+          856,
+          858,
+          856,
+          858,
+          856,
+          858,
+          428,
+          430,
+          428,
+          428,
+          428,
+          430,
+          428
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "v1採42個每日成熟批，首批第44日、末批第85日；42日規劃窗不在末端多加一批。每週權重1、2、3、3、2、1，先少、盛產較多、後段減量；全作守恆36000g。這是跨來源總量校準的遊戲曲線，非台南1號逐批實測。各批按同一植株累計有效生長時間獨立成熟，不等舊批採完，不增加成熟後保護期。末批生成後不再新增；餘下成熟批仍保留至採收。本作結束不是宣稱植株死亡，健康私田植株清除仍依原雙方同意規則。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          3,
+          4,
+          5,
+          6,
+          9,
+          10
+        ],
+        "note": "維持根區濕潤與排水、立架通風；乾旱或積水會降低生长與結果表現。基礎配置含瓜網，照顧沿用共用流程；偏好月不限制全年選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每地約8.25m²中固定6m²有效栽培，其餘為作業空間，是共用遊戲配置。各批量已是整地重量；公田按實際有效面積或容量等比例換算，不把整地重量再乘株數／包數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "台南1號採單為結果花胡瓜品種與整作產量基準；育苗、首採及採期由既有通用資料補成v1，沒有宣稱同一品種同環境的完整試驗。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/knowledgebase.php?func=2&id=168744&type=12821",
+            "https://fae.moa.gov.tw/files/topics/1161/A02_2.pdf"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "derived",
+          "explanation": "畦幅1.5–1.7m含畦溝、雙行、株距0.45–0.50m，密度2/(畦幅×株距)=2.35294–2.96296株/m²；採低端floor(6×2/(1.7×0.5))=14株，實際排布屬小地塊近似。",
+          "source_urls": [
+            "https://book.tndais.gov.tw/Magazine/mag35-2.htm"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "reference",
+          "explanation": "原育苗7–10日；設施農場定植到首採夏季30日、冬季約44日。後者是椰纖養液，不是選定土耕台南1號的實測。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/files/topics/1161/A02_2.pdf",
+            "https://fae.moa.gov.tw/theme_data.php?id=10199&sub_theme=event_result&theme=news"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "v1選育苗9日加定植後35日，合計播種後44栽培日首採。35日落在既有30–44日範圍，跨系統移用明示為遊戲近似；日數最後僅除以7一次換成現實等待。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/files/topics/1161/A02_2.pdf",
+            "https://fae.moa.gov.tw/theme_data.php?id=10199&sub_theme=event_result&theme=news"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "reference",
+          "explanation": "台南1號整作約6000kg/1000m²，即6kg/m²；不是一次採量。原研究未提供逐批分配。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/knowledgebase.php?func=2&id=168744&type=12821"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "整地原始總量=6kg/m²×6m²×1000=36000g。以每週權重1、2、3、3、2、1各重複7次，逐批理論值=36000×w/84。用2g累積四捨五入差額分配：g_i=2round(C_i/2)−2round(C_(i−1)/2)；總和36000g，各批誤差<2g。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/knowledgebase.php?func=2&id=168744&type=12821"
+          ]
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "reference",
+          "explanation": "通用採收期1–1.5月，收穫期每日採收；高溫一天可採兩次的資料不代表每日總產翻倍。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/files/topics/1161/A02_2.pdf",
+            "https://ebook.afa.gov.tw/afa/花胡瓜/files/basic-html/page12.html",
+            "https://book.tndais.gov.tw/Magazine/mag35-2.htm"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "月按30日換算候選窗30–45日，v1選42日、每日一成熟批；週權重1、2、3、3、2、1及中段約初期3倍是遊戲時間分配，不是來源觀測曲線。independent使新批成熟不受舊批採收阻塞；偷取不重設生長，不代替agent收完餘量。",
+          "source_urls": [
+            "https://fae.moa.gov.tw/files/topics/1161/A02_2.pdf",
+            "https://ebook.afa.gov.tw/afa/花胡瓜/files/basic-html/page12.html"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "來源生育適溫20–30°C及穩定供水需求，v1選moist，並映射3–6、9–10月為偏好月份。月份是菜園季節平衡近似，非精確農藝播種日期；環境影響交由共用照顧模型。",
+          "source_urls": [
+            "https://book.tndais.gov.tw/Magazine/mag37-2.htm",
+            "https://book.tndais.gov.tw/Magazine/mag35-2.htm"
+          ]
+        }
+      ],
+      "summary": "每地14株，播種後44栽培日首採；之後每日一批共42批，整作約36kg，盛產期比初期多。",
+      "profile_details": {
+        "cultivar": "台南1號（單為結果花胡瓜）",
+        "start_material": "種子穴盤育苗，完整根團定植",
+        "cultivation_system": "簡易溫網室土耕，高畦雙行立架；支柱與瓜網由基礎地塊配置",
+        "harvest_target": "鲜嫩小胡瓜；整地成熟果重量分批入帳"
+      }
+    },
+    {
+      "id": "tomato",
+      "name": "番茄",
+      "category": "果菜類",
+      "profile": "非停心型鮮食大果番茄（slicer，未指定命名品種）；種子育苗，非嫁接苗；露地土耕單行立架；使用UMN露地農場規劃基準，支架由基礎配置提供；整地成熟鮮食番茄重量分批入帳",
+      "starter_kind": "seed",
+      "capacity": {
+        "unit": "plant",
+        "count": 6,
+        "productive_area_m2": 6,
+        "note": "v1配置1株/m²、每地6株，參照UMN含通道密度約0.90–1.44株/m²採保守值。每株整作產量只乘6一次，以下皆整地產量。"
+      },
+      "timing": {
+        "nursery_days": 32,
+        "growing_days_to_first": 75,
+        "first_harvest_days": 107
+      },
+      "harvest": {
+        "mode": "continuous",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          107,
+          108.75,
+          110.5,
+          112.25,
+          114,
+          115.75,
+          117.5,
+          119.25,
+          121,
+          122.75,
+          124.5,
+          126.25,
+          128,
+          129.75,
+          131.5,
+          133.25,
+          135,
+          136.75,
+          138.5,
+          140.25,
+          142,
+          143.75,
+          145.5,
+          147.25,
+          149,
+          150.75,
+          152.5,
+          154.25,
+          156,
+          157.75,
+          159.5,
+          161.25,
+          163,
+          164.75,
+          166.5,
+          168.25
+        ],
+        "yield_g_per_plot_by_batch": [
+          108,
+          110,
+          108,
+          110,
+          218,
+          216,
+          218,
+          218,
+          326,
+          328,
+          326,
+          326,
+          436,
+          436,
+          436,
+          434,
+          544,
+          546,
+          544,
+          544,
+          436,
+          434,
+          436,
+          436,
+          326,
+          326,
+          328,
+          326,
+          218,
+          218,
+          218,
+          216,
+          110,
+          108,
+          110,
+          108
+        ],
+        "end_behavior": "production_complete",
+        "repeat_cycle_days": 0,
+        "note": "v1選9週採期、每週4成熟批，共36批；首批第107日，之後每1.75栽培日一批，末批第168.25日。採期按36槽計，不在第63日末端加送一批。每週權重1、2、3、4、5、4、3、2、1，整作10886g；權重為遊戲曲線。新批不等舊批採完、不追加保護期，舊批保留獨立ID。v1生產期結束為production_complete，不表示非停心植株自然死亡，也不授權清除健康私田植株。"
+      },
+      "care": {
+        "water_profile": "standard",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          4,
+          10,
+          11,
+          12
+        ],
+        "note": "穩定根區供水、排水與通風，避免乾濕劇變及長時間濕葉；過量氮肥不利結果。支架與日常照顧沿用基礎配置，偏好月不限制全年選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每地約8.25m²中固定6m²有效栽培，其餘為作業空間，是共用遊戲配置。各批量已是整地重量；公田按實際有效面積或容量等比例換算，不把整地重量再乘株數／包數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "沿用同一UMN農場規劃表的育苗、定植到首採、非停心採期及採頻；產量欄原將露地slicer與Roma合列，屬規劃範圍而非單一命名品種實測。未混用另一圖鑑65–90日。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "game_balance",
+          "explanation": "原表單行畦、株距18–24in，畦寬3ft加通道2–3ft，推算含通道密度約0.897–1.435株/m²；v1配置6株/6m²=1株/m²。遊戲已另保留作業區，此密度是保守容量，不宣稱精密田間排布。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "reference",
+          "explanation": "同一表播種至定植28–35日，定植至首採65–85日，完整播種至首採93–120日。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "v1選育苗32日、定植生長75日，合计107栽培日；均在同一表範圍內。育苗自種植起包含，不要求額外定植操作；最後只除以7一次。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "reference",
+          "explanation": "露地slicers/Romas整作規劃產量2–6lb/株，非單次採量；採期為非停心8–10週、每週4採。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "取整作區間中點4lb/株，9週採期中點；週權重1、2、3、4、5、4、3、2、1是遊戲近似，第5週約初期5倍不是UMN逐週實測。實際非停心型也可能呈平台或多波峰。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers",
+            "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "整地原始總量=6株×4lb/株×453.59237g/lb=10886.21688g。各週權重各重複4次，總權重100；每批原量=總量×w/100，依累積總量取最近2g後取相鄰差額。36批合計10886g，整作誤差−0.21688g，逐批取整誤差<2g。此批量是整地成熟收成的遊戲分配，不把每株平均小份額解讀成一顆小果。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "derived",
+          "explanation": "每週4批的等距近似為7/4=1.75栽培日；9週×4=36批，t_i=107+1.75i，i=0…35。週內等距也是遊戲排程，非逐果成熟量測。",
+          "source_urls": [
+            "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/crop-and-field-planning-tools-for-vegetable-farmers"
+          ]
+        },
+        {
+          "field": "harvest",
+          "basis": "game_balance",
+          "explanation": "採收窗結束後停止新增成熟批，所有已成熟批保留。clock=independent按植株有效生長時間持續生成，不因前批未收或偷取而重設；production_complete只表示v1本作生產窗結束。非停心型持續結果的生理不轉換成固定採次後死亡。",
+          "source_urls": [
+            "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "依來源穩定供水、避免濕葉與過量氮肥的照顧原則選standard。v1將1–4、10–12月設為臺灣菜園偏好月，屬季節平衡選擇，不把美國月份直接套用，也不鎖其他月份。",
+          "source_urls": [
+            "https://extension.umn.edu/garden-and-home/yard-and-garden/gardening-in-minnesota/growing-tomatoes"
+          ]
+        }
+      ],
+      "summary": "每地6株，含育苗107栽培日首採；之後每1.75日一批共36批，整作約10.886kg，中段比初期多。",
+      "profile_details": {
+        "cultivar": "非停心型鮮食大果番茄（slicer，未指定命名品種）",
+        "start_material": "種子育苗，非嫁接苗",
+        "cultivation_system": "露地土耕單行立架；使用UMN露地農場規劃基準，支架由基礎配置提供",
+        "harvest_target": "整地成熟鮮食番茄重量分批入帳"
+      }
+    },
+    {
+      "id": "petite_oyster_mushroom",
+      "name": "秀珍菇",
+      "category": "菌菇類",
+      "profile": "臺灣SJ-10（研究稱Pleurotus sajor-caju）；900g濕重、已完成供應端60日養菌且健康可誘導出菇的菌包；木屑基質太空包，室內環控；支架與出菇環境由基礎配置處理；成熟秀珍菇子實體鮮重；以原試驗菇傘4–5cm為採收參考",
+      "starter_kind": "colonized_bag",
+      "capacity": {
+        "unit": "bag",
+        "count": 60,
+        "productive_area_m2": 6,
+        "note": "6m²有效區保守配置60個900g已養菌包，單層、不疊架，是遊戲容量；沒有宣稱按實測包體尺寸密排。各批量已乘60包，不再乘包數。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 6,
+        "first_harvest_days": 6
+      },
+      "harvest": {
+        "mode": "flush",
+        "clock": "after_harvest",
+        "maturity_offsets_days": [
+          6,
+          19,
+          32,
+          45,
+          58,
+          71
+        ],
+        "yield_g_per_plot_by_batch": [
+          5274,
+          3692,
+          1582,
+          792,
+          394,
+          198
+        ],
+        "end_behavior": "substrate_spent",
+        "repeat_cycle_days": 0,
+        "note": "v1共6潮。已養菌包約6栽培日首潮，之後前潮由agent收完餘量或公田系統採收後，再倒數13日才達下一潮成熟；理想即採時的offset為6、19、32、45、58、71日。13日包含翻菌恢復、再次誘導與子實體長成熟，翻菌完成當天不直接可收。前三潮總量嚴守SJ-10觀察量175.8g/包，第四至六潮按第三潮每次減半作遊戲外推。六潮整地11932g；第六潮後substrate_spent表示v1可生產資源預算用盡，不是菌絲病死或研究證明第六潮必死。研究只量三潮也不代表三潮後不能出菇。成熟不追加保護期，偷取不啟動下潮倒數。"
+      },
+      "care": {
+        "water_profile": "humidity",
+        "preferred_months": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "note": "維持出菇濕度與換氣，避免料面乾燥、菇體水膜及殘菇累積污染；環控、誘導與採後翻菌由基礎照顧處理，不增加玩家操作。室內基本環控下全年為偏好月份。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每地約8.25m²中固定6m²有效栽培，其餘為作業空間，是共用遊戲配置。各批量已是整地重量；公田按實際有效面積或容量等比例換算，不把整地重量再乘株數／包數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "目標SJ-10原試驗900g濕基質包，供應端完成60日養菌後進入出菇管理；v1起點為此成熟菌包，不能再把60日加進玩家倒數。",
+          "source_urls": [
+            "https://www.researchgate.net/publication/235258526_Rice_Straw_for_Production_of_Phoenix-tail_mushroom_Pleurotus_sajor-caju"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "game_balance",
+          "explanation": "v1固定60包/6m²單層容量，每包仍是900g原規格。容量是保守遊戲配置，不借大商業菌包或箱體尺寸作實測聲稱。",
+          "source_urls": []
+        },
+        {
+          "field": "timing",
+          "basis": "derived",
+          "explanation": "供體P. sajor-caju P112在3kg乾芥稈試驗的走菌完成13.30日，首潮19.05日（均從接種算）；19.05−13.30=5.75，v1取6日。只借完成走菌後時間差，供體不是SJ-10、不是900g木屑包，故為跨菌株基質外推而非目標實測。",
+          "source_urls": [
+            "https://imskolkata.org/article1/017-03-25.pdf"
+          ]
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "derived",
+          "explanation": "P112原三潮日數19.05、30.22、43.32，成熟間隔11.17與13.10日，平均12.135日向上取13；v1將後續五次一律設13日。供體只觀察兩個間隔，第四至六潮延用13日屬遊戲近似。",
+          "source_urls": [
+            "https://imskolkata.org/article1/017-03-25.pdf"
+          ]
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "game_balance",
+          "explanation": "臺灣商業資料採後7–10日檢查翻菌，料面菌絲恢復再刺激；另一同名種試驗誘導後3–5日成熟。v1內含約9日恢復＋4日再誘導至成熟=13日，跨來源階段拆分不是SJ-10量測。after_harvest取相鄰offset差，不在採收延遲時仍沿用原播種絕對日期。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/document/2753/4e75e8f984e70e85485d63e32b43b03d_v2.pdf",
+            "https://www.scielo.br/j/hb/a/wyRpXdsYTDXmXGYpNYzmNdM/?lang=en"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "reference",
+          "explanation": "目標SJ-10全木屑處理三個採收周期累計175.8g/900g包；這是三潮觀察窗，不是每潮或整包终生產量。",
+          "source_urls": [
+            "https://www.tari.gov.tw/df_inc/get_content.asp?n=%2Fform%2Findex%E2%80%941.asp%3FParser%3D2%2C6%2C1116%2C1106%2C%2C%2C4143&t=p",
+            "https://www.researchgate.net/publication/235258526_Rice_Straw_for_Production_of_Phoenix-tail_mushroom_Pleurotus_sajor-caju"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "供體P112三潮原量944.90、641.28、274.25g，合計1860.43g；比例約50.7893%、34.4695%、14.7412%。只借無量綱分潮份額，不借其絕對克數；v1簡化為50%、35%、15%，套SJ-10總量得到每包87.90、61.53、26.37g。前三潮整地原量5274、3691.8、1582.2g，偶數校準為5274、3692、1582g，和10548g=175.8×60。比例不是SJ-10逐潮實測。",
+          "source_urls": [
+            "https://imskolkata.org/article1/017-03-25.pdf",
+            "https://www.tari.gov.tw/df_inc/get_content.asp?n=%2Fform%2Findex%E2%80%941.asp%3FParser%3D2%2C6%2C1116%2C1106%2C%2C%2C4143&t=p"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "第四至六潮每包依第三潮26.37g逐次乘0.5，為13.185、6.5925、3.29625g；這三個值與固定減半完全是延伸v1產期的遊戲外推。商業管理資料可達5–6潮或更多，只支持不把三潮當終生，不支持本案900g包的後三潮克數。前三潮175.8g錨點保持不變，新增尾段不從前三潮挪量。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/document/2753/4e75e8f984e70e85485d63e32b43b03d_v2.pdf",
+            "https://www.tari.gov.tw/df_inc/get_content.asp?n=%2Fform%2Findex%E2%80%941.asp%3FParser%3D2%2C6%2C1116%2C1106%2C%2C%2C4143&t=p"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "依前列来源推算值與遊戲尾段進行名目批量取整：六潮每包原量[87.9,61.53,26.37,13.185,6.5925,3.29625]，乘60後原量[5274,3691.8,1582.2,791.1,395.55,197.775]g。累積四捨五入至2g再取差額得到[5274,3692,1582,792,394,198]g；合計11932g，較原始11932.425g差−0.425g，各批誤差絕對值<2g。",
+          "source_urls": []
+        },
+        {
+          "field": "harvest.end_behavior",
+          "basis": "game_balance",
+          "explanation": "選6潮為有限v1生產期；正常結束記substrate_spent，指模型生產資源預算用盡，與污染、乾死等失敗分開。沒有宣稱原研究觀察三潮即菌包死亡，也不宣稱所有菌包第六潮必生物死亡。此版不再停在第4潮待定；正常結束後不自動重發前三潮預算。",
+          "source_urls": [
+            "https://kmweb.moa.gov.tw/files/document/2753/4e75e8f984e70e85485d63e32b43b03d_v2.pdf",
+            "https://www.researchgate.net/publication/235258526_Rice_Straw_for_Production_of_Phoenix-tail_mushroom_Pleurotus_sajor-caju"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "reference",
+          "explanation": "目標原試驗誘導日26°C／夜18°C、RH95%；密集原基後26°C、RH85–90%、CO₂約1500ppm，菇傘4–5cm採收。避免菇體水膜和殘菇，以降低污染；此處只保留照顧條件，不另造操作或失敗概率。",
+          "source_urls": [
+            "https://www.researchgate.net/publication/235258526_Rice_Straw_for_Production_of_Phoenix-tail_mushroom_Pleurotus_sajor-caju",
+            "https://kmweb.moa.gov.tw/files/document/2753/4e75e8f984e70e85485d63e32b43b03d_v2.pdf"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "以humidity映射共用照顧，基礎室內環控承接誘導與翻菌，全年12個月均偏好；這是有環控地塊的遊戲設定。",
+          "source_urls": []
+        }
+      ],
+      "summary": "每地60個已養菌900g包，6栽培日首收，後續收完再等13日；共6潮約11.932kg，v1每潮逐步減少。",
+      "profile_details": {
+        "cultivar": "臺灣SJ-10（研究稱Pleurotus sajor-caju）",
+        "start_material": "900g濕重、已完成供應端60日養菌且健康可誘導出菇的菌包",
+        "cultivation_system": "木屑基質太空包，室內環控；支架與出菇環境由基礎配置處理",
+        "harvest_target": "成熟秀珍菇子實體鮮重；以原試驗菇傘4–5cm為採收參考"
+      }
+    },
+    {
+      "id": "vegetable_fern",
+      "name": "過貓",
+      "category": "蕨類",
+      "profile": "Diplazium esculentum（栽培地方系未命名）；健康栽培分株苗，非孢子播種；土耕濕潤田區，80%遮陰成熟群落為產量基準；遮陰由基礎地塊配置；未完全展開的可食嫩芽；每株保留3–5片母葉",
+      "starter_kind": "division",
+      "capacity": {
+        "unit": "plant",
+        "count": 6,
+        "productive_area_m2": 6,
+        "note": "v1保守配置每m²一株、每地6株健康分株苗；TGAP每分地約1000株僅作密度背景。收量以6m²成熟群落面積校準，不再乘6株。"
+      },
+      "timing": {
+        "nursery_days": 0,
+        "growing_days_to_first": 90,
+        "first_harvest_days": 90
+      },
+      "harvest": {
+        "mode": "perennial",
+        "clock": "independent",
+        "maturity_offsets_days": [
+          90,
+          97,
+          104,
+          111,
+          118,
+          125,
+          132,
+          139,
+          146,
+          153,
+          160,
+          167,
+          174,
+          181,
+          188,
+          195,
+          202,
+          209,
+          216,
+          223,
+          230,
+          237,
+          244,
+          251,
+          258,
+          265,
+          272,
+          279,
+          286,
+          293,
+          300,
+          307,
+          314,
+          321,
+          328,
+          335,
+          342,
+          349,
+          356,
+          363,
+          370,
+          377,
+          384,
+          391,
+          398,
+          405,
+          412,
+          419,
+          426,
+          433,
+          440,
+          447
+        ],
+        "yield_g_per_plot_by_batch": [
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          312,
+          314,
+          314,
+          314,
+          314,
+          314,
+          234,
+          236,
+          234,
+          236
+        ],
+        "first_cycle_yield_factors_by_batch": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "end_behavior": "repeat_perennial_cycle",
+        "repeat_cycle_days": 364,
+        "note": "v1健康分株苗種植約90栽培日首批，之後每7栽培日一個獨立成熟嫩芽批；一周期52批，理想offset90…447，相鄰7日。成熟群落基準每364日周期15996g；末4批權重0.75作養株減量，其餘1，歸一化保全年基準量。first_cycle_yield_factors_by_batch僅首個生產周期生效：前4批0.5、次4批0.75、其餘1，模擬新植漸入產；不把成熟群落全年量給尚未初採的前90日。下一周期成熟時間=原offset+cycle_index×364，首批第454日，與前周期末批相隔7日，不重加90日苗期。多年生持續生產與養株，不按52次或固定年數判死或自動清除；舊批未收不阻塞新批，也不追加保護期。"
+      },
+      "care": {
+        "water_profile": "moist",
+        "preferred_months": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "note": "保持土壤濕潤、遮陰與排水，採嫩芽並每株保留3–5片母葉。養株及老葉更新由共用照顧承接，不另加按鈕；乾旱、曝曬與過度拔葉會影響續生，偏好月份不限制全年選種。"
+      },
+      "calibration": [
+        {
+          "field": "capacity.productive_area_m2",
+          "basis": "game_balance",
+          "explanation": "每地約8.25m²中固定6m²有效栽培，其餘為作業空間，是共用遊戲配置。各批量已是整地重量；公田按實際有效面積或容量等比例換算，不把整地重量再乘株數／包數。",
+          "source_urls": []
+        },
+        {
+          "field": "profile",
+          "basis": "reference",
+          "explanation": "限定栽培過貓Diplazium esculentum健康分株苗，採未完全展開嫩芽；每株留3–5片母葉。成熟產量基準固定使用80%遮陰處理，不拼接各遮陰處理的月最高值。",
+          "source_urls": [
+            "https://www.moa.gov.tw/redirect_files.php?id=33901",
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=49140&print=Y",
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=39527&print=Y",
+            "https://www.ttdares.gov.tw/upload/ttdares/files/web_structure/2977/87_4.pdf"
+          ]
+        },
+        {
+          "field": "capacity.count",
+          "basis": "game_balance",
+          "explanation": "TGAP約1000株/分地作栽植密度背景；v1直接選每m²一株、每地6株的保守遊戲容量，不依未指定畦形精密排苗。產量以成熟群落有效面積縮放。",
+          "source_urls": [
+            "https://www.moa.gov.tw/redirect_files.php?id=33901"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "reference",
+          "explanation": "TGAP起點為健康分株苗定植成活後3個月可開始採收，並非孢子播種至首採。來源沒有精確成活需時。",
+          "source_urls": [
+            "https://www.moa.gov.tw/redirect_files.php?id=33901"
+          ]
+        },
+        {
+          "field": "timing",
+          "basis": "game_balance",
+          "explanation": "健康分株苗由基礎配置完成栽植，以理想成活作v1起点，3個月按30日/月近似為90栽培日；nursery=0，不再向玩家拆出成活操作。90日是可玩近似，不聲稱所有分株苗從落土起恰90日成熟；照顧不足由共用生長速度處理。",
+          "source_urls": [
+            "https://www.moa.gov.tw/redirect_files.php?id=33901"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "reference",
+          "explanation": "80%遮陰既有成熟群落的1–12月kg/90m²原量為[15,15.7,8,27,25.2,24.3,21,26.7,25.6,19.2,14,18.9]；3月含老葉更新減量。這是成熟群落逐月量，並非逐批嫩芽量或新植首年量。",
+          "source_urls": [
+            "https://www.ttdares.gov.tw/upload/ttdares/files/web_structure/2977/87_4.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "derived",
+          "explanation": "原12月合計240.6kg/90m²/年；6m²=16040g/365日参考年。v1用52×7=364日周期，日率換算原始總量16040×364/365=15996.0547945g；偶數校準總和15996g，誤差−0.0547945g。365日是把原周年轉日率的遊戲約定，不是研究逐日觀測。",
+          "source_urls": [
+            "https://www.ttdares.gov.tw/upload/ttdares/files/web_structure/2977/87_4.pdf"
+          ]
+        },
+        {
+          "field": "harvest.yield_g_per_plot_by_batch",
+          "basis": "game_balance",
+          "explanation": "成熟周期52批的前48批權重1、末4批0.75，權重合計51；周期末輕量養株以減量呈現，不停產、不要求更新按鈕。各批原量=15996.0547945×w/51，累積取最近2g再取差額，逐批誤差<2g。這個按種植周年分配的曲線是遊戲近似，不挪用試驗的固定3月成為每株固定日期；季節因素交由共用月份模型，不再疊入另一份逐月總量。",
+          "source_urls": [
+            "https://www.ttdares.gov.tw/upload/ttdares/files/web_structure/2977/87_4.pdf"
+          ]
+        },
+        {
+          "field": "harvest.first_cycle_yield_factors_by_batch",
+          "basis": "game_balance",
+          "explanation": "只在cycle_index=0套用前4批0.5、接著4批0.75、其餘44批1，代表初採後8週漸入成熟群落產能。第1周期開始前90日不另發成熟群落預算；後續周期所有首期係數視為1，不重新當幼苗。成熟時依共用公式將各批名目量乘首期、季節與健康係數後，逐批向下取整至2g；不得再套另一個累積四捨五入流程。此折減幅度無新植試驗數據，是明示遊戲平衡值。",
+          "source_urls": []
+        },
+        {
+          "field": "harvest.maturity_offsets_days",
+          "basis": "game_balance",
+          "explanation": "每7栽培日一成熟嫩芽批為可玩近似；來源逐月量不能證明固定7日再生。選52批、repeat_cycle_days=364，因364>(447−90)=357，下周期首批454日不與前周期末批447日重疊，間距仍7日。全部時間是栽培日，runtime僅除以7一次。",
+          "source_urls": []
+        },
+        {
+          "field": "harvest.end_behavior",
+          "basis": "game_balance",
+          "explanation": "repeat_perennial_cycle按周期持續生成；independent讓同株新芽批按累計有效生長時間成熟，不等舊批收完。周期末養株是產量調節，52批不是死亡判定，不能為投票強制清除多年生植株。偷取不重設周期或代替agent採收餘量。",
+          "source_urls": []
+        },
+        {
+          "field": "care",
+          "basis": "reference",
+          "explanation": "TGAP周年可採、5–10月旺盛；適合溫暖濕潤與遮陰，保留3–5片母葉以維持群落。資料支持照顧方向，不提供固定死亡或病害概率。",
+          "source_urls": [
+            "https://www.moa.gov.tw/redirect_files.php?id=33901",
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=49140&print=Y",
+            "https://kmweb.moa.gov.tw/subject/subject.php?id=39527&print=Y"
+          ]
+        },
+        {
+          "field": "care",
+          "basis": "game_balance",
+          "explanation": "映射為moist且5–10月偏好；其餘月份仍可種、可長、可產。共用季節模型可調生長速度及潛在量，本卡不另设日曆月總量，避免把來源周年量疊加計算。",
+          "source_urls": []
+        }
+      ],
+      "summary": "每地6株，分株苗約90栽培日初採，之後每7日一批；成熟周期52批約15.996kg，首周期前8批較少，周年持續生產。",
+      "profile_details": {
+        "cultivar": "Diplazium esculentum（栽培地方系未命名）",
+        "start_material": "健康栽培分株苗，非孢子播種",
+        "cultivation_system": "土耕濕潤田區，80%遮陰成熟群落為產量基準；遮陰由基礎地塊配置",
+        "harvest_target": "未完全展開的可食嫩芽；每株保留3–5片母葉"
+      }
+    }
+  ]
+}

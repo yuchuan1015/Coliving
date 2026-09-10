@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "built_at": "2026-09-11",
+  "tier": 1,
+  "crop_count": 12,
+  "data_complete": true,
+  "ready_for_backend": true,
+  "production_ready": false,
+  "backend_tests_passed": false,
+  "files": {
+    "crops.json": "e3e10f28b4c03a87c21de61c7837e7964e9f8861c4dd0b831901ef7e87053bf6",
+    "rules.json": "8a604aeac1e68967f33d5a3ada89eabdbc975f60fe72afec5a8d715b25f44988",
+    "acceptance.json": "4a30f089894ddb7c287d0d52e90428542f962a0079d90de3202a204203de9425",
+    "validation.json": "3bde64a21694421769ac484d168bb067cf65f750df980f87adaa17a8a5d4e07b",
+    "README.md": "6f4e1238fa4d2029fb48fcb93601c28545b4ba93f15146c69fd470a7d2a94bd4"
+  }
+}

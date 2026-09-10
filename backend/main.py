@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import Base, engine
-from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, health, history, home, internal_memory, library, memory, mail, reading, museum, outfits, park, pet, posts, review, schedules, oauth, shell, skins, space_chat, users, wake, weilan
+from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, garden, health, history, home, internal_memory, library, memory, mail, reading, museum, outfits, park, pet, posts, review, schedules, oauth, shell, skins, space_chat, users, wake, weilan
 
 
 def _migrate_sqlite():
@@ -104,6 +104,7 @@ app.include_router(review.router)
 app.include_router(ai_chat.router)
 app.include_router(dining.router)
 app.include_router(outfits.router)
+app.include_router(garden.router)
 
 
 @app.get("/api/health")

@@ -1,0 +1,1186 @@
+{
+  "version": "1.0",
+  "status": "backend_acceptance_contract_not_executed_backend_tests",
+  "crop_lifecycles": [
+    {
+      "id": "private_lifecycle_daikon",
+      "crop_id": "daikon",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "777600",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:daikon:planting1:cycle0:batch0",
+            "yield_g": 44550,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 22275,
+            "unclaimed_g": 22275,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 22275,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 44550,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_carrot",
+      "crop_id": "carrot",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "9504000/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:carrot:planting1:cycle0:batch0",
+            "yield_g": 40000,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 20000,
+            "unclaimed_g": 20000,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 20000,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 40000,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_potato",
+      "crop_id": "potato",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "1296000",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:potato:planting1:cycle0:batch0",
+            "yield_g": 11906,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 5953,
+            "unclaimed_g": 5953,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 5953,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 11906,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_kohlrabi",
+      "crop_id": "kohlrabi",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "7344000/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:kohlrabi:planting1:cycle0:batch0",
+            "yield_g": 17554,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 8777,
+            "unclaimed_g": 8777,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 8777,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 17554,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_pak_choi",
+      "crop_id": "pak_choi",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "2851200/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:pak_choi:planting1:cycle0:batch0",
+            "yield_g": 33750,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 16875,
+            "unclaimed_g": 16875,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 16875,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 33750,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_water_spinach",
+      "crop_id": "water_spinach",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "1987200/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:water_spinach:planting1:cycle0:batch0",
+            "yield_g": 3546,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 1773,
+            "unclaimed_g": 1773,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 1773,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 21276,
+      "end_behavior": "production_complete",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:water_spinach:planting1:cycle0:batch1",
+        "yield_g": 3546,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "after_harvest",
+        "interval_cultivation_days": 21,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": false
+      }
+    },
+    {
+      "id": "private_lifecycle_cauliflower",
+      "crop_id": "cauliflower",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "5184000/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:cauliflower:planting1:cycle0:batch0",
+            "yield_g": 15000,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 7500,
+            "unclaimed_g": 7500,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 7500,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 15000,
+      "end_behavior": "empty",
+      "all_batches_must_be_exercised": true
+    },
+    {
+      "id": "private_lifecycle_broccoli",
+      "crop_id": "broccoli",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "1296000",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:broccoli:planting1:cycle0:batch0",
+            "yield_g": 7200,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 3600,
+            "unclaimed_g": 3600,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 3600,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 9440,
+      "end_behavior": "production_complete",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:broccoli:planting1:cycle0:batch1",
+        "yield_g": 150,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "after_harvest",
+        "interval_cultivation_days": 30,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": false
+      }
+    },
+    {
+      "id": "private_lifecycle_cucumber",
+      "crop_id": "cucumber",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "3801600/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:cucumber:planting1:cycle0:batch0",
+            "yield_g": 428,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 214,
+            "unclaimed_g": 214,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 214,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 36000,
+      "end_behavior": "production_complete",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:cucumber:planting1:cycle0:batch1",
+        "yield_g": 430,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "independent",
+        "interval_cultivation_days": 1,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": true
+      }
+    },
+    {
+      "id": "private_lifecycle_tomato",
+      "crop_id": "tomato",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "9244800/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:tomato:planting1:cycle0:batch0",
+            "yield_g": 108,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 54,
+            "unclaimed_g": 54,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 54,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 10886,
+      "end_behavior": "production_complete",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:tomato:planting1:cycle0:batch1",
+        "yield_g": 110,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "independent",
+        "interval_cultivation_days": 1.75,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": true
+      }
+    },
+    {
+      "id": "private_lifecycle_petite_oyster_mushroom",
+      "crop_id": "petite_oyster_mushroom",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "518400/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:petite_oyster_mushroom:planting1:cycle0:batch0",
+            "yield_g": 5274,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 2637,
+            "unclaimed_g": 2637,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 2637,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 11932,
+      "end_behavior": "substrate_spent",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:petite_oyster_mushroom:planting1:cycle0:batch1",
+        "yield_g": 3692,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "after_harvest",
+        "interval_cultivation_days": 13,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": false
+      }
+    },
+    {
+      "id": "private_lifecycle_vegetable_fern",
+      "crop_id": "vegetable_fern",
+      "conditions": {
+        "health": 100,
+        "season_factor": 1,
+        "growth_rate": 1,
+        "normal_care": true
+      },
+      "nominal_first_maturity_real_seconds_exact": "7776000/7",
+      "actions_and_expected_results": [
+        {
+          "action": "plant",
+          "actor": "agent",
+          "expected": {
+            "inventory_delta_g": 0,
+            "progress_delta": 0
+          }
+        },
+        {
+          "action": "advance_to_just_before_maturity",
+          "expected": {
+            "steal_allowed": false,
+            "harvest_allowed": false
+          }
+        },
+        {
+          "action": "advance_to_maturity",
+          "expected": {
+            "batch_id": "fixture:vegetable_fern:planting1:cycle0:batch0",
+            "yield_g": 156,
+            "extra_protection_seconds": 0
+          }
+        },
+        {
+          "action": "steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "user_credit_g": 78,
+            "unclaimed_g": 78,
+            "agent_credit_g": 0
+          }
+        },
+        {
+          "action": "retry_steal",
+          "actor": "user",
+          "request_id": "steal-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "steal_again_new_request",
+          "actor": "user",
+          "request_id": "steal-2",
+          "expected": {
+            "allowed": false,
+            "new_inventory_delta_g": 0
+          }
+        },
+        {
+          "action": "harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "agent_credit_g": 78,
+            "unclaimed_g": 0,
+            "household_crop_completed": true
+          }
+        },
+        {
+          "action": "retry_harvest",
+          "actor": "agent",
+          "request_id": "harvest-1",
+          "expected": {
+            "new_inventory_delta_g": 0
+          }
+        }
+      ],
+      "first_production_cycle_total_g": 15046,
+      "end_behavior": "repeat_perennial_cycle",
+      "all_batches_must_be_exercised": true,
+      "next_batch_expectation": {
+        "id": "fixture:vegetable_fern:planting1:cycle0:batch1",
+        "yield_g": 156,
+        "steal_limit_resets_for_new_batch_only": true,
+        "clock": "independent",
+        "interval_cultivation_days": 7,
+        "theft_alone_starts_next_batch_clock": false,
+        "new_batch_can_mature_while_previous_unclaimed": true
+      },
+      "perennial_expectation": {
+        "next_cycle_first_maturity_cultivation_day": 454,
+        "next_cycle_first_yield_g": 314,
+        "initial_nursery_repeated": false,
+        "auto_dead_or_cleared_at_cycle_boundary": false
+      }
+    }
+  ],
+  "shared_cases": [
+    {
+      "id": "harvest_wins_race",
+      "given": "同一成熟批200g，agent先採收",
+      "expected": "agent+200g；稍後user偷取拒絕，無入帳"
+    },
+    {
+      "id": "theft_wins_race",
+      "given": "同一成熟批200g，user先偷",
+      "expected": "user+100g，待agent採收剩餘100g；合計200g"
+    },
+    {
+      "id": "public_identity_split",
+      "given": "本批200g，user1照顧3次、agent1照顧1次、user2照顧1次",
+      "expected": "三個身分各200/3g；同戶不合併，次數不加權，重試不重發"
+    },
+    {
+      "id": "public_contributors_reset",
+      "given": "前批有user1，本批只有agent2照顧",
+      "expected": "本批只分agent2；user1不沿用前批資格"
+    },
+    {
+      "id": "public_simultaneous_batches",
+      "given": "同tick兩批各200g成熟，當前貢獻者三人",
+      "expected": "同交易兩批各按原三人均分，完成後重置一次；不能第一批分完即清資格讓第二批無人可分"
+    },
+    {
+      "id": "public_no_contributors",
+      "given": "成熟批200g但本批沒有合格照顧者",
+      "expected": "系統採收，200g記未分配損失，無私人入帳或圖鑑進度"
+    },
+    {
+      "id": "public_stale_view_water",
+      "given": "同一種植中兩個身分都看到缺水並先後澆水",
+      "expected": "兩人均記有效照顧；水分只補到目標，不重複堆疊積水"
+    },
+    {
+      "id": "private_user_permissions",
+      "given": "user請求種植、除蟲、施肥或採收",
+      "expected": "拒絕；user仍可澆水、偷成熟批與共同清除面板"
+    },
+    {
+      "id": "actor_spoofing",
+      "given": "user在payload填role=agent或其他household_id",
+      "expected": "以伺服器驗證身分為準，不能取得他戶權限"
+    },
+    {
+      "id": "multi_plot_partial_success",
+      "given": "四地：一地可澆水、一地已空、一地可偷、一地無權限",
+      "expected": "逐地回報；合法項成功，不因另一地失敗全部回滾或越權"
+    },
+    {
+      "id": "vote_tie_and_deadline",
+      "given": "A/B同票，B有最後一張有效票",
+      "expected": "B勝；12個現實小時截止，不除7；相同時間用伺服器序號"
+    },
+    {
+      "id": "vote_empty",
+      "given": "候選清單有作物，但12小時無人投票",
+      "expected": "從候選中系統隨機選種，紀錄隨機結果防重抽"
+    },
+    {
+      "id": "clear_consent_scope",
+      "given": "前輪曾雙方同意，現在已重新種植",
+      "expected": "舊同意無效；目前健康作物須針對當前planting重新雙方同意"
+    },
+    {
+      "id": "public_lifecycle",
+      "given": "可再生作物第一批由系統採完",
+      "expected": "繼續下一批不開投票；有限生產期全批結束才清理投票；多年生周年不強制清理"
+    },
+    {
+      "id": "random_problem_refresh",
+      "given": "同一plot/tick連續刷新或重送照顧",
+      "expected": "沿用持久化事件判定，不額外抽病蟲害，不直接抽死"
+    },
+    {
+      "id": "care_grace_is_not_theft_grace",
+      "given": "作物剛成熟且尚未採收或偷過",
+      "expected": "立即可偷；24小時照顧损害寬限不能套到偷菜資格"
+    },
+    {
+      "id": "no_fertilizer_speed_exploit",
+      "given": "正常作物連續施肥或照顧",
+      "expected": "不疊加生長加速、不反覆補血；只回復已不足狀態"
+    },
+    {
+      "id": "plant_failure_keeps_credited_stock",
+      "given": "user已偷100g入倉，其後整株死亡",
+      "expected": "user已得100g保留；未領取部分記損失；失敗不增加圖鑑"
+    },
+    {
+      "id": "unlock_distinct_twelve",
+      "given": "同戶12種各有正數private agent收成",
+      "expected": "解鎖第二級；重複同種、偷菜與公共分配不能代替任何一種"
+    },
+    {
+      "id": "health_upper_bound",
+      "given": "健康100時再次恢復5點",
+      "expected": "仍為100，健康產量係數仍為1，不超發"
+    },
+    {
+      "id": "zero_yield_batch_closes",
+      "given": "植株仍活著但本批成熟量取整為0",
+      "expected": "本批關閉為失敗，不入倉不解鎖；after_harvest型從關閉時間計後批，不永遠等待不存在的收成"
+    },
+    {
+      "id": "whole_plant_failure_closes_future",
+      "given": "尚有未成熟批次時整株健康降到0",
+      "expected": "關閉未領批、取消未来批及多年生續周期；已入倉保留，允許原有死亡清除"
+    }
+  ]
+}

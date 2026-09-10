@@ -1,0 +1,28 @@
+{
+  "actions": [
+    {
+      "plot_id": "private:39defc83-b229-442e-94a0-c112f6920d4b:1",
+      "planting_id": "512181bf-2eca-4ef6-b8aa-125913aa26ff",
+      "action": "water",
+      "request_id": "example-water"
+    },
+    {
+      "plot_id": "private:39defc83-b229-442e-94a0-c112f6920d4b:2",
+      "planting_id": "fixture-no-planting",
+      "action": "water",
+      "request_id": "example-empty"
+    },
+    {
+      "plot_id": "private:39defc83-b229-442e-94a0-c112f6920d4b:1",
+      "planting_id": "512181bf-2eca-4ef6-b8aa-125913aa26ff",
+      "batch_id": "512181bf-2eca-4ef6-b8aa-125913aa26ff:cycle0:batch0",
+      "action": "steal",
+      "request_id": "example-steal"
+    },
+    {
+      "plot_id": "private:9b450fda-e6fb-414d-a2a6-8d933bb76d6e:1",
+      "action": "water",
+      "request_id": "example-foreign"
+    }
+  ]
+}

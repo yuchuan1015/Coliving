@@ -1,0 +1,230 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-09-11",
+  "scope": "第一級菜園可接線的遊戲預設；數值由製作端依使用者授權定稿，不將所有細節再次交由使用者設計。",
+  "confirmed_rules": {
+    "stages": [
+      "種",
+      "長",
+      "收",
+      "進倉庫"
+    ],
+    "private_plot_count": 4,
+    "private_plot_area_ping": 2.5,
+    "time_multiplier": 7,
+    "private_agent_actions": [
+      "choose_crop",
+      "plant",
+      "care",
+      "harvest",
+      "propose_clear",
+      "consent_clear",
+      "clear_dead_crop"
+    ],
+    "private_user_actions": [
+      "water",
+      "steal",
+      "propose_clear",
+      "consent_clear"
+    ],
+    "public_identity_actions": [
+      "water",
+      "care",
+      "vote"
+    ],
+    "public_system_actions": [
+      "plant_vote_winner",
+      "harvest",
+      "clear_completed_cycle",
+      "clear_dead_crop",
+      "open_vote"
+    ],
+    "private_access_scope": "own_household",
+    "agent_controls_visible_in_frontend": false,
+    "care_log_default_collapsed": true,
+    "warehouse_and_catalog_visible_only_in_private_garden": true,
+    "warehouse_owners": [
+      "user",
+      "agent"
+    ],
+    "theft_fraction": "1/2",
+    "theft_limit_per_batch": 1,
+    "theft_credits_user_immediately": true,
+    "remaining_requires_agent_harvest": true,
+    "extra_theft_protection_hours": 0,
+    "private_positive_agent_harvest_unlocks_crop": true,
+    "progress_scope": "household",
+    "stolen_or_public_share_counts_toward_progress": false,
+    "distinct_crops_required_to_unlock_next_tier": 12,
+    "private_living_crop_clear_requires_both_identities": true,
+    "private_clear_reason_and_user_consent_required": true,
+    "public_early_clear_allowed": false,
+    "public_share_basis": "distinct_contributing_identity_in_current_harvest_epoch",
+    "public_care_records_even_if_need_already_resolved": true,
+    "public_share_equal_not_weighted_by_action_count": true,
+    "public_contributors_reset_after_harvest": true,
+    "public_vote_only_when_entire_planting_cycle_ends": true,
+    "vote_duration_real_hours": 12,
+    "votes_per_identity": 1,
+    "vote_tie_break": "among_tied_top_crops_latest_vote_by_server_sequence_wins",
+    "no_vote_fallback": "system_random_from_candidates",
+    "candidate_priority": "not_previously_planted_in_public_garden",
+    "first_tier_starters_source": "system",
+    "market_and_postharvest_uses_in_scope": false
+  },
+  "v1_defaults": {
+    "basis": "game_balance_and_implementation_defaults_not_agronomic_measurements",
+    "plot": {
+      "gross_area_m2_reference": 8.25,
+      "productive_area_m2": 6,
+      "work_area_m2_reference": 2.25,
+      "standard_supports_shade_and_mushroom_environment": "built_in_crop_preset_selected_during_planting",
+      "extra_purchase_or_setup_actions": false,
+      "tier1_starters": "system_supplied_on_each_planting_to_avoid_seed_softlock",
+      "public_capacity": "scale_by_configured_productive_area_or_actual_bag_count_once"
+    },
+    "season": {
+      "shared_clock_for_private_and_public": true,
+      "advance_from_existing_garden_epoch": true,
+      "planting_allowed_all_months": true,
+      "preferred_month_growth_rate": 1,
+      "other_month_growth_rate": 0.85,
+      "preferred_month_yield_factor": 1,
+      "other_month_yield_factor": 0.85,
+      "yield_factor_anchor": "garden_month_at_each_batch_maturity",
+      "reset_growth_on_month_change": false,
+      "note": "第一版採季節修正而非種植資格鎖；基礎環境由系統配置，季節仍影響等待與收量。"
+    },
+    "batch": {
+      "stable_id_parts": [
+        "planting_id",
+        "production_cycle_index",
+        "batch_index"
+      ],
+      "id_assigned_by_server": true,
+      "time_units_in_crop_cards": "cultivation_days",
+      "nominal_yield_quantum_g": 2,
+      "independent_batches_can_overlap": true,
+      "merge_unharvested_batches": false,
+      "after_harvest_clock_starts_on": "remaining_crop_physically_harvested_by_agent_or_public_system",
+      "steal_starts_regrowth_clock": false,
+      "yield_locked_at_maturity": true,
+      "mature_yield_formula": "2*floor(nominal_g*season_factor*health_factor*first_cycle_factor/2)",
+      "first_cycle_factor_default": 1,
+      "first_cycle_factor_source": "only_when_cycle_index_is_zero: crop.harvest.first_cycle_yield_factors_by_batch[batch_index] else crop.harvest.first_cycle_yield_factor else 1; all_later_cycles_use_1",
+      "zero_yield_behavior": "close_batch_as_failed_without_inventory_or_unlock; after_harvest_next_clock_starts_at_failed_batch_close_time_when_plant_is_still_alive",
+      "mature_unclaimed_behavior": "keep_same_batch_until_harvest_or_whole_plant_failure; no_automatic_private_harvest",
+      "whole_plant_failure": "unclaimed_yield_lost; already_credited_inventory_unchanged; close_open_batches_and_cancel_all_future_batches_and_perennial_cycles",
+      "finite_cycle_end_requires": "all_planned_batches_closed",
+      "private_production_complete": "retain_living_plant_for_joint_clear; never_auto_label_dead",
+      "public_production_complete": "system_clears_finished_planting_then_opens_vote",
+      "substrate_spent": "production_resource_exhausted_not_disease_death; clearing_uses_existing_permissions",
+      "perennial_cycle": "repeat_schedule_after_repeat_cycle_days; never_repeat_initial_nursery_or_reset_theft_on_old_batches"
+    },
+    "care": {
+      "tick_real_hours": 6,
+      "initial_health": 100,
+      "health_range": [
+        0,
+        100
+      ],
+      "moisture_range": [
+        0,
+        100
+      ],
+      "nutrients_range": [
+        0,
+        100
+      ],
+      "clamp_all_state_updates_to_range": true,
+      "initial_moisture": 80,
+      "initial_nutrients": 80,
+      "moisture_loss_per_real_hour": {
+        "standard": 2,
+        "moist": 3,
+        "humidity": 2.5
+      },
+      "nutrient_loss_per_real_hour": 0.3,
+      "water_needed_below": 40,
+      "critical_dry_below": 15,
+      "critical_wet_above": 90,
+      "nutrients_needed_below": 35,
+      "critical_nutrients_below": 15,
+      "water_effect": "raise_moisture_to_80_if_lower; never_stack_above_80",
+      "agent_care_effect": "resolve_active_pests_or_contamination, restore_needed_water_and_nutrients, drain_excess_if_present; crop_preset_selects_method",
+      "user_private_water_effect": "water_only; does_not_treat_pests_or_restore_nutrients",
+      "nutrient_restore_target": 80,
+      "drained_moisture_target": 70,
+      "healthy_growth_rate": 1,
+      "unresolved_problem_growth_rate": 0.65,
+      "critical_dry_growth_rate": 0,
+      "unresolved_problem_grace_real_hours": 24,
+      "health_loss_per_problem_per_tick_after_grace": 5,
+      "maximum_health_loss_per_tick": 10,
+      "healthy_recovery_per_tick": 5,
+      "death_health_at_or_below": 0,
+      "minimum_positive_harvest_health_factor": 0.2,
+      "health_factor_formula": "health<=0 ? 0 : min(1,max(0.2,health/100))",
+      "normal_senescence_or_substrate_exhaustion_is_not_illness": true,
+      "fertilizer_is_generic_speed_boost": false,
+      "repeated_actions_do_not_stack_healing_or_growth": true,
+      "note": "狀態分數及24小時寬限是第一版遊戲平衡，不是土壤含水百分比或農業死亡實測。寬限只用於照顧損害，不延後偷採資格。"
+    },
+    "random_problems": {
+      "base_probability_per_care_tick": 0.01,
+      "unresolved_environment_problem_multiplier": 2,
+      "maximum_active_random_problems_per_plot": 1,
+      "eligible_states": [
+        "growing",
+        "harvest_ready",
+        "regrowing",
+        "perennial_producing"
+      ],
+      "mushroom_label": "污染風險",
+      "other_crop_label": "病蟲害",
+      "rng_key_parts": [
+        "server_seed",
+        "planting_id",
+        "tick_index",
+        "event_kind"
+      ],
+      "persist_decision_per_tick": true,
+      "refresh_or_action_resamples": false,
+      "direct_death_on_random_draw": false
+    },
+    "public_distribution": {
+      "eligible_action_types": [
+        "water",
+        "care"
+      ],
+      "system_is_eligible_identity": false,
+      "duplicate_request_counts_as_new_contribution": false,
+      "simultaneous_mature_batches": "one_transaction_uses_same_current_epoch_contributor_set_then_resets_once",
+      "no_contributors": "record_harvest_as_unallocated_loss; credit_no_private_warehouse",
+      "equal_share_precision": "preserve_exact_fraction_or_equivalent_equal_credits; never_give_rounding_remainder_to_one_identity",
+      "vote_counts_as_care_contribution": false,
+      "stale_planting_action": "record_attempt_without_applying_to_another_planting_or_crediting_its_epoch"
+    },
+    "implementation": {
+      "server_resolves_actor_household_and_role": true,
+      "idempotency_key_required_for_mutations": true,
+      "batch_mutation_and_inventory_credit_one_transaction": true,
+      "multi_plot_requests": "independent_per_plot_transactions_with_per_plot_results",
+      "catchup_clock": "process_elapsed_ticks_once_in_order; no_simulation_time_added_by_refresh",
+      "short_status_fields": [
+        "plot",
+        "crop",
+        "stage",
+        "batch",
+        "need",
+        "steal_available"
+      ],
+      "example_short_status": "私田2｜空心菜｜第2批可採｜尚未偷取",
+      "clear_consent_scope": "same_household_same_planting_id_same_proposal; revoked_or_replanted_consents_invalid"
+    }
+  },
+  "notifications": {
+    "public_harvest": "公共菜園已成熟採收完畢。",
+    "public_vote": "請前往公共菜園選擇下一輪種植作物"
+  }
+}
