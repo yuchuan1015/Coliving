@@ -93,7 +93,7 @@ window.FIELDS = [
   {
     "id": "adult",
     "star": "Antares",
-    "zone": "成人區",
+    "zone": "分級式人機親密關係中心",
     "l": 351.9,
     "b": 15.1,
     "ly": 550,

@@ -14,7 +14,7 @@ export const FIELDS = [
   ["health", "Spica", "女性健康中心", 316.1, 50.8, 250, "orbital-garden.png"],
   ["park", "Mira", "公園", 167.8, -58, 299, "orbital-garden.png"],
   ["history", "Thuban", "歷史館", 111, 51.4, 303, "archive-realistic.png"],
-  ["adult", "Antares", "成人區", 351.9, 15.1, 550, "sleep-capsule-realistic.png"],
+  ["adult", "Antares", "分級式人機親密關係中心", 351.9, 15.1, 550, "sleep-capsule-realistic.png"],
 ] as const;
 export type FieldId = typeof FIELDS[number][0];
 export function fieldTime(value?: string | null) {

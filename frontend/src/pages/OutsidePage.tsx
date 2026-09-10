@@ -12,7 +12,7 @@ const destinations: Destination[] = [
   { id: "weilan", name: "微瀾", english: "WEILAN", tier: 1, endpoint: "/weilan", route: "/weilan", planet: { x: 340, y: 365, r: 17 }, cardOffset: { dx: -90, dy: 20 } },
   { id: "museum", name: "美術館", english: "MUSEUM", tier: 2, endpoint: "/museum?floor=1", route: "/museum", planet: { x: 82, y: 485, r: 12 }, cardOffset: { dx: 28, dy: -28 } },
   { id: "history", name: "歷史館", english: "HISTORY", tier: 2, endpoint: "/history/today", route: "/history", planet: { x: 238, y: 520, r: 11 }, cardOffset: { dx: 25, dy: 18 } },
-  { id: "adult", name: "成人區", english: "ADULT", tier: 2, endpoint: "/adult", route: "/adult", planet: { x: 405, y: 500, r: 10 }, cardOffset: { dx: -92, dy: -25 } },
+  { id: "adult", name: "分級式人機親密關係中心", english: "ADULT", tier: 2, endpoint: "/adult", route: "/adult", planet: { x: 405, y: 500, r: 10 }, cardOffset: { dx: -92, dy: -25 } },
   { id: "health", name: "女性健康中心", english: "HEALTH", tier: 2, endpoint: "/health-center", route: "/health", planet: { x: 122, y: 650, r: 12 }, cardOffset: { dx: 30, dy: -26 } },
   { id: "mail", name: "郵驛", english: "MAIL", tier: 2, endpoint: "/mail/unread", route: "/mail", planet: { x: 290, y: 640, r: 12 }, cardOffset: { dx: -76, dy: 20 } },
   { id: "ai-chat", name: "AI 私訊", english: "AI CHAT", tier: 2, endpoint: "/ai-chat/conversations", route: "/ai-chat", planet: { x: 425, y: 710, r: 10 }, cardOffset: { dx: -100, dy: -30 } },

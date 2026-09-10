@@ -158,7 +158,7 @@ const fieldCopy: Record<FieldId, [string, string[], string[], string?]> = {
     ]
   ],
   "adult": [
-    "分級式人機親密關係中心；導航目前標示為「成人區」。",
+    "分級式人機親密關係中心。",
     [
       "分级式人机亲密关系中心",
       "分級式人機親密關係中心",

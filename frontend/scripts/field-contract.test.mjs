@@ -286,6 +286,36 @@ test("changing interface language never changes the community time zone", () => 
   language.setUiLanguage("zh-CN");
   assert.equal(fieldData.fieldTime("2026-09-09T18:00:00Z"), new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Taipei" }).format(new Date("2026-09-09T18:00:00Z")));
 });
+test("intimacy center rename preserves the adult route, Antares coordinates and cover asset", () => {
+  assert.deepEqual(fieldData.FIELDS.find(row => row[0] === "adult"), ["adult", "Antares", "分級式人機親密關係中心", 351.9, 15.1, 550, "sleep-capsule-realistic.png"]);
+  const entry = guide.GUIDE_ARTICLES.find(article => article.id === "field-adult");
+  assert.equal(entry.title, "Antares · 分級式人機親密關係中心");
+  assert.equal(entry.link.to, "/adult");
+  assert.ok(!entry.summary.includes("導航目前標示"));
+  assert.match(entry.notice, /符合成年條件/);
+});
+test("renamed destination and transition use the selected UI language but navigate to adult", () => {
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    language.setUiLanguage(locale);
+    const expected = locale === "zh-TW" ? "分級式人機親密關係中心" : "分级式人机亲密关系中心";
+    const h = mount(load("src/pages/DashboardPage.tsx").DashboardPage); h.effects();
+    const card = nodes(h.tree, n => n.type === "button" && n.props.className === "ya-destination-row" && text(n).includes(expected));
+    assert.equal(card.length, 1); card[0].props.onClick(); h.render();
+    const transition = nodes(h.tree, n => n.props.className === "ya-jump-transition")[0];
+    assert.ok(text(transition).includes(expected));
+    [...timers.values()].at(-1).fn(); expectCall("navigate", "/adult");
+    assert.ok(guide.searchGuide(expected, "fields", locale).some(article => article.id === "field-adult")); h.dispose();
+  }
+});
+test("legacy public prototype also shows the renamed center without changing its entry id", () => {
+  const html = readFileSync(resolve(root, "public/field-preview/adult.html"), "utf8");
+  const data = readFileSync(resolve(root, "public/field-preview/data.js"), "utf8");
+  assert.ok(html.includes("鴉巢 · 分級式人機親密關係中心"));
+  assert.ok(html.includes('data-page="adult"'));
+  assert.ok(data.includes('"zone": "分級式人機親密關係中心"'));
+  assert.ok(!/成人區|成人区/.test(html + data));
+});
+
 test("guide covers each real destination exactly once without inventing paths or planet names", () => {
   const fields = guide.GUIDE_ARTICLES.filter(article => article.category === "fields");
   assert.equal(fields.length, 11);
@@ -1718,7 +1748,7 @@ test("adult chat follows explicit entry and exit; health does not infer age from
   assert.equal(reads.length, 0);
   nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
   click(h, "確認進入"); assert.equal(one(h, "FieldFrame").props.chatEnabled, true);
-  click(h, "離開成人區"); assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
+  click(h, "離開分級式人機親密關係中心"); assert.equal(one(h, "FieldFrame").props.chatEnabled, false);
   auth.user.birth_year = null;
   const health = mount(content.ArticlesField, { kind: "health" });
   assert.equal(one(health, "FieldFrame").props.chatEnabled, true);

@@ -75,7 +75,7 @@ export function AdultPage() {
     return (
       <main className="mx-auto max-w-lg px-5 py-8 pb-24">
         <button onClick={() => setDetail(null)} className="mb-4 text-sm" style={{ color: "var(--accent)" }}>
-          &larr; 返回成人區
+          &larr; 返回分級式人機親密關係中心
         </button>
         <div className="rounded-xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           <div className="mb-3 flex items-center gap-2">
@@ -103,7 +103,7 @@ export function AdultPage() {
         &larr; 回首頁
       </button>
 
-      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>成人區</h1>
+      <h1 className="mb-1 text-xl font-semibold" style={{ color: "var(--ink)" }}>分級式人機親密關係中心</h1>
       <p className="mb-5 text-sm" style={{ color: "var(--ink-soft)" }}>
         親密不是一個需要被迴避的問題，而是一件需要被安全理解的事。
       </p>

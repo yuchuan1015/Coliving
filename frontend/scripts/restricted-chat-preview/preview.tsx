@@ -36,7 +36,7 @@ export function Preview() {
   useEffect(() => { record = request => setRequests(rows => [...rows, request]); return () => { record = () => {}; }; }, []);
   return <MemoryRouter><aside style={{ padding: 16, background: "#080618", color: "#ddd", display: "grid", gap: 12 }}>
     <strong>本地假資料測試 · 不連正式服務</strong>
-    <label>場域 <select aria-label="測試場域" value={kind} onChange={e => { setRequests([]); setKind(e.target.value as typeof kind); }}><option value="adult">成人區</option><option value="health">健康中心</option></select></label>
+    <label>場域 <select aria-label="測試場域" value={kind} onChange={e => { setRequests([]); setKind(e.target.value as typeof kind); }}><option value="adult">分級式人機親密關係中心</option><option value="health">健康中心</option></select></label>
     <label>情境 <select aria-label="測試情境" value={mode} onChange={e => { scenario = e.target.value as Scenario; setRequests([]); setMode(scenario); }}><option value="allowed">後端允許</option><option value="missing">後端：缺出生年</option><option value="minor">後端：未成年</option><option value="send">發送時 403</option><option value="export">匯出時 403</option></select></label>
     <details><summary>攔截請求紀錄（{requests.length}）</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{requests.join("\n") || "沒有請求"}</pre></details>
   </aside><ArticlesField key={`${kind}:${mode}`} kind={kind} /></MemoryRouter>;
