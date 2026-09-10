@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": { "tsBuildInfoFile": "../../node_modules/.tmp/frontier-preview.tsbuildinfo" },
+  "include": ["../../src", "./preview.tsx", "./hosted.tsx", "./hosted-context.ts", "./hosted-client.ts"]
+}

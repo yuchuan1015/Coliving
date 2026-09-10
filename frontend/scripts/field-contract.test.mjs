@@ -41,6 +41,7 @@ const events = registry => ({
 });
 const emit = (registry, name) => { for (const fn of registry.get(name) ?? []) fn(); };
 const windowStub = { location: { origin: "https://example.test", pathname: "/", search: "", replace: value => calls.push({ method: "redirect", args: [value] }) }, setInterval: () => 1, clearInterval() {}, ...events(windowEvents), clearTimeout: id => timers.delete(id), setTimeout: (fn, delay) => { const id = timers.size + 1; timers.set(id, { fn, delay }); return id; }, matchMedia: () => ({ matches: true }) };
+windowStub.scrollTo = () => {};
 const sessionValues = new Map();
 const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
 const documentStub = { hidden: false, activeElement: null, ...events(documentEvents) };
@@ -68,7 +69,7 @@ function load(relative) {
     if (name === "react/jsx-runtime") return jsxRuntime;
     if (name === "react-router-dom") return { Link: function Link() {}, Navigate: function Navigate() {}, Outlet: function Outlet() {}, useLocation: () => windowStub.location, useNavigate: () => navigateStub, useParams: () => routeParams };
     if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
-    if (name.endsWith("/hooks/useAuth")) return { useAuth: () => auth };
+    if (name.endsWith("/hooks/useAuth") || (name === "./useAuth" && path.endsWith("/hooks/usePublicGarden.ts"))) return { useAuth: () => auth };
     if (name.endsWith(".css")) return {};
     if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(path), name), "utf8"));
     if (!name.startsWith(".")) return require(name);
@@ -236,9 +237,9 @@ test("registration language change preserves invite code, name, year and unsaved
   assert.equal(input("register-invite-code").props.value, "TESTONLY");
   assert.equal(input("register-birth-year").props.value, "1999"); assert.deepEqual(calls, []);
 });
-test("Simplified guide covers all 30 entries, searches either script and keeps planet routes", () => {
+test("Simplified guide covers all 31 entries, searches either script and keeps planet routes", () => {
   const cn = guide.searchGuide("", "all", "zh-CN");
-  assert.equal(cn.length, 30);
+  assert.equal(cn.length, 31);
   assert.equal(cn.find(a => a.id === "field-library").title, "Arcturus · 图书馆");
   assert.equal(cn.find(a => a.id === "field-library").link.to, "/library");
   assert.ok(guide.searchGuide("浏览器", "all", "zh-CN").length > 0);
@@ -265,7 +266,7 @@ test("Simplified navigation localizes destinations but never changes route ident
   language.setUiLanguage("zh-CN");
   const h = mount(load("src/pages/DashboardPage.tsx").DashboardPage);
   assert.match(text(h.tree), /图书馆/); assert.match(text(h.tree), /邮驿/);
-  assert.equal(nodes(h.tree, n => n.props.className === "ya-destination-row").length, 12);
+  assert.equal(nodes(h.tree, n => n.props.className === "ya-destination-row").length, 13);
   assert.deepEqual(calls, []);
 });
 test("UI option labels do not rewrite values or resident names", () => {
@@ -318,7 +319,7 @@ test("legacy public prototype also shows the renamed center without changing its
 
 test("guide covers each real destination exactly once without inventing paths or planet names", () => {
   const fields = guide.GUIDE_ARTICLES.filter(article => article.category === "fields");
-  assert.equal(fields.length, 11);
+  assert.equal(fields.length, 12);
   assert.deepEqual(fields.map(article => [article.id, article.title, article.link.to]), fieldData.FIELDS.map(([id, star, name]) => [`field-${id}`, `${star} · ${name}`, `/${id}`]));
   assert.equal(new Set(guide.GUIDE_ARTICLES.map(article => article.id)).size, guide.GUIDE_ARTICLES.length);
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
@@ -326,6 +327,328 @@ test("guide covers each real destination exactly once without inventing paths or
     assert.ok(article.title && article.summary && article.paragraphs.length);
     if (article.link) { assert.ok(app.includes(`path="${article.link.to}"`), article.link.to); assert.ok(!article.link.to.includes("/agent/edit")); }
   }
+});
+test("frontier follows plaza with the approved Procyon coordinates and shared cover", () => {
+  assert.deepEqual(fieldData.FIELDS.map(row => row[0]), ["ai-chat", "plaza", "frontier", "mail", "workshop", "library", "museum", "weilan", "health", "park", "history", "adult"]);
+  assert.deepEqual(fieldData.FIELDS.find(row => row[0] === "frontier"), ["frontier", "Procyon", "開荒", 213.7, 13, 11.5, "exterior-star-system.png"]);
+});
+test("guide finds Procyon and 開荒 in either script and keeps the frontier route", () => {
+  for (const locale of ["zh-TW", "zh-CN"]) {
+    for (const query of ["Procyon", "procyon", "開荒", "开荒"]) {
+      const matches = guide.searchGuide(query, "fields", locale);
+      assert.deepEqual(matches.map(article => article.id), ["field-frontier"], `${locale}: ${query}`);
+      assert.equal(matches[0].link.to, "/frontier");
+    }
+  }
+  assert.equal(guide.GUIDE_ARTICLES.find(article => article.id === "field-frontier").title, "Procyon · 開荒");
+  assert.deepEqual(calls, []); assert.deepEqual(reads, []);
+});
+test("frontier guide states public farming readiness and leaves private access unconfirmed", () => {
+  const entry = guide.GUIDE_ARTICLES.find(article => article.id === "field-frontier");
+  assert.ok(entry);
+  assert.match(entry.summary, /獨立公共星系入口/);
+  const body = entry.paragraphs.join("");
+  assert.match(body, /澆水、照顧與參與下一輪投票/);
+  assert.match(body, /魚池、牧場與市場規劃中/);
+  assert.match(body, /公共農田不在公園/);
+  assert.match(body, /私人入口仍待確認/);
+  assert.match(entry.notice, /魚池、牧場與市場尚未開放/);
+});
+function frontierTrack(h) {
+  const node = nodes(h.tree, n => n.props.id === "frontier-track")[0];
+  const scrolls = [];
+  const element = { clientWidth: 358, scrollLeft: 0, scrollTo(options) {
+    scrolls.push(options); this.scrollLeft = options.left; node.props.onScroll({ currentTarget: this });
+  } };
+  node.props.ref.current = element;
+  return { node, element, scrolls };
+}
+const frontierDots = h => nodes(h.tree, n => n.props.className === "frontier-dot");
+test("frontier shows four swipeable future sites without API calls or invented game actions", () => {
+  const { FrontierPage } = load("src/pages/FrontierPage.tsx");
+  const h = mount(FrontierPage); h.effects();
+  const track = frontierTrack(h);
+  const choices = () => frontierDots(h);
+  assert.equal(choices().length, 4);
+  assert.match(text(h.tree), /Procyon/);
+  assert.match(text(h.tree), /l 213\.7° · b \+13\.0° · 11\.5 ly/);
+  const links = nodes(h.tree, n => n.props.to);
+  assert.deepEqual(links.map(n => n.props.to), ["/outside", "/frontier/garden"]);
+  for (const index of [1, 2, 3, 0]) {
+    choices()[index].props.onClick(); h.render();
+    assert.equal(track.scrolls.at(-1).left, index * track.element.clientWidth);
+    assert.equal(track.scrolls.at(-1).behavior, "instant", "Honors reduced motion");
+    assert.equal(choices().filter(n => n.props["aria-pressed"]).length, 1);
+    assert.equal(choices()[index].props["aria-pressed"], true);
+    const detail = nodes(h.tree, n => n.props.id === "frontier-site-detail")[0];
+    assert.match(text(detail), index ? /規劃中.*尚未開放/ : /進入公共農田/);
+    assert.deepEqual(nodes(detail, n => n.props.to).map(n => n.props.to), index ? [] : ["/frontier/garden"]);
+  }
+  assert.deepEqual(calls, []); assert.deepEqual(reads, []); assert.equal(timers.size, 0);
+});
+test("frontier fallback keeps all destinations and language switch preserves the selection", () => {
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  frontierTrack(h);
+  frontierDots(h)[2].props.onClick(); h.render();
+  nodes(h.tree, n => n.type === "img")[2].props.onError(); h.render();
+  assert.match(text(h.tree), /星系圖片暫時無法載入/);
+  assert.equal(frontierDots(h).length, 4);
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.match(text(h.tree), /开荒/); assert.match(text(h.tree), /公共牧场/);
+  assert.equal(frontierDots(h)[2].props["aria-pressed"], true);
+  assert.deepEqual(calls, []);
+});
+test("frontier reuses the original garden dome without circle cropping or replacing the other three sites", () => {
+  const { FRONTIER_GARDEN_IMAGE, FRONTIER_SYSTEM_IMAGE } = load("src/data/frontier.ts");
+  assert.ok(existsSync(resolve(root, "public", FRONTIER_GARDEN_IMAGE.slice(1))));
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  const images = nodes(h.tree, n => n.type === "img");
+  assert.deepEqual(images.map(n => n.props.src), [FRONTIER_GARDEN_IMAGE, ...Array(3).fill(FRONTIER_SYSTEM_IMAGE)]);
+  assert.equal(images[0].props.style, undefined);
+  assert.deepEqual([images[0].props.width, images[0].props.height], [1536, 1024]);
+  assert.equal(images[0].props.className, "frontier-garden-image");
+  images[0].props.onError(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "img").length, 3, "A failed garden image must not blank the other destinations");
+  assert.match(text(h.tree), /星系圖片暫時無法載入/);
+  frontierTrack(h); frontierDots(h)[1].props.onClick(); h.render();
+  assert.doesNotMatch(text(h.tree), /星系圖片暫時無法載入/);
+  const css = readFileSync(resolve(root, "src/frontier.css"), "utf8");
+  assert.match(css, /\.frontier-garden-window\s*\{[^}]*overflow: visible;[^}]*border-radius: 0;/);
+  assert.match(css, /\.frontier-garden-image\s*\{[^}]*object-fit: contain/);
+  assert.deepEqual(calls, []);
+});
+test("frontier garden sky fills only its own card and cannot intercept carousel controls", () => {
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  frontierTrack(h);
+  const system = () => nodes(h.tree, n => n.type === "section" && n.props.className?.startsWith("frontier-system"))[0];
+  const sky = nodes(h.tree, n => n.props.className === "frontier-card-sky")[0];
+  assert.equal(String(sky.props["aria-hidden"]), "true");
+  assert.match(sky.props.style.backgroundImage, /frontier-garden-dome\.webp/);
+  assert.match(system().props.className, /is-garden-view/);
+  frontierDots(h)[1].props.onClick(); h.render();
+  assert.doesNotMatch(system().props.className, /is-garden-view/);
+  frontierDots(h)[0].props.onClick(); h.render();
+  assert.match(system().props.className, /is-garden-view/);
+  nodes(h.tree, n => n.props.className === "frontier-garden-image")[0].props.onError(); h.render();
+  assert.doesNotMatch(system().props.className, /is-garden-view/);
+  const css = readFileSync(resolve(root, "src/frontier.css"), "utf8");
+  assert.match(css, /\.frontier-card-sky\s*\{[^}]*inset: 0;[^}]*pointer-events: none;/);
+  assert.match(css, /background-size: 100% 100%, 700% auto/);
+  assert.match(css, /-webkit-mask-composite: source-in/);
+  assert.match(css, /mask-composite: intersect/);
+  assert.deepEqual(calls, []);
+});
+test("frontier native swipes synchronize detail and clamp Safari overscroll at both ends", () => {
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  const track = frontierTrack(h);
+  for (const [position, expected] of [[358, 1], [716, 2], [1074, 3], [1500, 3], [-120, 0]]) {
+    track.element.scrollLeft = position;
+    track.node.props.onScroll({ currentTarget: track.element }); h.render();
+    assert.equal(frontierDots(h).findIndex(n => n.props["aria-pressed"]), expected);
+    assert.equal(nodes(h.tree, n => n.props.className === "frontier-slide" && !n.props["aria-hidden"]).length, 1);
+    assert.match(text(nodes(h.tree, n => n.props.id === "frontier-site-detail")[0]), new RegExp(["公共農田", "公共魚池", "公共牧場", "市場"][expected]));
+  }
+  assert.deepEqual(calls, []);
+});
+test("frontier arrows, Home/End and dots support keyboard navigation without autoplay", () => {
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  const track = frontierTrack(h);
+  const key = value => {
+    let prevented = false;
+    nodes(h.tree, n => n.props.id === "frontier-track")[0].props.onKeyDown({ key: value, preventDefault() { prevented = true; } });
+    h.render(); return prevented;
+  };
+  assert.equal(nodes(h.tree, n => n.props["aria-label"] === "上一個據點")[0].props.disabled, true);
+  assert.equal(key("ArrowRight"), true); assert.equal(track.element.scrollLeft, 358);
+  assert.equal(key("End"), true); assert.equal(track.element.scrollLeft, 1074);
+  assert.equal(nodes(h.tree, n => n.props["aria-label"] === "下一個據點")[0].props.disabled, true);
+  assert.equal(key("ArrowRight"), true); assert.equal(track.element.scrollLeft, 1074);
+  assert.equal(key("Home"), true); assert.equal(track.element.scrollLeft, 0);
+  assert.equal(key("ArrowDown"), false); assert.equal(timers.size, 0);
+  const matchMedia = windowStub.matchMedia;
+  try {
+    windowStub.matchMedia = () => ({ matches: false });
+    frontierDots(h)[1].props.onClick();
+    assert.equal(track.scrolls.at(-1).behavior, "smooth");
+  } finally { windowStub.matchMedia = matchMedia; }
+});
+test("frontier resize preserves the selected slide and disconnects its observer", () => {
+  let resize, disconnected = false;
+  const previous = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class { constructor(fn) { resize = fn; } observe() {} disconnect() { disconnected = true; } };
+  try {
+    const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+    const track = frontierTrack(h); h.effects();
+    frontierDots(h)[2].props.onClick(); h.render();
+    track.element.clientWidth = 480; resize(); h.render();
+    assert.equal(track.element.scrollLeft, 960);
+    assert.equal(frontierDots(h)[2].props["aria-pressed"], true);
+    h.dispose(); assert.equal(disconnected, true);
+  } finally { if (previous) globalThis.ResizeObserver = previous; else delete globalThis.ResizeObserver; }
+});
+test("frontier anchor geometry fits its unchanged image ratio and ships its own asset", () => {
+  const { FRONTIER_SITES, FRONTIER_SYSTEM_IMAGE } = load("src/data/frontier.ts");
+  assert.deepEqual(FRONTIER_SITES.map(site => site.id), ["garden", "fishery", "ranch", "market"]);
+  assert.ok(existsSync(resolve(root, "public", FRONTIER_SYSTEM_IMAGE.slice(1))));
+  for (const site of FRONTIER_SITES) {
+    assert.ok(site.x - site.diameter / 2 > 0 && site.x + site.diameter / 2 < 100);
+    assert.ok(site.y - site.diameter / 3 > 0 && site.y + site.diameter / 3 < 100);
+    assert.equal("route" in site, false);
+  }
+  const css = readFileSync(resolve(root, "src/frontier.css"), "utf8");
+  assert.match(css, /aspect-ratio: 2 \/ 3/); assert.match(css, /min-width: 44px/);
+  assert.match(css, /:focus-visible/); assert.match(css, /prefers-reduced-motion/);
+  assert.ok(!css.includes(":root"));
+});
+const gardenApi = load("src/api/garden.ts");
+const { PublicGardenPage } = load("src/pages/PublicGardenPage.tsx");
+const { usePublicGarden } = load("src/hooks/usePublicGarden.ts");
+function publicGardenFixture(voting = false) {
+  return { server_now: new Date().toISOString(), garden_time: "2026-01-19T00:00:00Z", garden_month: 1,
+    actor: { kind: "user", id: "me", household_id: "test-household" }, public_area: { gross_m2: 667, productive_m2: 480 },
+    crops: [{ id: "pak_choi", name: "小白菜" }, { id: "tomato", name: "番茄" }],
+    plots: [{ id: "public:1", scope: "public", number: 1, crop_name: voting ? null : "小白菜",
+      planting: voting ? null : { planting_id: "planting-one", crop_id: "pak_choi", status: "growing", health: 94, moisture: 34, nutrients: 78, needs: ["water"], random_problem: null },
+      vote: voting ? { id: "vote-one", status: "open", closes_at: new Date(Date.now() + 12 * 3600000).toISOString(), candidates: ["pak_choi", "tomato"], counts: { pak_choi: 2, tomato: 1 }, my_vote: null } : null,
+      allowed_actions: voting ? ["vote"] : ["water", "care"], contributors: [], care_logs: [] }],
+  };
+}
+async function gardenMount(component = PublicGardenPage, snapshot = publicGardenFixture()) {
+  answer = async method => ({ data: method === "get" ? structuredClone(snapshot) : { results: [{ ok: true, result: { plot: snapshot.plots[0], server_now: snapshot.server_now } }] } });
+  const h = mount(component === usePublicGarden ? () => usePublicGarden() : component); h.effects(); await tick(); h.render(); return h;
+}
+test("public garden adapter uses authenticated garden endpoints and one exact action envelope", async () => {
+  const controller = new AbortController();
+  await gardenApi.publicGardenApi.read(controller.signal);
+  expectCall("get", "/garden/public"); assert.equal(calls.at(-1).args[1].signal, controller.signal);
+  const cmd = { plot_id: "public:1", action: "care", planting_id: "planting-one", request_id: "test-request" };
+  await gardenApi.publicGardenApi.act(cmd); expectCall("post", "/garden/actions", { actions: [cmd] });
+});
+test("public garden rejects private plots, wrong owners and malformed scores or votes", () => {
+  const valid = publicGardenFixture(); assert.equal(gardenApi.parsePublicGarden(valid, "me"), valid);
+  for (const mutate of [s => { s.actor.id = "someone-else"; }, s => { s.actor.kind = "agent"; }, s => { s.plots[0].scope = "private"; }, s => { s.plots[0].planting.moisture = "34"; }, s => { s.plots[0].planting.health = 101; }, s => { delete s.plots[0].allowed_actions; }]) {
+    const copy = structuredClone(valid); mutate(copy); assert.throws(() => gardenApi.parsePublicGarden(copy, "me"));
+  }
+  const v = publicGardenFixture(true); v.plots[0].vote.counts.tomato = -1;
+  assert.throws(() => gardenApi.parsePublicGarden(v, "me"));
+});
+test("public garden builds only permitted water care and valid unexpired single-vote intents", () => {
+  const plot = publicGardenFixture().plots[0], now = Date.now();
+  assert.deepEqual(gardenApi.gardenCommand(plot, "water", "same-id", now), { plot_id: "public:1", action: "water", planting_id: "planting-one", request_id: "same-id" });
+  plot.allowed_actions = []; assert.equal(gardenApi.gardenCommand(plot, "care", "id", now), null);
+  const v = publicGardenFixture(true).plots[0];
+  assert.deepEqual(gardenApi.gardenCommand(v, "vote", "id", now, "tomato"), { plot_id: "public:1", action: "vote", vote_id: "vote-one", crop_id: "tomato", request_id: "id" });
+  assert.equal(gardenApi.gardenCommand(v, "vote", "id", now, "invented-crop"), null);
+  assert.equal(gardenApi.gardenCommand(v, "vote", "id", Date.parse(v.vote.closes_at), "tomato"), null);
+  v.vote.my_vote = { crop_id: "pak_choi" }; assert.equal(gardenApi.gardenCommand(v, "vote", "id", now, "tomato"), null);
+});
+test("public garden examines result.ok and does not count bare HTTP 200 as success", () => {
+  assert.throws(() => gardenApi.parseGardenReceipt({}));
+  assert.throws(() => gardenApi.parseGardenReceipt({ results: [{ ok: true }] }));
+  assert.deepEqual(gardenApi.parseGardenReceipt({ results: [{ ok: false, error: { detail: "投票已變更", status_code: 409 } }] }), { ok: false, detail: "投票已變更", status: 409 });
+});
+test("public garden page shows scores and collapsed logs but no private warehouse or player harvest", async () => {
+  const h = await gardenMount();
+  assert.match(text(h.tree), /小白菜/); assert.match(text(h.tree), /需要澆水/);
+  assert.deepEqual(nodes(h.tree, n => n.type === "meter").map(n => n.props.value), [94, 34, 78]);
+  assert.equal(nodes(h.tree, n => n.type === "details")[0].props.open, undefined);
+  assert.deepEqual(nodes(h.tree, n => n.props.to).map(n => n.props.to), ["/frontier"]);
+  const buttons = nodes(h.tree, n => n.type === "button").map(text).join("|");
+  assert.doesNotMatch(buttons, /採收|播種|倉庫|圖鑑|拔除|快轉|模擬/);
+  const source = readFileSync(resolve(root, "src/App.tsx"), "utf8");
+  assert.match(source, /path="\/frontier\/garden" element={<PublicGardenPage \/>}/);
+  assert.ok(source.indexOf('path="/frontier/garden"') > source.indexOf("<ProtectedRoute")); h.dispose();
+});
+test("public garden submits one write on double tap and refreshes authoritative GET afterward", async () => {
+  const snapshot = publicGardenFixture(); const h = await gardenMount(usePublicGarden, snapshot);
+  const post = deferred(); answer = async method => method === "post" ? post.promise : { data: snapshot };
+  const submitAction = h.tree.submit; submitAction("public:1", "water"); submitAction("public:1", "water"); h.render();
+  const writes = calls.filter(c => c.method === "post"); assert.equal(writes.length, 1);
+  const cmd = writes[0].args[1].actions[0]; assert.equal(cmd.planting_id, "planting-one"); assert.ok(cmd.request_id);
+  assert.deepEqual(Object.keys(cmd).sort(), ["action", "planting_id", "plot_id", "request_id"]); assert.equal(h.tree.busy, true);
+  snapshot.plots[0].planting.moisture = 80;
+  post.resolve({ data: { results: [{ ok: true, result: { plot: { stale: true }, server_now: snapshot.server_now } }] } });
+  await tick(); await tick(); h.render(); assert.equal(h.tree.data.plots[0].planting.moisture, 80); assert.equal(h.tree.busy, false); h.dispose();
+});
+test("uncertain public garden write blocks new actions and reuses unchanged payload on retry", async () => {
+  const h = await gardenMount(usePublicGarden); answer = async () => { throw new Error("connection lost"); };
+  h.tree.submit("public:1", "care"); await tick(); h.render(); assert.ok(h.tree.uncertain);
+  const first = calls.find(c => c.method === "post").args[1];
+  h.tree.submit("public:1", "water"); assert.equal(calls.filter(c => c.method === "post").length, 1);
+  h.tree.retry(); await tick(); h.render();
+  assert.deepEqual(calls.filter(c => c.method === "post")[1].args[1], first); h.dispose();
+});
+test("public garden known business refusal stays visible, refreshes and never claims care success", async () => {
+  const snapshot = publicGardenFixture(); const h = await gardenMount(usePublicGarden, snapshot);
+  answer = async method => ({ data: method === "get" ? snapshot : { results: [{ ok: false, error: { detail: "本輪作物已更換", status_code: 409 } }] } });
+  h.tree.submit("public:1", "care"); await tick(); h.render();
+  assert.equal(h.tree.notice, "本輪作物已更換"); assert.equal(h.tree.uncertain, undefined);
+  assert.ok(calls.filter(c => c.method === "get").length >= 2); h.dispose();
+});
+test("public garden account switch hides old data and ignores its late write result", async () => {
+  const oldSnapshot = publicGardenFixture(); const h = await gardenMount(usePublicGarden, oldSnapshot);
+  const post = deferred(); const next = publicGardenFixture(); next.actor.id = "other";
+  answer = async method => method === "post" ? post.promise : { data: next };
+  h.tree.submit("public:1", "care"); h.render();
+  auth.user.id = "other"; h.render(); assert.equal(h.tree.data, undefined); h.effects(); await tick(); h.render();
+  assert.equal(h.tree.data.actor.id, "other");
+  post.resolve({ data: { results: [{ ok: true, result: { plot: oldSnapshot.plots[0], server_now: oldSnapshot.server_now } }] } });
+  await tick(); h.render(); assert.equal(h.tree.data.actor.id, "other"); assert.equal(h.tree.notice, ""); h.dispose();
+});
+test("public garden read races, failures and authorization loss never retain stale action buttons", async () => {
+  const h = await gardenMount(usePublicGarden); const slow = deferred(); let counter = 0;
+  answer = async () => ++counter === 1 ? slow.promise : Promise.reject({ response: { status: 403 } });
+  const first = h.tree.refresh(); const second = h.tree.refresh(); await second; h.render(); assert.equal(h.tree.data, undefined);
+  slow.resolve({ data: publicGardenFixture() }); await first; h.render(); assert.equal(h.tree.data, undefined);
+  assert.match(h.tree.error, /重新登入/); h.tree.submit("public:1", "care"); assert.equal(calls.filter(c => c.method === "post").length, 0); h.dispose();
+});
+test("public garden handles empty, unavailable and logged-out states without inventing a crop", async () => {
+  const empty = publicGardenFixture(); empty.plots = []; const h = await gardenMount(PublicGardenPage, empty);
+  assert.match(text(h.tree), /公共農田準備中/); assert.equal(nodes(h.tree, n => n.type === "meter").length, 0); h.dispose();
+  auth.user = null; const loggedOut = mount(PublicGardenPage); calls = []; loggedOut.effects(); await tick(); loggedOut.render();
+  assert.equal(calls.length, 0); assert.match(text(loggedOut.tree), /請先登入/); loggedOut.dispose();
+});
+test("public garden vote uses API candidates and a confirmation button, preserves one-vote receipt", async () => {
+  const snapshot = publicGardenFixture(true); const h = await gardenMount(PublicGardenPage, snapshot);
+  const panel = one(h, "PublicVotePanel"); let chosen;
+  const props = { ...panel.props, submit: id => { chosen = id; } }; const vote = mount(panel.type, props);
+  assert.equal(nodes(vote.tree, n => n.type === "input").length, 2); assert.match(text(vote.tree), /12 小時/);
+  assert.equal(nodes(vote.tree, n => n.type === "button")[0].props.disabled, true);
+  nodes(vote.tree, n => n.type === "input" && n.props.value === "tomato")[0].props.onChange(); vote.render();
+  click(vote, "確認投給 番茄"); assert.equal(chosen, "tomato");
+  props.plot = structuredClone(props.plot); props.plot.vote.my_vote = { crop_id: "tomato" }; vote.render();
+  assert.match(text(vote.tree), /你已投給 番茄/); assert.equal(nodes(vote.tree, n => n.type === "button").length, 0); h.dispose(); vote.dispose();
+});
+test("public garden preview is synthetic, has no transports and preserves real candidate IDs", async () => {
+  const { createGardenPreview } = load("scripts/frontier-preview/garden-preview.tsx");
+  const gateway = createGardenPreview("growing"); const snapshot = await gateway.read(new AbortController().signal);
+  gardenApi.parsePublicGarden(snapshot, "frontier-preview"); assert.equal(snapshot.plots[0].scope, "public");
+  assert.ok(snapshot.plots[0].id.startsWith("preview-")); assert.equal(snapshot.crops.length, 12);
+  const command = gardenApi.gardenCommand(snapshot.plots[0], "water", "test-preview-id", Date.now());
+  const first = await gateway.act(command), second = await gateway.act(command);
+  assert.deepEqual(second, first); assert.equal((await gateway.read(new AbortController().signal)).plots[0].contributors.length, 9);
+  assert.equal(calls.length, 0);
+  const source = readFileSync(resolve(root, "scripts/frontier-preview/garden-preview.tsx"), "utf8");
+  assert.doesNotMatch(source, /\bfetch\(|axios|localStorage|sessionStorage|https:\/\//);
+  assert.match(source, /示範資料 · 不會操作正式農田/);
+});
+test("public garden uses public-field blue surfaces with green accents and unchanged responsive support", () => {
+  const css = readFileSync(resolve(root, "src/public-garden.css"), "utf8");
+  assert.match(css, /--garden-bg:#05070d/); assert.match(css, /--garden-panel:#050f14/);
+  assert.match(css, /--garden-edge:#39767d/); assert.match(css, /--garden-accent:#c1da91/);
+  assert.match(css, /color-scheme:dark/);
+  assert.doesNotMatch(css, /#0d1915|#17251d|#102017/);
+  assert.match(css, /max-width:359px/); assert.match(css, /::-webkit-meter-optimum-value/);
+  assert.match(css, /:focus-visible/); assert.doesNotMatch(css, /:root|(^|\n)(body|html)[{ ]/);
+});
+test("entering and returning from public garden starts at the top, updates do not scroll again", async () => {
+  const previous = windowStub.scrollTo; const positions = [];
+  windowStub.scrollTo = value => positions.push(value);
+  try {
+    const h = await gardenMount(); assert.deepEqual(positions, [{ top: 0, left: 0, behavior: "instant" }]);
+    h.effects(); h.render(); assert.equal(positions.length, 1); h.dispose();
+    const frontier = mount(load("src/pages/FrontierPage.tsx").FrontierPage); frontier.effects(); assert.equal(positions.length, 2); frontier.dispose();
+  } finally { windowStub.scrollTo = previous; }
 });
 test("guide searches titles, full body, aliases, ASCII case and full-width inputs locally", () => {
   for (const [query, id] of [["SIRIUS", "field-plaza"], ["ｓｉｒｉｕｓ", "field-plaza"], ["头像", "mirror"], ["給室友的話", "mirror"], ["413", "upload-help"], ["工坊", "field-workshop"], ["Outlook", "contact"], ["隔離環境", "field-workshop"], ["分级式人机亲密关系中心", "field-adult"]]) {
@@ -337,7 +660,7 @@ test("guide search supports multiple keywords and category filtering without tre
   const matches = guide.searchGuide("頭像 2MB"); assert.ok(matches.some(a => a.id === "mirror"));
   assert.ok(matches.every(a => a.id === "mirror" || a.id === "upload-help"));
   assert.ok(guide.searchGuide("頭像", "fields").length === 0);
-  assert.equal(guide.searchGuide("", "fields").length, 11);
+  assert.equal(guide.searchGuide("", "fields").length, 12);
   assert.equal(guide.searchGuide(" \n\t ").length, guide.GUIDE_ARTICLES.length);
   for (const input of ["[.*", "<script>alert(1)</script>", "不存在的功能abcdefgh"]) assert.deepEqual(guide.searchGuide(input), []);
 });
@@ -352,16 +675,16 @@ test("guide surfaces the matching body excerpt and documents real current limita
 });
 test("guide renders real contents and does not read APIs, start timers or send reports on open", () => {
   const h = mount(GuidePage); h.effects(); h.render();
-  assert.equal(h.tree.props.title, "導覽手冊"); assert.equal(guideEntries(h).length, 30);
+  assert.equal(h.tree.props.title, "導覽手冊"); assert.equal(guideEntries(h).length, 31);
   assert.equal(calls.length, 0); assert.equal(reads.length, 0); assert.equal(timers.size, 0);
   assert.ok(nodes(h.tree, n => n.props.id === "guide-search")[0].props["aria-describedby"]);
-  assert.equal(nodes(h.tree, n => n.type === "summary").length, 31);
+  assert.equal(nodes(h.tree, n => n.type === "summary").length, 32);
   h.dispose();
 });
 test("guide tabs and search work together; clearing text retains chosen category", () => {
-  const h = mount(GuidePage); click(h, "場域介紹"); assert.equal(guideEntries(h).length, 11);
+  const h = mount(GuidePage); click(h, "場域介紹"); assert.equal(guideEntries(h).length, 12);
   findGuide(h, "Sirius"); assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /找到 1 則相關說明/);
-  click(h, "清除搜尋"); assert.equal(guideEntries(h).length, 11);
+  click(h, "清除搜尋"); assert.equal(guideEntries(h).length, 12);
   assert.equal(button(h, "場域介紹").props["aria-pressed"], true);
   click(h, "基本功能"); assert.equal(guideEntries(h).length, 11);
   click(h, "問題排除"); assert.equal(guideEntries(h).length, 7);
@@ -370,7 +693,7 @@ test("no-result guide state can reset both filters or open contact without carry
   const h = mount(GuidePage); click(h, "場域介紹"); findGuide(h, "不可能找到的東西");
   assert.equal(guideEntries(h).length, 0); assert.match(text(h.tree), /沒有找到相關說明/);
   let focused = 0; nodes(h.tree, n => n.props.id === "guide-search")[0].props.ref.current = { focus() { focused++; } };
-  click(h, "查看全部說明"); assert.equal(guideEntries(h).length, 30); assert.equal(focused, 1);
+  click(h, "查看全部說明"); assert.equal(guideEntries(h).length, 31); assert.equal(focused, 1);
   findGuide(h, "再次找不到"); click(h, "前往 Bug 報錯");
   assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /therookery1108@outlook\.com/);
   assert.equal(nodes(h.tree, n => n.props.id === "guide-search")[0].props.value, "");
@@ -1529,8 +1852,8 @@ test("cabin furniture theme is local, readable and does not merge mailbox into t
   assert.equal(cabin.find(f => f.id === "diary").path, "/home/diary");
 });
 
-test("eleven actual destinations remain behind authentication and use existing approved assets", () => {
-  assert.equal(fieldData.FIELDS.length, 11);
+test("twelve actual destinations remain behind authentication and use existing approved assets", () => {
+  assert.equal(fieldData.FIELDS.length, 12);
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
   for (const [id, , , , , , image] of fieldData.FIELDS) {
     assert.ok(app.includes(`path="/${id}"`));
@@ -1539,6 +1862,34 @@ test("eleven actual destinations remain behind authentication and use existing a
   }
   assert.ok(app.includes('path="/home/library" element={<BookshelfPage'));
   assert.ok(app.includes('path="/reading/:bookId"'));
+});
+test("frontier route is nested behind authentication and redirects signed-out visitors", () => {
+  const source = ts.createSourceFile("App.tsx", readFileSync(resolve(root, "src/App.tsx"), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const attribute = (node, name) => node.attributes.properties.find(prop => ts.isJsxAttribute(prop) && prop.name.text === name)?.initializer;
+  const routes = [];
+  function visit(node) {
+    if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && node.tagName.getText(source) === "Route") {
+      const path = attribute(node, "path");
+      if (path && ts.isStringLiteral(path) && path.text === "/frontier") routes.push(node);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.equal(routes.length, 1, "Register exactly one /frontier route");
+  let protectedAncestor = false;
+  for (let parent = routes[0].parent; parent; parent = parent.parent) {
+    if (!ts.isJsxElement(parent) || parent.openingElement.tagName.getText(source) !== "Route") continue;
+    const element = attribute(parent.openingElement, "element");
+    if (element && ts.isJsxExpression(element) && element.expression && ts.isJsxSelfClosingElement(element.expression) && element.expression.tagName.getText(source) === "ProtectedRoute") protectedAncestor = true;
+  }
+  assert.ok(protectedAncestor, "/frontier must be a child of the ProtectedRoute route");
+  windowStub.location.pathname = "/frontier";
+  auth.user = null; auth.isLoading = false;
+  const h = mount(ProtectedRoute);
+  assert.equal(h.tree.type.name, "Navigate"); assert.equal(h.tree.props.to, "/login"); assert.equal(h.tree.props.replace, true);
+  auth.isLoading = true; h.render(); assert.notEqual(h.tree.type.name, "Outlet");
+  auth.isLoading = false; auth.user = { id: "me", role: "resident" }; h.render(); assert.equal(h.tree.type.name, "Outlet");
+  assert.deepEqual(calls, []); assert.deepEqual(reads, []);
 });
 test("standalone preview returns to the new official domain; API remains same-origin", () => {
   const preview = readFileSync(resolve(root, "public/field-preview/app.js"), "utf8");
@@ -2900,7 +3251,7 @@ test("navigation reads actual coordinates including zero and never probes all fi
   const { DashboardPage } = load("src/pages/DashboardPage.tsx");
   auth.user.coordinate = { l: 0, b: 0, r: 0 }; auth.user.drifting = false;
   const h = mount(DashboardPage); assert.match(text(h.tree), /艙室 I · 0.0°/); assert.equal(calls.length, 0);
-  const choices = nodes(h.tree, n => n.type === "button" && n.props.className === "ya-destination-row"); assert.equal(choices.length, 12);
+  const choices = nodes(h.tree, n => n.type === "button" && n.props.className === "ya-destination-row"); assert.equal(choices.length, 13);
   choices.find(n => text(n).includes("Proxima")).props.onClick(); choices.find(n => text(n).includes("Sirius")).props.onClick();
   for (const timer of timers.values()) timer.fn();
   assert.deepEqual(calls, [{ method: "navigate", args: ["/ai-chat"] }]);

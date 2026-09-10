@@ -10,6 +10,8 @@ import { AdvancedAgentPage } from "./pages/AdvancedAgentPage";
 import { FurniturePage } from "./pages/FurniturePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
+import { FrontierPage } from "./pages/FrontierPage";
+import { PublicGardenPage } from "./pages/PublicGardenPage";
 import { GuidePage } from "./pages/GuidePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -67,6 +69,8 @@ export default function App() {
               <Route path="/admin/content-reviews" element={<ContentReviewsPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaField />} />
+              <Route path="/frontier" element={<FrontierPage />} />
+              <Route path="/frontier/garden" element={<PublicGardenPage />} />
               <Route path="/settings" element={<AccountSettingsPage />} />
               <Route path="/ai-chat" element={<AIChatField />} />
               <Route path="/mail" element={<MailField />} />

@@ -1,0 +1,76 @@
+/* Scoped exterior navigation palette. The farming UI keeps its own green theme. */
+.frontier-page {
+  --frontier-bg: #04090e;
+  --frontier-text: #edf2f1;
+  --frontier-muted: #a2b8bd;
+  --frontier-accent: #91e0e0;
+  --frontier-line: #385b61;
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--frontier-bg);
+  color: var(--frontier-text);
+  color-scheme: dark;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.frontier-header { max-width: 960px; margin: 0 auto 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.frontier-back { min-height: 44px; display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid var(--frontier-line); border-radius: 999px; color: var(--frontier-text); text-decoration: none; white-space: nowrap; }
+.frontier-code { margin-left: auto; color: var(--frontier-muted); font-size: 13px; letter-spacing: .12em; }
+.frontier-title { flex-basis: 100%; min-width: 0; }
+.frontier-title h1 { margin: 0; color: var(--frontier-accent); font-size: 24px; font-weight: 400; letter-spacing: .08em; }
+.frontier-title h1 span { color: var(--frontier-text); }
+.frontier-title p { margin: 4px 0 0; color: var(--frontier-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.frontier-layout { max-width: 960px; margin: auto; display: grid; gap: 16px; }
+.frontier-system { min-width: 0; position: relative; isolation: isolate; width: 100%; border: 1px solid var(--frontier-line); border-radius: 24px; background: #03070c; overflow: hidden; }
+/* Full-card sky uses only the leftmost 1/7 of the original artwork, outside
+   the garden dome. It never stretches a second giant dome behind the first. */
+.frontier-card-sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; background-color: #04111f; background-repeat: no-repeat; background-size: 100% 100%, 700% auto; background-position: center, left top; opacity: 0; transition: opacity 150ms linear; }
+.is-garden-view .frontier-card-sky { opacity: 1; }
+.frontier-map-note { padding: 16px 16px 0; margin: 0; color: var(--frontier-muted); font-size: 14px; letter-spacing: .08em; }
+/* Native scrolling keeps momentum, vertical page scrolling and pinch zoom on Safari. */
+.frontier-track { display: flex; width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x pan-y pinch-zoom; }
+.frontier-track::-webkit-scrollbar { display: none; }
+.frontier-slide { flex: 0 0 100%; min-width: 0; box-sizing: border-box; padding: 24px 16px 16px; scroll-snap-align: center; scroll-snap-stop: always; display: flex; flex-direction: column; align-items: center; text-align: center; }
+/* Display a crop of each EXISTING planet. The source bitmap is unchanged. */
+.frontier-planet-window { position: relative; width: min(74%, 300px); aspect-ratio: 1; overflow: hidden; border-radius: 50%; margin-bottom: 24px; flex-shrink: 0; }
+.frontier-planet-image { position: absolute; height: auto; max-width: none; aspect-ratio: 2 / 3; pointer-events: none; user-select: none; }
+/* Keep the same slide height, but show the entire original 3:2 garden dome. */
+.frontier-garden-window { overflow: visible; border-radius: 0; }
+.frontier-garden-image { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 135.135%; max-width: none; height: auto; aspect-ratio: 3 / 2; object-fit: contain; pointer-events: none; user-select: none;
+  /* Masks align to the bitmap, not a letterboxed square. The central garden
+     remains opaque; only the surrounding rectangular sky edge is feathered. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 90%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 90%, transparent);
+  mask-composite: intersect;
+}
+.frontier-slide-code { color: var(--frontier-accent); font-size: 13px; letter-spacing: .14em; }
+.frontier-slide h2 { margin: 4px 0; font-size: 24px; font-weight: 400; letter-spacing: .08em; }
+.frontier-slide-state { color: var(--frontier-muted); font-size: 14px; }
+.frontier-controls { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 12px; max-width: 380px; margin: auto; }
+.frontier-dots { position: relative; display: flex; }
+.frontier-dots::before { content: ""; position: absolute; top: 50%; left: 22px; right: 22px; height: 1px; background: var(--frontier-line); }
+.frontier-dot, .frontier-arrow { position: relative; display: inline-grid; place-items: center; width: 44px; min-width: 44px; min-height: 44px; border: 0; padding: 0; background: transparent; color: var(--frontier-accent); cursor: pointer; touch-action: manipulation; }
+.frontier-dot span { width: 14px; height: 14px; border-radius: 50%; background: #03070c; border: 1px solid var(--frontier-muted); }
+.frontier-dot[aria-pressed="true"] span { background: var(--frontier-accent); border-color: var(--frontier-accent); outline: 1px solid var(--frontier-accent); outline-offset: 4px; }
+.frontier-arrow { font-size: 28px; }
+.frontier-arrow:disabled { opacity: .3; cursor: default; }
+.frontier-back:focus-visible, .frontier-dot:focus-visible, .frontier-arrow:focus-visible { outline: 2px solid var(--frontier-accent); outline-offset: 2px; border-radius: 999px; }
+.frontier-track:focus-visible { outline: 2px solid var(--frontier-accent); outline-offset: -3px; }
+.frontier-detail { padding: 24px; background: #0b171c; border: 1px solid var(--frontier-line); border-radius: 16px; overflow-wrap: anywhere; }
+.frontier-detail-code { color: var(--frontier-accent); font-size: 13px; letter-spacing: .12em; }
+.frontier-detail-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
+.frontier-detail h2 { margin: 0; font-size: 18px; font-weight: 400; }
+.frontier-detail-title > span { font-size: 13px; color: var(--frontier-muted); border: 1px solid var(--frontier-line); border-radius: 999px; padding: 0 8px; }
+.frontier-detail p { margin: 8px 0 0; }
+.frontier-detail .frontier-notice { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--frontier-line); color: var(--frontier-muted); font-size: 13px; }
+.frontier-image-error { padding: 0 16px 8px; margin: 0; font-size: 14px; color: var(--frontier-muted); }
+.frontier-planet-placeholder { display: grid; place-items: center; width: 100%; height: 100%; border: 1px solid var(--frontier-line); border-radius: 50%; font-size: 32px; color: var(--frontier-muted); }
+@media (min-width: 720px) {
+  .frontier-page { padding: 32px; }
+  .frontier-layout { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .frontier-detail { position: sticky; top: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .frontier-page *, .frontier-page *::before, .frontier-page *::after { scroll-behavior: auto; animation: none; transition: none; }
+}

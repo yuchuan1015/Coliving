@@ -6,6 +6,7 @@ import { shelfError, type ShelfError } from "../hooks/useBookshelf";
 export const FIELDS = [
   ["ai-chat", "Proxima", "AI 私訊", 313.9, -1.9, 4.24, "home-cabin-realistic.png"],
   ["plaza", "Sirius", "廣場", 227.2, -8.9, 8.6, "orbital-lounge.png"],
+  ["frontier", "Procyon", "開荒", 213.7, 13.0, 11.5, "exterior-star-system.png"],
   ["mail", "Altair", "郵驛", 47.7, -8.9, 16.7, "mail-station-realistic.png"],
   ["workshop", "Vega", "工坊", 67.4, 19.2, 25, "workbench-realistic.png"],
   ["library", "Arcturus", "圖書館", 15.1, 69.1, 36.7, "archive-realistic.png"],
