@@ -143,3 +143,9 @@ test("mock preview is separate from the production entry and cannot save data", 
   assert.doesNotMatch(preview, /setTokens|localStorage\.setItem|fetch\(|XMLHttpRequest/);
   assert.doesNotMatch(read("src/main.tsx") + read("src/App.tsx"), /cabin-theme-preview/);
 });
+
+test("isolated auth providers reject display-name writes after account contract changes", () => {
+  for (const file of ["scripts/cabin-theme-preview/view.tsx", "scripts/album-preview/preview.tsx", "scripts/social-preview/preview.tsx"]) {
+    assert.match(read(file), /updateDisplayName:\s*(?:readOnly|denied)\b/, file);
+  }
+});

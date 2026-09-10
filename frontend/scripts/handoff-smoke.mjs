@@ -23,7 +23,7 @@ try {
     });
     let user = { id: "test-user", username: "browser-test", display_name: "測試住戶", birth_year: 1990, role: "resident", is_active: true, timezone: "Asia/Taipei", created_at: "2026-09-10T00:00:00Z" };
     const writes = [], reads = [];
-    let denyNext = false;
+    let denyNext = false, denyDetail = false;
     await context.route("**/*", route => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
     await context.route("**/api/**", async route => {
       const request = route.request(), url = new URL(request.url()), path = url.pathname;
@@ -47,6 +47,9 @@ try {
         return route.fulfill({ json: { field_name: "分級式人機親密關係中心", tiers, allowed_tiers: tiers.map(t => t.value), articles: filtered.slice(offset, offset + limit),
           has_more: offset + limit < filtered.length, next_offset: offset + limit < filtered.length ? offset + limit : null, category_counts: {}, review_note: "測試投稿需審核" } });
       }
+      if (path.startsWith("/api/adult/article-")) return denyDetail
+        ? route.fulfill({ status: 403, json: { detail: "測試全文權限失效" } })
+        : route.fulfill({ json: articles.find(article => path.endsWith("/" + article.id)) });
       const fixtures = {
         "/api/agents/mine": { id: "test-agent", name: "測試室友", avatar_emoji: "✦", user_id: user.id },
         "/api/home/dashboard": { user, agents: [], spaces: [], community_status: {}, resident_count: 1 },
@@ -95,11 +98,20 @@ try {
     await page.screenshot({ path: `${output}/articles-${viewport.width}.png`, fullPage: true });
     await page.getByRole("button", { name: "全部可讀分級", exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll(".field-list > article").length === 20);
+    denyDetail = true;
+    await page.getByRole("button", { name: "閱讀文章", exact: true }).first().click();
+    await page.getByText("測試全文權限失效", { exact: true }).waitFor();
+    assert.equal(await cards.count(), 0);
+    assert.equal(await page.locator("dialog").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "投稿文章", exact: true }).count(), 0);
+    denyDetail = false;
+    await page.getByRole("button", { name: "重新讀取", exact: true }).click();
+    await page.waitForFunction(() => document.querySelectorAll(".field-list > article").length === 20);
     denyNext = true;
     await page.getByRole("button", { name: "載入更多文章", exact: true }).click();
     await page.getByText("測試權限失效", { exact: true }).waitFor();
     assert.equal(await cards.count(), 0);
-    console.log(`${viewport.width}px: account settings, password errors/success, pagination, tier filter and permission failure passed`);
+    console.log(`${viewport.width}px: account settings, password errors/success, pagination, tier filter, detail denial/revalidation and page permission failure passed`);
     await context.close();
   }
   assert.deepEqual(failures, []);

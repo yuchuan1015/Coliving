@@ -55,7 +55,7 @@ const start = screen === "login" ? "/login" : screen === "dining" ? "/dining" : 
 createRoot(document.getElementById("root")!).render(
   <AuthContext.Provider value={{
     user, isLoading: false, login: readOnly, register: readOnly, logout() {},
-    updateLocation: readOnly, updateBirthYear: readOnly, refreshUser: async () => user,
+    updateLocation: readOnly, updateBirthYear: readOnly, updateDisplayName: readOnly, refreshUser: async () => user,
   }}>
     <MemoryRouter initialEntries={[start]}>
       <Routes>

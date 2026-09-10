@@ -3787,6 +3787,30 @@ test("article permission loss or removed tier also closes an already-open cached
     assert.ok(!reads.includes("/adult/2"));
   }
 });
+test("article detail 401 or 403 immediately removes cached lists and forms until fresh authorization", () => {
+  for (const status of [401, 403]) {
+    fixture("/adult", adultFixture());
+    fixtures.set("/adult/2", { error: { status, message: "閱讀權限失效" } });
+    const h = enterAdult(); h.effects();
+    nodes(h.tree, n => n.type === "button" && text(n) === "閱讀文章")[2].props.onClick(); h.render();
+    assert.equal(components(h, "FieldDialog").length, 0);
+    assert.equal(components(h, "FieldForm").length, 0);
+    assert.ok(!text(h.tree).includes("文章-guidance"));
+    assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "投稿文章").length, 0);
+    assert.equal(one(h, "ResourceState").props.resource.error.status, status);
+    h.effects(); h.render();
+    assert.equal(one(h, "ResourceState").props.resource.error.status, status);
+    fixtures.set("/adult", { loading: true });
+    one(h, "ResourceState").props.resource.refresh(); h.render(); h.effects();
+    assert.equal(button(h, "投稿文章").props.disabled, true);
+    assert.equal(components(h, "FieldDialog").length, 0);
+    assert.ok(!text(h.tree).includes("文章-guidance"));
+    fixture("/adult", { ...adultFixture(["guidance12"]), articles: [] }); h.render();
+    assert.equal(button(h, "投稿文章").props.disabled, false);
+    assert.equal(components(h, "FieldDialog").length, 0);
+    h.dispose();
+  }
+});
 test("adult disallows posting when tier metadata is missing or contradictory", () => {
   for (const value of [{ articles: [] }, { ...adultFixture([]) }, { ...adultFixture(), allowed_tiers: undefined }, { ...adultFixture(), tiers: null }, { ...adultFixture(["guidance12"]), tiers: adultTiers.map(t => ({ ...t, allowed: false })) }]) {
     fixture("/adult", value); const h = enterAdult();

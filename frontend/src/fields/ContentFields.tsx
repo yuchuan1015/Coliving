@@ -1,6 +1,6 @@
 import { uiText, uiOptions } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
 import { useAuth } from "../hooks/useAuth";
@@ -12,6 +12,7 @@ import { CATEGORY_LABELS as ADULT_CATEGORIES, type ArticleOut as AdultArticle } 
 import { ConfirmAction, FieldDialog, FieldForm, FieldFrame, FieldInput, FieldPanel, FieldSelect, FieldTabs, FieldText, ResourceState } from "./shared";
 import { fieldTime, fieldQuery, formText, safeLink, useFieldResource } from "./fieldData";
 import { usePagedAdultArticles } from "../hooks/usePagedAdultArticles";
+import type { ShelfError } from "../hooks/useBookshelf";
 
 export function LibraryField() {
   useUiLanguage();
@@ -68,6 +69,7 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [compose, setCompose] = useState(false);
   const [message, setMessage] = useState("");
+  const [accessFailure, setAccessFailure] = useState<ShelfError>();
   const isAdult = kind === "adult";
   const base = isAdult ? "/adult" : "/health-center";
   const categories = isAdult ? ADULT_CATEGORIES : HEALTH_CATEGORIES;
@@ -83,12 +85,27 @@ export function ArticlesField({ kind }: { kind: "health" | "adult" }) {
   const ready = !!list.data && !list.loading && !list.error && Object.keys(allowed).length > 0;
   const reviewNote = adult?.review_note;
   const articles = (list.data?.articles ?? []).filter(a => !isAdult || (Object.hasOwn(allowed, a.age_tier) && (!tier || a.age_tier === tier)));
-  const readableSelection = entered && ready && selected && articles.some(article => article.id === selected);
+  const readableSelection = entered && ready && !accessFailure && selected && articles.some(article => article.id === selected);
   const detail = useFieldResource<HealthArticle | AdultArticle>(readableSelection ? base + "/" + encodeURIComponent(selected!) : null);
+  const deniedDetail = detail.error?.status === 401 || detail.error?.status === 403 ? detail.error : undefined;
+  useEffect(() => {
+    if (deniedDetail) { setAccessFailure(deniedDetail); setSelected(null); setCompose(false); }
+  }, [deniedDetail]);
+  function retryAccess() {
+    setSelected(null); setCompose(false); list.refresh(); setAccessFailure(undefined);
+  }
   function leave() {
     setEntered(false); setSelected(null); setCompose(false); setAck(false);
-    setCategory(""); setTier(""); setMessage("");
+    setCategory(""); setTier(""); setMessage(""); setAccessFailure(undefined); list.refresh();
   }
+  // A detail denial invalidates the old list too. Hide it in this very render,
+  // then latch the failure until an explicit fresh list request verifies access.
+  if (accessFailure || deniedDetail) return <FieldFrame id={kind} chatEnabled={false}>
+    <FieldPanel title={isAdult ? uiText("文章與交流") : uiText("知識與陪伴")}>
+      <ResourceState resource={{ loading: false, error: accessFailure ?? deniedDetail, refresh: retryAccess }} />
+      <Link to="/outside">{uiText("返回導航")}</Link>
+    </FieldPanel>
+  </FieldFrame>;
   return <FieldFrame id={kind} fieldName={adult?.field_name} chatEnabled={!isAdult}>
     {!entered ? <FieldPanel title={uiText("分級式人機親密關係中心")}><div className="field-stack">
       <p>{uiText("內容依輔12、輔15與限制級開放，可讀分級由後端依帳號資料決定。勾選不會更改出生年或權限。")}</p>
