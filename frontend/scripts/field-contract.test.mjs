@@ -681,6 +681,44 @@ const { DiaryPage } = load("src/pages/DiaryPage.tsx");
 
 const { SchedulesPage } = load("src/pages/SchedulesPage.tsx");
 
+test("timezone presentation retains the selected IANA identifier and exact save payload across languages", async () => {
+  auth.user.timezone = "Asia/Kathmandu";
+  const busy = [];
+  const h = mount(load("src/components/TimezoneSettings.tsx").TimezoneSettings, { onBusyChange: value => busy.push(value) });
+  let select = nodes(h.tree, n => n.type === "select")[0];
+  assert.equal(select.props.value, "Asia/Kathmandu");
+  assert.equal(nodes(h.tree, n => n.type === "label")[0].props.htmlFor, select.props.id);
+  assert.ok(nodes(select, n => n.type === "option").some(n => n.props.value === "Asia/Kathmandu"));
+  assert.equal(calls.length, 0);
+  select.props.onChange({ target: { value: "America/New_York" } }); h.render();
+  language.setUiLanguage("zh-CN"); h.render();
+  select = nodes(h.tree, n => n.type === "select")[0];
+  assert.equal(select.props.value, "America/New_York");
+  assert.match(text(h.tree), /舱室与定时任务的时区/);
+  await h.tree.props.onSubmit({ preventDefault() {} }); h.render();
+  assert.deepEqual(calls.find(c => c.method === "patch")?.args, ["/users/me", { timezone: "America/New_York" }]);
+  assert.ok(calls.some(c => c.method === "profile"));
+  assert.deepEqual(busy, [true, false]);
+  assert.equal(calls.filter(c => c.method === "patch").length, 1);
+});
+test("timezone failed saves preserve the selection and prevent duplicate pending requests", async () => {
+  auth.user.timezone = "Asia/Taipei";
+  const h = mount(load("src/components/TimezoneSettings.tsx").TimezoneSettings);
+  nodes(h.tree, n => n.type === "select")[0].props.onChange({ target: { value: "Europe/London" } }); h.render();
+  const job = deferred(); answer = () => job.promise;
+  const submit = h.tree.props.onSubmit;
+  const pending = submit({ preventDefault() {} }); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "select")[0].props.disabled, true);
+  await submit({ preventDefault() {} });
+  assert.equal(calls.length, 1);
+  job.reject({ response: { status: 400, data: { detail: "保存未完成" } } });
+  await pending; h.render();
+  assert.equal(nodes(h.tree, n => n.type === "select")[0].props.value, "Europe/London");
+  assert.equal(nodes(h.tree, n => n.type === "select")[0].props.disabled, false);
+  assert.ok(!calls.some(c => c.method === "profile"));
+  assert.equal(auth.user.timezone, "Asia/Taipei");
+});
+
 const { AdminPage } = load("src/pages/AdminPage.tsx");
 const { AdvancedAgentPage } = load("src/pages/AdvancedAgentPage.tsx");
 const adminFixture = {

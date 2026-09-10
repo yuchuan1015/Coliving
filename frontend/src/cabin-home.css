@@ -134,6 +134,11 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-city-form { display:grid; gap:12px; padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--c-snow); }
 .cabin-city-form input { width:100%; min-width:0; min-height:44px; border:1px solid var(--c-snow); border-radius:12px; background:transparent; color:var(--c-frost); padding:12px; font:inherit; font-size:16px; }
 .cabin-city-form input:focus-visible { outline:2px solid var(--c-moon); outline-offset:2px; }
+/* The timezone control is a select, not an input. Keep native picker behavior. */
+.cabin-panel .cabin-city-form select { width:100%; min-width:0; min-height:48px; padding:12px; border:1px solid var(--c-snow); border-radius:12px; background-color:var(--c-sky); color:var(--c-frost); -webkit-text-fill-color:var(--c-frost); color-scheme:dark; font:inherit; font-size:16px; }
+.cabin-panel .cabin-city-form select option { background-color:var(--c-sky); color:var(--c-frost); }
+.cabin-panel .cabin-city-form select:focus-visible { outline:2px solid var(--c-moon); outline-offset:2px; }
+.cabin-panel .cabin-city-form select:disabled { opacity:1; color:var(--c-muted); -webkit-text-fill-color:var(--c-muted); cursor:default; }
 .cabin-panel button:disabled, .cabin-city-form input:disabled { opacity:.5; cursor:default; }
 .cabin-city-form p { overflow-wrap:anywhere; margin:0; }
 .cabin-panel dd { overflow-wrap:anywhere; min-width:0; }

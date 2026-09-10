@@ -27,6 +27,34 @@ test("cabin references the unchanged login ink, accent and secondary-text tokens
   assert.doesNotMatch(css, /#d2a663|#e4dfd2|#090711|rgb\(38 27 52/);
 });
 
+test("timezone native select pairs dark background with readable text in every control state", () => {
+  const select = rule(".cabin-panel .cabin-city-form select");
+  assert.equal(select["background-color"], "var(--c-sky)");
+  assert.equal(select.color, "var(--c-frost)");
+  assert.equal(select["-webkit-text-fill-color"], "var(--c-frost)");
+  assert.equal(select["color-scheme"], "dark");
+  assert.equal(select["font-size"], "16px");
+  assert.equal(select["min-height"], "48px");
+  assert.equal(select.appearance, undefined, "Keep native keyboard/touch picker behavior");
+  const options = rule(".cabin-panel .cabin-city-form select option");
+  assert.equal(options["background-color"], "var(--c-sky)");
+  assert.equal(options.color, "var(--c-frost)");
+  const disabled = rule(".cabin-panel .cabin-city-form select:disabled");
+  assert.equal(disabled.opacity, "1");
+  assert.equal(disabled["-webkit-text-fill-color"], "var(--c-muted)");
+  assert.ok(rule(".cabin-panel .cabin-city-form select:focus-visible").outline.includes("var(--c-moon)"));
+  const home = rule(".cabin-home");
+  const luminance = hex => {
+    const rgb = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+    return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+  };
+  const bg = luminance(home["--c-sky"]);
+  for (const variable of ["--c-frost", "--c-muted"]) {
+    const foreground = luminance(home[variable].match(/#[a-f0-9]{6}/)[0]);
+    assert.ok((foreground + .05) / (bg + .05) >= 4.5, variable);
+  }
+});
+
 test("three-card geometry, responsive rows and FAB/portrait sizing stay fixed", () => {
   assert.equal(rule(".cabin-home")["grid-template-rows"], "136px minmax(0, 1fr) 104px");
   assert.equal(rules(".cabin-home")[1]["grid-template-rows"], "152px minmax(0, 1fr) 120px");
