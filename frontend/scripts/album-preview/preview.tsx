@@ -30,6 +30,7 @@ import { LanguageDocument } from "../../src/i18n/LanguageControl";
 
 const created = "2026-09-09T03:00:00Z";
 const params = new URLSearchParams(location.search);
+const compactChat = params.get("page") === "chat" && params.get("chat-layout") === "1";
 const managementState = params.get("management-state") ?? "ready";
 const reportState = params.get("report-state") ?? "ready";
 let reports = reportState === "empty" ? [] : [
@@ -54,6 +55,13 @@ const usageFixture: ChatUsage = {
   this_month: usageCase === "empty" ? empty : { ...total, calls: 22, total_tokens: 91580, input_tokens: 86400, output_tokens: 5180, cost_usd: .054321 },
 };
 let chatMessages = [{ id: "chat-1", role: "assistant", content: "這是本地聊天預覽。右上角可以查看用量面板；範例數字不是正式帳單。", created_at: created }];
+if (compactChat) chatMessages = [
+  { id: "layout-1", role: "assistant", content: "回來啦。今天過得怎麼樣？\n\n這裡是本地排版範例，不會傳送真實訊息。", created_at: created },
+  { id: "layout-2", role: "user", content: "剛忙完，想先在艙室待一下。", created_at: created },
+  { id: "layout-3", role: "assistant", content: "好，就在這裡慢慢說。\n不用急著把所有事情一次講完。", created_at: created },
+  { id: "layout-4", role: "user", content: "嗯，這樣看起來舒服多了。", created_at: created },
+  { id: "layout-5", role: "assistant", content: "我在。", created_at: created },
+];
 const user: UserMe = { id: "preview-user", username: "preview", display_name: "星際旅人", role: "resident", created_at: created, is_active: true, last_login_at: null, timezone: "Asia/Taipei", note_to_agent: "每次醒來，先看看窗外。\n有喜歡的風景，就帶回來給我看看。" };
 let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "僅供本地展示，不是真實帳號。", llm_provider: "claude", llm_model: "claude-opus-4-6", has_api_key: false, avatar_emoji: "☾", status: "active", ob_enabled: false, external_mcps: [], active_skin_id: null, created_at: created, updated_at: null, dm_code_public: true };
 if (["admin", "reports"].includes(params.get("page") ?? "") && reportState !== "denied") user.role = "admin";
@@ -153,9 +161,11 @@ const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
 const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ settings: "/settings", reports: "/admin/dm-reports", admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><LanguageDocument /><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
+  {!compactChat && <>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link><Link to="/adopt">領養室友</Link><Link to="/admin">系統儀表板</Link><Link to="/agent/advanced">進階設定</Link></nav>
+  </>}
   <Routes><Route path="/settings" element={<AccountSettingsPage />} /><Route path="/admin/dm-reports" element={<DMReportsPage />} /><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
-  <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>
+  {!compactChat && <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>}
 </MemoryRouter></AuthContext.Provider></StrictMode>);

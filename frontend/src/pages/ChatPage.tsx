@@ -7,6 +7,7 @@ import { getMyAgent } from "../api/agents";
 import { getMessages, sendMessage } from "../api/chat";
 import type { AgentPublic, ChatMessage } from "../types";
 import { ChatUsageDialog } from "../components/ChatUsageDialog";
+import "../chat-layout.css";
 
 export function ChatPage() {
   useUiLanguage();
@@ -31,7 +32,7 @@ export function ChatSession({ agentId }: { agentId: string }) {
   const [usageRevision, setUsageRevision] = useState(0);
   const sendingRef = useRef(false);
   const mountedRef = useRef(true);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -52,8 +53,17 @@ export function ChatSession({ agentId }: { agentId: string }) {
   }, [agentId, navigate, retry]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // Scroll this conversation, never the page or an open usage dialog.
+    const panel = messagesRef.current;
+    if (panel) panel.scrollTop = panel.scrollHeight;
+  }, [messages, sending]);
+
+  useEffect(() => {
+    const field = inputRef.current;
+    if (!field) return;
+    field.style.height = "auto";
+    field.style.height = `${field.scrollHeight}px`;
+  }, [input, agent]);
 
   async function handleSend() {
     if (!input.trim() || !agent || sendingRef.current) return;
@@ -107,101 +117,88 @@ export function ChatSession({ agentId }: { agentId: string }) {
 
   if (!agent) {
     return (
-      <div className="cabin-chat flex min-h-dvh items-center justify-center" style={{ color: "var(--ink-soft)", background: "var(--bg)" }}>
-        {loadError ? <div><p role="alert">{loadError}</p><button type="button" onClick={() => { setLoadError(""); setRetry(value => value + 1); }}>{uiText("重新讀取對話")}</button><p><Link to="/">{uiText("返回艙室")}</Link></p></div> : <p role="status">{uiText("載入中...")}</p>}
+      <div className="cabin-chat">
+        <div className="chat-window chat-load-state">
+          {loadError ? <div><p role="alert">{uiText(loadError)}</p><button type="button" onClick={() => { setLoadError(""); setRetry(value => value + 1); }}>{uiText("重新讀取對話")}</button><p><Link to="/">{uiText("返回艙室")}</Link></p></div> : <p role="status">{uiText("載入中...")}</p>}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="cabin-chat flex min-h-dvh flex-col" style={{ background: "var(--bg)" }}>
-      {/* Chat header */}
-      <header
-        className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3"
-        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
-      >
-        <button
-          onClick={() => navigate("/")}
-          aria-label={uiText("返回艙室")}
-          className="text-lg"
-          style={{ color: "var(--ink-soft)" }}
-        >
-          &larr;
-        </button>
-        <span className="text-xl">{agent.avatar_emoji}</span>
-        <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
-          {agent.name}
-        </span>
-        <button type="button" className="chat-usage-trigger" aria-haspopup="dialog" onClick={() => { usageOpenRef.current = true; setUsageOpen(true); }}>{uiText("用量")}</button>
-      </header>
+    <div className="cabin-chat">
+      <section className="chat-window" aria-label={uiText("與室友聊天")}>
+        <header className="chat-header">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            aria-label={uiText("返回艙室")}
+            className="chat-back"
+          >
+            &larr;
+          </button>
+          <span className="chat-avatar chat-header-avatar" aria-hidden="true">{agent.avatar_emoji}</span>
+          <h1 className="chat-name">{agent.name}</h1>
+          <button type="button" className="chat-usage-trigger" aria-haspopup="dialog" onClick={() => { usageOpenRef.current = true; setUsageOpen(true); }}>{uiText("用量")}</button>
+        </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && !sending && (
-          <div className="py-12 text-center text-sm" style={{ color: "var(--ink-soft)" }}>{uiText("跟 ")}{agent.name}{uiText(" 說聲嗨吧")}</div>
-        )}
+        {/* Messages */}
+        <div className="chat-messages" ref={messagesRef} role="region" aria-label={uiText("聊天紀錄")} tabIndex={0}>
+          {messages.length === 0 && !sending && (
+            <div className="chat-empty"><span className="chat-empty-avatar" aria-hidden="true">{agent.avatar_emoji}</span><p>{uiText("跟 ")}{agent.name}{uiText(" 說聲嗨吧")}</p></div>
+          )}
 
-        <div className="mx-auto flex max-w-2xl flex-col gap-3">
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} msg={msg} agentEmoji={agent.avatar_emoji} />
-          ))}
+          <div className="chat-message-list">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} msg={msg} agentEmoji={agent.avatar_emoji} />
+            ))}
 
-          {sending && (
-            <div className="flex items-start gap-2">
-              <span className="text-lg">{agent.avatar_emoji}</span>
-              <div
-                className="rounded-2xl rounded-tl-sm px-4 py-2 text-sm"
-                style={{ background: "var(--surface)", color: "var(--ink-soft)" }}
-              >{uiText("正在思考...")}</div>
+            {sending && (
+              <div className="chat-message-row chat-message-incoming" role="status">
+                <span className="chat-avatar" aria-hidden="true">{agent.avatar_emoji}</span>
+                <div className="chat-bubble chat-thinking">{uiText("正在思考...")}</div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        <footer className="chat-composer">
+          {error && (
+            <div role="alert" className="chat-send-error">
+              {uiText(error)}
+              {needsMemory && <p><Link to="/agent/edit#editor-note">{uiText("前往鏡子，寫下「給室友的話」 →")}</Link></p>}
+              {memoryOffline && <p>{uiText("記憶庫目前連不上，請稍後再試或檢查外部記憶連線設定；不需要重寫原有記憶。")}</p>}
             </div>
           )}
-        </div>
 
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div
-          role="alert"
-          className="px-4 py-2 text-center text-xs"
-          style={{ background: "var(--error)", color: "#fff" }}
-        >
-          {uiText(error)}
-          {needsMemory && <p><Link to="/agent/edit#editor-note">{uiText("前往鏡子，寫下「給室友的話」 →")}</Link></p>}
-          {memoryOffline && <p>{uiText("記憶庫目前連不上，請稍後再試或檢查外部記憶連線設定；不需要重寫原有記憶。")}</p>}
-        </div>
-      )}
-
-      {/* Input */}
-      <div
-        className="sticky bottom-0 px-4 py-3"
-        style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}
-      >
-        <div className="mx-auto flex max-w-2xl gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={uiText("說點什麼...")}
-            aria-label={uiText("聊天訊息")}
-            rows={1}
-            className="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm outline-none"
-            style={{
-              background: "var(--surface-dim)",
-              color: "var(--ink)",
-              border: "1px solid var(--border)",
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || sending}
-            className="rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-30"
-            style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-          >{uiText("送出")}</button>
-        </div>
-      </div>
+          <div className="chat-compose-row">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={uiText("說點什麼...")}
+              aria-label={uiText("聊天訊息")}
+              rows={1}
+              readOnly={sending}
+              className="chat-input"
+            />
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!input.trim() || sending}
+              className="chat-send"
+              aria-label={uiText("送出")}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5m-6 6 6-6 6 6" />
+              </svg>
+              <span className="chat-sr-only">{uiText("送出")}</span>
+            </button>
+          </div>
+        </footer>
+      </section>
       {usageOpen && <ChatUsageDialog agentId={agentId} revision={usageRevision} onClose={() => { usageOpenRef.current = false; setUsageOpen(false); }} />}
     </div>
   );
@@ -218,11 +215,8 @@ function MessageBubble({
 
   if (isUser) {
     return (
-      <div className="flex justify-end">
-        <div
-          className="max-w-[80%] rounded-2xl rounded-tr-sm px-4 py-2 text-sm whitespace-pre-wrap"
-          style={{ background: "var(--accent)", color: "var(--accent-fg)" }}
-        >
+      <div className="chat-message-row chat-message-outgoing">
+        <div className="chat-bubble">
           {msg.content}
         </div>
       </div>
@@ -230,12 +224,9 @@ function MessageBubble({
   }
 
   return (
-    <div className="flex items-start gap-2">
-      <span className="mt-1 text-lg">{agentEmoji}</span>
-      <div
-        className="max-w-[80%] rounded-2xl rounded-tl-sm px-4 py-2 text-sm whitespace-pre-wrap"
-        style={{ background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--border)" }}
-      >
+    <div className="chat-message-row chat-message-incoming">
+      <span className="chat-avatar" aria-hidden="true">{agentEmoji}</span>
+      <div className="chat-bubble">
         {msg.content}
       </div>
     </div>

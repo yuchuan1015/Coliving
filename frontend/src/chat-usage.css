@@ -4,8 +4,6 @@
   --accent: #c9a7ff; --accent-fg: #21152f; --error: #593849;
   color: var(--ink); color-scheme: dark;
 }
-.cabin-chat > header > span:last-of-type { min-width: 0; overflow-wrap: anywhere; }
-.cabin-chat > header button:first-child { flex: 0 0 44px; min-height: 44px; }
 .cabin-chat textarea { min-width: 0; font-size: 16px; }
 .cabin-chat :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .chat-usage-dialog {

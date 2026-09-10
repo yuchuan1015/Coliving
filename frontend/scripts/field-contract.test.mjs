@@ -561,6 +561,78 @@ test("IME Enter does not send; normal Enter does, and late replies cannot update
   assert.equal(components(h, "MessageBubble").filter(n => n.props.msg.role === "assistant").length, 0);
 });
 
+test("compact private chat keeps one header, a bounded scroller, and an accessible composer", async () => {
+  const h = await openChat();
+  assert.equal(h.tree.props.className, "cabin-chat");
+  const header = nodes(h.tree, n => n.type === "header")[0];
+  assert.equal(nodes(header, n => n.type === "button").length, 2);
+  assert.equal(nodes(header, n => n.type === "h1").length, 1);
+  assert.equal(text(nodes(header, n => n.type === "h1")[0]), "測試室友");
+  const scroller = nodes(h.tree, n => n.props.className === "chat-messages")[0];
+  assert.equal(scroller.props.tabIndex, 0);
+  assert.equal(scroller.props["aria-label"], "聊天紀錄");
+  assert.equal(chatInput(h).props["aria-label"], "聊天訊息");
+  assert.equal(button(h, "送出").props["aria-label"], "送出");
+  assert.ok(button(h, "送出").props.disabled);
+  assert.equal(nodes(h.tree, n => n.props.className === "chat-empty").length, 1);
+  assert.equal(nodes(h.tree, n => n.type === "button").length, 3);
+  assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+test("chat message updates scroll only the conversation, without animated page scrolling", async () => {
+  const h = await openChat();
+  const panel = { scrollHeight: 812, scrollTop: 0 };
+  nodes(h.tree, n => n.props.className === "chat-messages")[0].props.ref.current = panel;
+  h.effects(); assert.equal(panel.scrollTop, 812);
+  writeChat(h); answer = async () => ({ data: replyFixture });
+  await button(h, "送出").props.onClick(); h.render(); panel.scrollHeight = 960;
+  h.effects(); assert.equal(panel.scrollTop, 960);
+  const source = readFileSync(resolve(root, "src/pages/ChatPage.tsx"), "utf8");
+  assert.ok(!source.includes("scrollIntoView")); h.dispose();
+});
+test("composer grows with a multiline draft, resets after send, and locks a pending draft", async () => {
+  const h = await openChat();
+  const field = { style: {}, scrollHeight: 48, focus() {} };
+  chatInput(h).props.ref.current = field; h.effects();
+  assert.equal(field.style.height, "48px");
+  field.scrollHeight = 120; writeChat(h, "第一行\n第二行\n第三行"); h.effects();
+  assert.equal(field.style.height, "120px");
+  const pending = deferred(); answer = () => pending.promise;
+  const sending = button(h, "送出").props.onClick(); h.render(); field.scrollHeight = 48; h.effects();
+  assert.equal(chatInput(h).props.readOnly, true); assert.equal(chatInput(h).props.value, "");
+  assert.equal(field.style.height, "48px"); assert.ok(button(h, "送出").props.disabled);
+  pending.resolve({ data: replyFixture }); await sending; h.render();
+  assert.equal(chatInput(h).props.readOnly, false); h.dispose();
+});
+test("bubble redesign preserves raw multiline message content in both directions", async () => {
+  const sample = "<img src=x onerror=alert(1)>\n原文繁體 / 简体 / English ✦";
+  answer = async (_m, url) => ({ data: url === "/agents/mine" ? { id: "a", name: "室友", avatar_emoji: "✦" } : { messages: ["user", "assistant"].map(role => ({ id: role, role, content: sample })) } });
+  const h = mount(ChatSession, { agentId: "a" }); h.effects(); await tick(); await tick(); h.render();
+  for (const bubble of components(h, "MessageBubble")) {
+    const b = mount(bubble.type, bubble.props);
+    assert.equal(text(nodes(b.tree, n => n.props.className === "chat-bubble")[0]), sample);
+    assert.equal(nodes(b.tree, n => n.type === "img" || n.props.dangerouslySetInnerHTML).length, 0);
+    assert.match(b.tree.props.className, bubble.props.msg.role === "user" ? /outgoing/ : /incoming/); b.dispose();
+  }
+  h.dispose();
+});
+test("chat Shift+Enter keeps a multiline draft without sending", async () => {
+  const h = await openChat(); writeChat(h, "先換行"); calls.length = 0;
+  let prevented = false;
+  chatInput(h).props.onKeyDown({ key: "Enter", shiftKey: true, nativeEvent: { isComposing: false }, preventDefault() { prevented = true; } });
+  assert.equal(calls.length, 0); assert.equal(prevented, false); assert.equal(chatInput(h).props.value, "先換行"); h.dispose();
+});
+test("chat layout explicitly scopes purple spacing, narrow screens, safe areas and long text", () => {
+  const css = readFileSync(resolve(root, "src/chat-layout.css"), "utf8");
+  assert.match(css, /width: min\(100%, 720px\)/);
+  assert.match(css, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /height: 100dvh/); assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /\.cabin-chat \.chat-bubble\s*\{[^}]*padding: 12px 16px[^}]*white-space: pre-wrap; overflow-wrap: anywhere/s);
+  assert.match(css, /\.cabin-chat \.chat-input\s*\{[^}]*max-height: min\(10rem, 28dvh\)[^}]*font-size: 16px/s);
+  assert.match(css, /background: #c9a7ff; color: #21152f/);
+  assert.match(css, /@media \(max-width: 360px\)/);
+  assert.ok(!/^\s*(?:body|:root|#root|\*)\s*\{/m.test(css));
+});
+
 const { CabinClockFace } = load("src/components/CabinClockFace.tsx");
 const { useCabinTime } = load("src/hooks/useCabinTime.ts");
 test("clock hands include fractional hour and minute movement from real seconds", () => {
