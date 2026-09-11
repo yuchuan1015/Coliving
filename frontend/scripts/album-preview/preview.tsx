@@ -30,6 +30,7 @@ import { LanguageDocument } from "../../src/i18n/LanguageControl";
 
 const created = "2026-09-09T03:00:00Z";
 const params = new URLSearchParams(location.search);
+const economyState = params.get("economy-state") ?? "ready";
 const compactChat = params.get("page") === "chat" && params.get("chat-layout") === "1";
 const managementState = params.get("management-state") ?? "ready";
 const reportState = params.get("report-state") ?? "ready";
@@ -120,7 +121,15 @@ api.defaults.adapter = async config => {
   }
   else if (method === "get" && path === "/home/furniture/photos") data = { photos: photos.map(p => ({ ...p, is_displayed: p.id === displayedId })), max: 20, displayed_id: displayedId };
   else if (method === "get" && path === "/home/furniture") data = { window: { temperature: 23, description: "晴朗的夜", weather: "sunny", is_day: false }, clock: { timezone: "Asia/Taipei", utc: created }, photo_frame: { photo: photos.find(p => p.id === displayedId) ?? null, photo_count: photos.length }, diary: { count: diaries.length }, drawer: { count: drawer.count }, mirror: {}, door: {}, bed: { has_agent: true, is_sleeping: false } };
-  else if (method === "get" && path === "/home/dashboard") data = { agents: [agent], community_status: { message: "本地範例，沒有連上正式帳號" } };
+  else if (method === "get" && (path === "/credit/summary" || path === "/shell/summary")) {
+    if (economyState === "loading") await new Promise<never>(() => {});
+    if (economyState === "error" || (economyState === "partial" && path === "/shell/summary")) throw new AxiosError("Preview economy read failed", "ERR_BAD_RESPONSE", config, undefined, { config, status: 503, statusText: "Preview", headers: {}, data: { detail: "本地範例：暫時無法同步" } });
+    if (economyState === "missing") throw new AxiosError("Preview has no agent", "ERR_BAD_REQUEST", config, undefined, { config, status: 403, statusText: "Preview", headers: {}, data: { detail: "需要先領養室友" } });
+    data = path === "/credit/summary" ? { credit_total: economyState === "zero" ? 0 : economyState === "large" ? 987654321 : economyState === "wan" ? 12345 : 520, consumable: 20 }
+      : economyState === "legacy" ? { shell_balance: 50 }
+      : { shell_balance: 4, shell_balance_exact: economyState === "zero" ? "0" : economyState === "large" ? "1234567890123456789012345/100" : economyState === "wan" ? "6172839/50" : "30/7", shell_balance_display: economyState === "zero" ? "0.00" : economyState === "large" ? "12345678901234567890123.45" : economyState === "wan" ? "123456.78" : "4.29" };
+  }
+  else if (method === "get" && path === "/home/dashboard") data = { agents: economyState === "missing" ? [] : [agent], community_status: { message: "本地範例，沒有連上正式帳號" } };
   else if (method === "get" && path === "/community/announcements") data = [];
   else if (method === "get" && path === "/diary") data = diaries.filter(row => !config.params?.keyword || (row.title + row.content).includes(config.params.keyword));
   else if (method === "get" && path === "/home/furniture/drawer") data = drawer;

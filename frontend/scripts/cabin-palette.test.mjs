@@ -98,9 +98,10 @@ test("furniture input focus, placeholders and disabled text retain readable cabi
   assert.match(read("scripts/cabin-theme-preview/view.tsx"), /panel="dining"/);
 });
 
-test("three-card geometry, responsive rows and FAB/portrait sizing stay fixed", () => {
-  assert.equal(rule(".cabin-home")["grid-template-rows"], "136px minmax(0, 1fr) 104px");
-  assert.equal(rules(".cabin-home")[1]["grid-template-rows"], "152px minmax(0, 1fr) 120px");
+test("three-card minimum geometry and FAB/portrait sizing stay fixed while economy status can grow", () => {
+  // The approved balance rows may need more height for a long value or read error.
+  assert.equal(rule(".cabin-home")["grid-template-rows"], "minmax(136px, max-content) minmax(0, 1fr) 104px");
+  assert.equal(rules(".cabin-home")[1]["grid-template-rows"], "minmax(152px, max-content) minmax(0, 1fr) 120px");
   assert.equal(rule(".cabin-home").height, "100dvh");
   assert.equal(rule(".cabin-home").gap, "12px");
   assert.equal(rule(".cabin-card")["border-radius"], "24px");

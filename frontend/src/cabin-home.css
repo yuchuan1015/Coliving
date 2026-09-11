@@ -17,7 +17,7 @@
   margin-inline: auto;
   padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   display: grid;
-  grid-template-rows: 136px minmax(0, 1fr) 104px;
+  grid-template-rows: minmax(136px, max-content) minmax(0, 1fr) 104px;
   gap: 12px;
   color: var(--c-frost);
   background:
@@ -55,14 +55,28 @@ body:has(.cabin-home) { background: #020207; }
   box-shadow: 0 24px 64px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .10), inset 0 -1px 0 rgb(201 167 255 / .04);
   /* No backdrop-filter here: it would trap the FAB below its sibling dismiss layer. */
 }
-.cabin-info { padding: 16px; display: flex; flex-direction: column; justify-content: center; }
+.cabin-info { padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; }
 .cabin-info-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cabin-time { font-size: clamp(20px, 5.8vw, 28px); white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.cabin-weather { display: flex; align-items: center; justify-content: flex-end; gap: 4px; background: none; border: 0; color: var(--c-frost); min-height: 44px; max-width: 49%; font-size: 12px !important; }
+/* Balance the visible text against the weather button's extra touch-area space.
+   Optical adjustment only: keep the 44px target and all three card sizes intact. */
+.cabin-time-weather { display: flex; flex-direction: column; flex: 1 1 50%; min-width: 0; transform: translateY(clamp(2px, calc(1vw - 1.5px), 3px)); }
+.cabin-time { font-size: clamp(20px, 5.8vw, 28px); line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.cabin-weather { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 0; background: none; border: 0; color: var(--c-frost); min-height: 44px; width: 100%; min-width: 0; font-size: 14px !important; }
 .cabin-weather > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cabin-weather > span:first-child { font-size: 20px; color: var(--c-moon); }
-.cabin-weather small { font-size: 11px; color: var(--c-muted); white-space: nowrap; }
-.cabin-announcement { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--c-snow); margin-top: 12px; padding-top: 12px; font-size: 13px; }
+.cabin-weather small { font-size: 12px; color: var(--c-muted); white-space: nowrap; }
+.cabin-economy { flex: 0 1 auto; min-width: 0; max-width: 45%; margin-left: auto; }
+.cabin-balances { margin: 0; display: grid; gap: 6px; }
+.cabin-balances > div { display: grid; grid-template-columns: 1rem minmax(0, 1fr); align-items: center; gap: 6px; }
+.cabin-balances dt { display: flex; align-items: center; color: var(--c-moon); }
+.cabin-balance-icon { display: block; width: 1rem; height: 1rem; flex: none; }
+.cabin-balances dd { margin: 0; min-width: 0; text-align: right; font-size: .875rem; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; color: var(--c-moon); }
+.cabin-balance-placeholder { color: var(--c-muted); }
+.cabin-economy-note, .cabin-economy-retry { display: block; margin: 4px 0 0; color: var(--c-muted); font-size: 12px !important; text-align: right; overflow-wrap: anywhere; }
+.cabin-economy-note:is(a), .cabin-economy-retry { min-height: 44px; align-content: center; text-decoration: underline; text-underline-offset: 3px; }
+.cabin-economy-retry { width: 100%; padding: 4px 0; border: 0; background: transparent; }
+.cabin-economy-note:focus-visible { outline: 2px solid var(--c-moon); outline-offset: 3px; }
+.cabin-announcement { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--c-snow); margin-top: 8px; padding-top: 8px; font-size: 13px; }
 .cabin-announcement > span { flex: none; letter-spacing: .12em; color: var(--c-moon); }
 .cabin-announcement p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cabin-room { min-height: 0; overflow: hidden; background: var(--c-sky); }
@@ -171,5 +185,6 @@ body:has(.cabin-home) { background: #020207; }
 .cabin-panel dl { display: grid; grid-template-columns: auto 1fr; gap: 12px; font-size: 15px; }
 .cabin-panel dd { text-align: right; }
 @keyframes cabin-fade { from { opacity: 0; } to { opacity: 1; } }
-@media (min-width: 500px) { .cabin-home { --c-avatar: 80px; grid-template-rows: 152px minmax(0, 1fr) 120px; gap: 16px; } .cabin-info { padding: 24px; } }
+@media (min-width: 500px) { .cabin-home { --c-avatar: 80px; grid-template-rows: minmax(152px, max-content) minmax(0, 1fr) 120px; gap: 16px; } .cabin-info { padding: 16px 24px; } }
+@media (min-width: 500px) { .cabin-time-weather { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cabin-home *, .cabin-home *::before { animation: none !important; transition: none !important; } }

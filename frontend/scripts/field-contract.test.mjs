@@ -145,6 +145,160 @@ beforeEach(() => {
 });
 
 const { clockHandAngles, clockDialSize } = load("src/data/cabin-clock.ts");
+const economy = load("src/api/economy.ts");
+const { CabinEconomy } = load("src/components/CabinEconomy.tsx");
+const economyProps = () => ({ userId: "me", agentId: "my-agent", agentState: "ready" });
+const balances = h => nodes(h.tree, n => n.type === "dd").map(text);
+async function settleEconomy(h) { await tick(); await tick(); h.render(); }
+test("economy parses Agent accumulated credit only, including a real zero", () => {
+  assert.equal(economy.parseCreditSummary({ credit_total: 520, consumable: 20 }), 520);
+  assert.equal(economy.parseCreditSummary({ credit_total: 0 }), 0);
+  for (const value of [null, [], {}, { consumable: 500 }, ...[-1, 1.1, NaN, Infinity, "520", true, Number.MAX_SAFE_INTEGER + 1].map(credit_total => ({ credit_total }))]) assert.throws(() => economy.parseCreditSummary(value));
+});
+test("shell display preserves exact fractional/large balances and supports only valid legacy integers", () => {
+  assert.deepEqual(economy.parseShellSummary({ shell_balance: 4, shell_balance_exact: "30/7", shell_balance_display: "4.29" }), { display: "4.29", exact: "30/7" });
+  const display = "12345678901234567890123.45";
+  assert.equal(economy.parseShellSummary({ shell_balance_exact: "1234567890123456789012345/100", shell_balance_display: display }).display, display);
+  assert.equal(economy.groupShellDisplay(display), "12,345,678,901,234,567,890,123.45");
+  assert.deepEqual(economy.parseShellSummary({ shell_balance: 50 }), { display: "50", exact: null });
+  assert.deepEqual(economy.parseShellSummary({ shell_balance: 0 }), { display: "0", exact: null });
+  for (const value of [{}, null, { shell_balance: -1 }, { shell_balance: 4.29 }, { shell_balance: "50" }, { shell_balance: 4, shell_balance_display: "4.29" }, { shell_balance: 4, shell_balance_exact: "30/7" }, { shell_balance_exact: "1/0", shell_balance_display: "1.00" }, { shell_balance_exact: "1", shell_balance_display: "<b>1</b>" }, { shell_balance: Number.MAX_SAFE_INTEGER + 1 }]) assert.throws(() => economy.parseShellSummary(value));
+});
+test("economy 403 means no Agent only for the documented reason, not every access error", () => {
+  assert.equal(economy.economyNeedsAgent({ response: { status: 403, data: { detail: "需要先領養室友" } } }), true);
+  for (const error of [null, Error("offline"), { response: { status: 403, data: { detail: "禁止存取" } } }, { response: { status: 401, data: { detail: "需要先領養室友" } } }]) assert.equal(economy.economyNeedsAgent(error), false);
+});
+test("compact balances use ten-thousand units from 10000, never round a smaller balance up", () => {
+  const cases = [
+    ["0", "0"], ["0.00", "0.00"], ["4.29", "4.29"], ["9999", "9,999"], ["9999.99", "9,999.99"],
+    ["10000", "1萬"], ["10000.00", "1萬"], ["10999.99", "1萬"], ["11000", "1.1萬"], ["12345", "1.2萬"],
+    ["19999.99", "1.9萬"], ["100000", "10萬"], ["123456.78", "12.3萬"],
+    ["9007199254740991", "900,719,925,474萬"],
+    ["12345678901234567890123.45", "1,234,567,890,123,456,789萬"],
+  ];
+  for (const [input, output] of cases) assert.equal(economy.compactEconomyDisplay(input), output, input);
+  assert.equal(economy.compactEconomyDisplay("12345", "万"), "1.2万");
+  for (const value of ["", "-1", "1e5", "123/4", "NaN", "1.234", "1,000"]) assert.throws(() => economy.compactEconomyDisplay(value));
+});
+test("compact balance icons remain distinct, with full amounts accessible and labels visually hidden", async () => {
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 12345 } : { shell_balance_exact: "6172839/50", shell_balance_display: "123456.78" } });
+  const h = mount(CabinEconomy, economyProps()); h.effects(); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["1.2萬", "12.3萬"]);
+  const icons = nodes(h.tree, n => n.type === "svg");
+  assert.deepEqual(icons.map(n => n.props["data-economy-icon"]), ["credit", "shell"]);
+  for (const icon of icons) { assert.equal(icon.props.width, "16"); assert.equal(icon.props["aria-hidden"], "true"); assert.equal(icon.props.focusable, "false"); }
+  for (const label of nodes(h.tree, n => n.type === "dt")) assert.equal(nodes(label, n => n.props.className === "cabin-sr-only").length, 1);
+  assert.ok(nodes(h.tree, n => n.props["aria-label"] === "12,345 點信用").length);
+  assert.ok(nodes(h.tree, n => n.props["aria-label"] === "123,456.78 貝").length);
+  assert.ok(nodes(h.tree, n => n.props.title === "精確餘額：6172839/50 貝").length);
+  assert.ok(calls.every(c => c.method === "get"));
+  language.setUiLanguage("zh-CN"); h.render();
+  assert.deepEqual(balances(h), ["1.2万", "12.3万"]); h.dispose();
+});
+test("cabin balances use only Agent summary GET endpoints and server decimals, never market or consumable", async () => {
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 520, consumable: 20 } : { shell_balance: 4, shell_balance_exact: "30/7", shell_balance_display: "4.29" } });
+  const h = mount(CabinEconomy, economyProps());
+  assert.deepEqual(balances(h), ["…", "…"]);
+  h.effects(); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["520", "4.29"]);
+  assert.deepEqual(calls.map(c => [c.method, c.args[0]]), [["get", "/credit/summary"], ["get", "/shell/summary"]]);
+  for (const call of calls) { assert.equal(call.args[1].timeout, 15000); assert.ok(call.args[1].signal instanceof AbortSignal); }
+  assert.match(text(h.tree), /室友信用/); assert.match(text(h.tree), /室友貝/);
+  assert.ok(nodes(h.tree, n => n.props.title === "精確餘額：30/7 貝").length);
+  assert.equal(sessionValues.size, 0); h.dispose();
+});
+test("balances distinguish no Agent, dashboard failure and pending identity without requesting wallets", () => {
+  for (const agentState of ["missing", "error", "loading"]) {
+    const h = mount(CabinEconomy, { ...economyProps(), agentId: undefined, agentState }); h.effects(); h.render();
+    assert.deepEqual(balances(h), agentState === "loading" ? ["…", "…"] : ["—", "—"]);
+    assert.equal(nodes(h.tree, n => n.type?.name === "Link" && n.props.to === "/adopt").length, agentState === "missing" ? 1 : 0);
+    assert.equal(calls.length, 0); h.dispose();
+  }
+});
+test("real zero balances display zero, while a failed read never becomes zero", async () => {
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 0 } : { shell_balance_exact: "0", shell_balance_display: "0.00" } });
+  const h = mount(CabinEconomy, economyProps()); h.effects(); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["0", "0.00"]);
+  answer = async () => { throw Error("offline"); }; emit(windowEvents, "focus"); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["—", "—"]); assert.match(text(h.tree), /同步失敗/); h.dispose();
+});
+test("credit resolves independently of a pending wallet and retry recovers without writes", async () => {
+  const wallet = deferred();
+  answer = async (_method, url) => url === "/credit/summary" ? { data: { credit_total: 510 } } : wallet.promise;
+  const h = mount(CabinEconomy, economyProps()); h.effects(); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["510", "…"]);
+  wallet.reject(Error("offline")); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["510", "—"]);
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 511 } : { shell_balance: 51 } });
+  click(h, "同步失敗 · 重試"); h.effects(); await settleEconomy(h);
+  assert.deepEqual(balances(h), ["511", "51"]); assert.ok(calls.every(c => c.method === "get")); h.dispose();
+});
+test("balance focus/pageshow coalesce reads, hidden pages skip, and replayed credit never adds locally", async () => {
+  const pending = deferred();
+  answer = async (_method, url) => url === "/credit/summary" ? { data: { credit_total: 520, credit_awarded: 20 } } : pending.promise;
+  const h = mount(CabinEconomy, economyProps()); h.effects();
+  emit(windowEvents, "focus"); emit(windowEvents, "pageshow"); emit(documentEvents, "visibilitychange");
+  assert.equal(calls.length, 2);
+  pending.resolve({ data: { shell_balance: 4 } }); await settleEconomy(h);
+  documentStub.hidden = true; emit(windowEvents, "focus"); emit(windowEvents, "pageshow"); emit(documentEvents, "visibilitychange"); assert.equal(calls.length, 2);
+  documentStub.hidden = false; emit(documentEvents, "visibilitychange"); await settleEconomy(h);
+  assert.equal(calls.length, 4); assert.deepEqual(balances(h), ["520", "4"]);
+  h.dispose(); emit(windowEvents, "focus"); assert.equal(calls.length, 4);
+  assert.equal(windowEvents.get("focus").size, 0); assert.equal(windowEvents.get("pageshow").size, 0); assert.equal(documentEvents.get("visibilitychange").size, 0);
+});
+test("unmounted balance reads abort and cannot repaint a new identity", async () => {
+  const pending = deferred(); answer = async () => pending.promise;
+  const h = mount(CabinEconomy, economyProps()); h.effects(); const signals = calls.map(c => c.args[1].signal); h.dispose();
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 7 } : { shell_balance: 2 } });
+  const current = mount(CabinEconomy, { ...economyProps(), userId: "second", agentId: "second-agent" }); current.effects(); await settleEconomy(current);
+  pending.resolve({ data: { credit_total: 999, shell_balance: 999 } }); await settleEconomy(h); await settleEconomy(current);
+  assert.ok(signals.every(signal => signal.aborted)); assert.deepEqual(balances(h), ["…", "…"]); assert.deepEqual(balances(current), ["7", "2"]); current.dispose();
+});
+test("documented no-Agent response gives adoption while other 403s remain retryable", async () => {
+  answer = async () => { throw { response: { status: 403, data: { detail: "需要先領養室友" } } }; };
+  const missing = mount(CabinEconomy, economyProps()); missing.effects(); await settleEconomy(missing);
+  assert.deepEqual(balances(missing), ["—", "—"]); assert.equal(one(missing, "Link").props.to, "/adopt"); missing.dispose();
+  answer = async () => { throw { response: { status: 403, data: { detail: "禁止存取" } } }; };
+  const denied = mount(CabinEconomy, economyProps()); denied.effects(); await settleEconomy(denied);
+  assert.match(text(denied.tree), /重試/); assert.equal(components(denied, "Link").length, 0); denied.dispose();
+});
+test("cabin balance labels and exact value disclosure follow Simplified Chinese", async () => {
+  language.setUiLanguage("zh-CN");
+  answer = async (_method, url) => ({ data: url === "/credit/summary" ? { credit_total: 520 } : { shell_balance_exact: "30/7", shell_balance_display: "4.29" } });
+  const h = mount(CabinEconomy, economyProps()); h.effects(); await settleEconomy(h);
+  assert.match(text(h.tree), /室友贝/); assert.ok(nodes(h.tree, n => n.props.title === "精确余额：30/7 贝").length); h.dispose();
+});
+test("home places weather below time, economy beside it, and replaces old identity before another balance read", async () => {
+  answer = async (_method, url) => ({ data: url === "/home/dashboard" ? { agents: [{ id: "agent-a" }], community_status: {} } : url === "/agents/mine" ? { id: "agent-a" } : url === "/home/furniture" ? { clock: {}, weather: { temperature: 23, description: "晴朗" } } : [] });
+  const h = mount(load("src/pages/HomePage.tsx").HomePage); h.effects(); await settleEconomy(h);
+  const row = nodes(h.tree, n => n.props.className === "cabin-info-row")[0];
+  assert.equal(row.props.children[0].props.className, "cabin-time-weather");
+  assert.equal(row.props.children[0].props.children[0].type, "time");
+  assert.equal(row.props.children[0].props.children[1].props.className, "cabin-weather");
+  assert.equal(row.props.children[1].type.name, "CabinEconomy"); assert.equal(row.props.children[1].key, "me:agent-a");
+  const existingCalls = calls.length; auth.user = { id: "another-user", role: "resident" }; h.render();
+  assert.match(text(nodes(h.tree, n => n.props.className === "cabin-weather")[0]), /天氣待同步/);
+  assert.equal(one(h, "CabinPhotoFrame").props.photo, undefined);
+  assert.equal(one(h, "CabinEconomy").props.agentState, "loading"); assert.equal(one(h, "CabinEconomy").props.agentId, undefined); assert.equal(one(h, "CabinEconomy").key, "another-user:"); assert.equal(calls.length, existingCalls);
+  h.dispose();
+});
+test("economy layout preserves purple tokens, minimum hit targets and wrapping large values", () => {
+  const css = readFileSync(resolve(root, "src/cabin-home.css"), "utf8");
+  assert.match(css, /\.cabin-time-weather\s*\{[^}]*flex-direction:\s*column/);
+  assert.match(css, /\.cabin-weather\s*\{[^}]*justify-content:\s*flex-start[^}]*min-height:\s*44px/);
+  assert.match(css, /\.cabin-balances dd\s*\{[^}]*overflow-wrap:\s*anywhere[^}]*color:\s*var\(--c-moon\)/);
+  assert.match(css, /\.cabin-balances > div\s*\{[^}]*grid-template-columns:\s*1rem minmax\(0, 1fr\)/);
+  assert.match(css, /\.cabin-balances dd\s*\{[^}]*font-size:\s*\.875rem/);
+  assert.match(css, /\.cabin-balance-icon\s*\{[^}]*width:\s*1rem[^}]*height:\s*1rem/);
+  assert.match(css, /grid-template-rows:\s*minmax\(136px, max-content\)/);
+});
+test("cabin text spacing is optically balanced without changing the weather hit target or card geometry", () => {
+  const css = readFileSync(resolve(root, "src/cabin-home.css"), "utf8");
+  assert.match(css, /\.cabin-time-weather\s*\{[^}]*transform:\s*translateY\(clamp\(2px, calc\(1vw - 1\.5px\), 3px\)\)/);
+  assert.match(css, /@media\s*\(min-width:\s*500px\)\s*\{\s*\.cabin-time-weather\s*\{\s*transform:\s*none/);
+  assert.match(css, /\.cabin-weather\s*\{[^}]*min-height:\s*44px/);
+  assert.match(css, /\.cabin-info\s*\{\s*padding:\s*12px 16px/);
+});
 const guide = load("src/data/guide.ts");
 const { GuidePage } = load("src/pages/GuidePage.tsx");
 const guideEntries = h => nodes(h.tree, n => n.type === "details" && n.props.className === "photo-panel guide-entry");

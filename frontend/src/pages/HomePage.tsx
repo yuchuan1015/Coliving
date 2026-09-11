@@ -13,6 +13,7 @@ import { AvatarContent } from "../components/AvatarContent";
 import { PhotoImage } from "../components/PhotoImage";
 import { CabinPhotoFrame } from "../components/CabinPhotoFrame";
 import { CabinClockFace } from "../components/CabinClockFace";
+import { CabinEconomy } from "../components/CabinEconomy";
 import { clockDialSize } from "../data/cabin-clock";
 import { useCabinTime } from "../hooks/useCabinTime";
 import { getMyAgent } from "../api/agents";
@@ -28,8 +29,10 @@ export function HomePage() {
   useUiLanguage();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [summary, setSummary] = useState<FurnitureSummary | null>(null);
+  const [dashboardSnapshot, setDashboardSnapshot] = useState<{ userId: string; data: DashboardData } | null>(null);
+  const dashboard = dashboardSnapshot?.userId === user?.id ? dashboardSnapshot?.data ?? null : null;
+  const [summarySnapshot, setSummarySnapshot] = useState<{ userId: string; data: FurnitureSummary } | null>(null);
+  const summary = summarySnapshot?.userId === user?.id ? summarySnapshot?.data ?? null : null;
   const [announcement, setAnnouncement] = useState<AnnouncementOut | null>(null);
   const [error, setError] = useState(false);
   const [zoneIndex, setZoneIndex] = useState(initialZone);
@@ -48,25 +51,32 @@ export function HomePage() {
   const time = new Intl.DateTimeFormat(getUiLanguage(), { hour: "2-digit", minute: "2-digit", timeZone: timezone }).format(now);
   const weatherRequest = useRef(0);
   const refreshWeather = useCallback(async () => {
+    if (!user?.id) return;
+    const userId = user.id;
     const request = ++weatherRequest.current;
-    setSummary(null);
+    setSummarySnapshot(null);
     const data = await getFurniture();
-    if (request === weatherRequest.current) setSummary(data);
-  }, []);
+    if (request === weatherRequest.current) setSummarySnapshot({ userId, data });
+  }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    const userId = user.id;
     let cancelled = false;
+    // A sequence counter, not a DOM ref: invalidate any outstanding manual refresh.
+    const invalidateWeatherRefresh = () => { ++weatherRequest.current; };
+    setError(false);
     getDashboard().then(async data => {
       // The dashboard may lag the new avatar field; mine is the editor's source of truth.
       const current = data.agents.length ? await getMyAgent().catch(() => null) : null;
-      if (!cancelled) setDashboard(current ? { ...data, agents: [current, ...data.agents.filter(item => item.id !== current.id)] } : data);
+      if (!cancelled) setDashboardSnapshot({ userId, data: current ? { ...data, agents: [current, ...data.agents.filter(item => item.id !== current.id)] } : data });
     }).catch(() => { if (!cancelled) setError(true); });
     let pendingSummary: Promise<void> | null = null;
     const syncSummary = () => {
       if (cancelled || document.hidden || pendingSummary) return;
       const request = ++weatherRequest.current;
       pendingSummary = getFurniture().then(data => {
-        if (!cancelled && request === weatherRequest.current) setSummary(data);
+        if (!cancelled && request === weatherRequest.current) setSummarySnapshot({ userId, data });
       }).catch(() => {}).finally(() => { pendingSummary = null; });
     };
     syncSummary();
@@ -79,11 +89,12 @@ export function HomePage() {
     }).catch(() => {});
     return () => {
       cancelled = true;
+      invalidateWeatherRefresh();
       document.removeEventListener("visibilitychange", syncSummary);
       window.removeEventListener("focus", syncSummary);
       window.removeEventListener("pageshow", syncSummary);
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -126,13 +137,17 @@ export function HomePage() {
   const calloutEndX = selectedPoint && selectedPoint.x < sceneSize.width / 2 ? calloutX : calloutX + calloutWidth;
 
   return <main className="cabin-home" aria-label={uiText("艙室")}>
-    <section className="cabin-card cabin-info" aria-label={uiText("時間、天氣與公告")}>
+    <section className="cabin-card cabin-info" aria-label={uiText("時間、天氣、室友信用與貝、公告")}>
       <div className="cabin-info-row">
-        <time className="cabin-time" dateTime={now.toISOString()}>{time}</time>
-        <button className="cabin-weather" onClick={() => setPanel("window")} aria-label={uiText("查看天氣")}>
-          <span aria-hidden="true">{weatherIcon(summary?.weather)}</span><span>{summary?.weather?.description ? uiText(summary.weather.description) : uiText("天氣待同步")}</span>
-          {summary?.weather && <small>{summary.weather.temperature}°C</small>}
-        </button>
+        <div className="cabin-time-weather">
+          <time className="cabin-time" dateTime={now.toISOString()}>{time}</time>
+          <button className="cabin-weather" onClick={() => setPanel("window")} aria-label={uiText("查看天氣")}>
+            <span aria-hidden="true">{weatherIcon(summary?.weather)}</span><span>{summary?.weather?.description ? uiText(summary.weather.description) : uiText("天氣待同步")}</span>
+            {summary?.weather && <small>{summary.weather.temperature}°C</small>}
+          </button>
+        </div>
+        <CabinEconomy key={`${user?.id ?? ""}:${agent?.id ?? ""}`} userId={user?.id} agentId={agent?.id}
+          agentState={dashboard ? (agent ? "ready" : "missing") : error ? "error" : "loading"} />
       </div>
       <div className="cabin-announcement"><span>{uiText("系統公告")}</span><p title={announcement?.title}>{announcement?.title ?? dashboard?.community_status.message ?? (error ? uiText("連線暫時中斷，請稍後重新整理") : uiText("正在同步共居訊息…"))}</p></div>
     </section>
