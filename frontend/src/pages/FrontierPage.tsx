@@ -48,6 +48,7 @@ export function FrontierPage() {
         <div className="frontier-track" id="frontier-track" ref={trackRef} tabIndex={0}
           role="group" aria-label={uiText("開荒據點")} aria-describedby="frontier-swipe-hint"
           onKeyDown={event => {
+            if (event.target !== event.currentTarget) return;
             const index = event.key === "ArrowRight" ? selectedIndex + 1 : event.key === "ArrowLeft" ? selectedIndex - 1
               : event.key === "Home" ? 0 : event.key === "End" ? FRONTIER_SITES.length - 1 : null;
             if (index !== null) { event.preventDefault(); select(index); }
@@ -61,7 +62,7 @@ export function FrontierPage() {
           }}>
           {FRONTIER_SITES.map((site, index) => <div key={site.id} className="frontier-slide"
             role="group" aria-roledescription={uiText("投影片")} aria-label={`${index + 1} / ${FRONTIER_SITES.length}`}
-            aria-hidden={index !== selectedIndex}>
+            aria-hidden={index !== selectedIndex} inert={index !== selectedIndex}>
             <div className={`frontier-planet-window${site.id === "garden" ? " frontier-garden-window" : ""}`} aria-hidden="true">
               {!failedImages[site.id] && <img className={site.id === "garden" ? "frontier-garden-image" : "frontier-planet-image"}
                 src={site.id === "garden" ? FRONTIER_GARDEN_IMAGE : FRONTIER_SYSTEM_IMAGE} alt=""
@@ -72,27 +73,24 @@ export function FrontierPage() {
             </div>
             <span className="frontier-slide-code">{site.number} / {site.english}</span>
             <h2>{uiText(site.name)}</h2>
-            <span className="frontier-slide-state">{uiText(site.status)}</span>
+            {site.id === "garden"
+              ? <Link className="frontier-enter" to="/frontier/garden" tabIndex={index === selectedIndex ? 0 : -1}>
+                {uiText(site.status)}<span aria-hidden="true">→</span>
+              </Link>
+              : <span className="frontier-slide-state">{uiText(site.status)}</span>}
           </div>)}
         </div>
         {failedImages[selected.id] && <p className="frontier-image-error" role="status">{uiText("星系圖片暫時無法載入，仍可切換據點。")}</p>}
+        <span className="frontier-selection-status" aria-live="polite" aria-atomic="true">{selected.number} / {FRONTIER_SITES.length} · {uiText(selected.name)}</span>
         <div className="frontier-controls">
           <button className="frontier-arrow" type="button" aria-label={uiText("上一個據點")} aria-controls="frontier-track" disabled={selectedIndex === 0} onClick={() => select(selectedIndex - 1)}>‹</button>
           <div className="frontier-dots" role="group" aria-label={uiText("選擇據點")}>
             {FRONTIER_SITES.map((site, index) => <button type="button" key={site.id} className="frontier-dot"
               aria-label={uiText`${uiText(site.name)}，${uiText(site.status)}`} aria-pressed={selectedIndex === index}
-              aria-controls="frontier-track frontier-site-detail" onClick={() => select(index)}><span /></button>)}
+              aria-controls="frontier-track" onClick={() => select(index)}><span /></button>)}
           </div>
           <button className="frontier-arrow" type="button" aria-label={uiText("下一個據點")} aria-controls="frontier-track" disabled={selectedIndex === FRONTIER_SITES.length - 1} onClick={() => select(selectedIndex + 1)}>›</button>
         </div>
-      </section>
-
-      <section className="frontier-detail" id="frontier-site-detail" aria-live="polite" aria-atomic="true" aria-label={uiText("據點資訊")}>
-        <span className="frontier-detail-code">{selected.number} / {selected.english}</span>
-        <div className="frontier-detail-title"><h2>{uiText(selected.name)}</h2><span>{uiText(selected.status)}</span></div>
-        <p>{uiText(selected.description)}</p>
-        <p className="frontier-notice">{uiText(selected.notice)}</p>
-        {selected.id === "garden" && <Link className="frontier-back" to="/frontier/garden">{uiText("進入公共農田 →")}</Link>}
       </section>
     </div>
   </main>;

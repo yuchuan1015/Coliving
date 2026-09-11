@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { HomePage } from "./pages/HomePage";
 import { FrontierPage } from "./pages/FrontierPage";
 import { PublicGardenPage } from "./pages/PublicGardenPage";
+import { PrivateGardenPage } from "./pages/PrivateGardenPage";
 import { GuidePage } from "./pages/GuidePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/home/drawer" element={<DrawerPage />} />
               <Route path="/home/photos" element={<PhotoFramePage />} />
               <Route path="/home/library" element={<BookshelfPage />} />
+              <Route path="/home/garden" element={<PrivateGardenPage />} />
               <Route path="/memory" element={<MemoryPage />} />
               <Route path="/reading" element={<ReadingShelfPage />} />
               <Route path="/reading/:bookId" element={<ReadingPage />} />

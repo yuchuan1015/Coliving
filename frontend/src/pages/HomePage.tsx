@@ -182,6 +182,7 @@ export function HomePage() {
           <button onClick={() => navigate("/outside")}>{uiText("出艙 ↗")}</button>
           <button onClick={() => navigate(agent ? `/chat/${agent.id}` : "/adopt")}>{uiText("聊天")}</button>
           <button onClick={() => navigate("/schedules")}>{uiText("排程管理")}</button>
+          <button onClick={() => { closeFab(); navigate("/home/garden"); }}>{uiText("私人菜園")}</button>
           <button onClick={() => { closeFab(); navigate("/guide"); }}>{uiText("導覽手冊")}</button>
           <button onClick={() => { closeFab(); setPanel("settings"); }}>{uiText("設定")}</button>
         </nav>}

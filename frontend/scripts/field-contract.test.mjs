@@ -69,7 +69,7 @@ function load(relative) {
     if (name === "react/jsx-runtime") return jsxRuntime;
     if (name === "react-router-dom") return { Link: function Link() {}, Navigate: function Navigate() {}, Outlet: function Outlet() {}, useLocation: () => windowStub.location, useNavigate: () => navigateStub, useParams: () => routeParams };
     if (name.endsWith("/api/client") || name === "./client") return { __esModule: true, ...clientExports };
-    if (name.endsWith("/hooks/useAuth") || (name === "./useAuth" && path.endsWith("/hooks/usePublicGarden.ts"))) return { useAuth: () => auth };
+    if (name.endsWith("/hooks/useAuth") || (name === "./useAuth" && /\/hooks\/use(Public|Private)Garden\.ts$/.test(path))) return { useAuth: () => auth };
     if (name.endsWith(".css")) return {};
     if (name.endsWith(".json")) return JSON.parse(readFileSync(resolve(dirname(path), name), "utf8"));
     if (!name.startsWith(".")) return require(name);
@@ -237,9 +237,9 @@ test("registration language change preserves invite code, name, year and unsaved
   assert.equal(input("register-invite-code").props.value, "TESTONLY");
   assert.equal(input("register-birth-year").props.value, "1999"); assert.deepEqual(calls, []);
 });
-test("Simplified guide covers all 31 entries, searches either script and keeps planet routes", () => {
+test("Simplified guide covers all 32 entries, searches either script and keeps planet routes", () => {
   const cn = guide.searchGuide("", "all", "zh-CN");
-  assert.equal(cn.length, 31);
+  assert.equal(cn.length, 32);
   assert.equal(cn.find(a => a.id === "field-library").title, "Arcturus · 图书馆");
   assert.equal(cn.find(a => a.id === "field-library").link.to, "/library");
   assert.ok(guide.searchGuide("浏览器", "all", "zh-CN").length > 0);
@@ -343,7 +343,7 @@ test("guide finds Procyon and 開荒 in either script and keeps the frontier rou
   assert.equal(guide.GUIDE_ARTICLES.find(article => article.id === "field-frontier").title, "Procyon · 開荒");
   assert.deepEqual(calls, []); assert.deepEqual(reads, []);
 });
-test("frontier guide states public farming readiness and leaves private access unconfirmed", () => {
+test("frontier guide keeps public farming separate from cabin private access", () => {
   const entry = guide.GUIDE_ARTICLES.find(article => article.id === "field-frontier");
   assert.ok(entry);
   assert.match(entry.summary, /獨立公共星系入口/);
@@ -351,7 +351,7 @@ test("frontier guide states public farming readiness and leaves private access u
   assert.match(body, /澆水、照顧與參與下一輪投票/);
   assert.match(body, /魚池、牧場與市場規劃中/);
   assert.match(body, /公共農田不在公園/);
-  assert.match(body, /私人入口仍待確認/);
+  assert.match(body, /私人菜園則從艙室右下的快捷選單進入/);
   assert.match(entry.notice, /魚池、牧場與市場尚未開放/);
 });
 function frontierTrack(h) {
@@ -364,7 +364,8 @@ function frontierTrack(h) {
   return { node, element, scrolls };
 }
 const frontierDots = h => nodes(h.tree, n => n.props.className === "frontier-dot");
-test("frontier shows four swipeable future sites without API calls or invented game actions", () => {
+const frontierActiveSlide = h => nodes(h.tree, n => n.props.className === "frontier-slide" && !n.props["aria-hidden"])[0];
+test("frontier keeps a single carousel with its garden entrance inside the active slide", () => {
   const { FrontierPage } = load("src/pages/FrontierPage.tsx");
   const h = mount(FrontierPage); h.effects();
   const track = frontierTrack(h);
@@ -374,17 +375,42 @@ test("frontier shows four swipeable future sites without API calls or invented g
   assert.match(text(h.tree), /l 213\.7° · b \+13\.0° · 11\.5 ly/);
   const links = nodes(h.tree, n => n.props.to);
   assert.deepEqual(links.map(n => n.props.to), ["/outside", "/frontier/garden"]);
+  assert.equal(nodes(h.tree, n => n.props.id === "frontier-site-detail" || n.props.className === "frontier-detail").length, 0);
+  assert.equal(nodes(h.tree, n => n.type === "section").length, 1);
+  assert.equal(nodes(frontierActiveSlide(h), n => n.props.className === "frontier-slide-state").length, 0, "Garden has a button, not duplicate status text");
+  assert.match(text(nodes(frontierActiveSlide(h), n => n.props.className === "frontier-enter")[0]), /^前往農田→$/);
+  for (const control of nodes(h.tree, n => n.props["aria-controls"])) {
+    for (const id of control.props["aria-controls"].split(" ")) assert.equal(nodes(h.tree, n => n.props.id === id).length, 1);
+  }
   for (const index of [1, 2, 3, 0]) {
     choices()[index].props.onClick(); h.render();
     assert.equal(track.scrolls.at(-1).left, index * track.element.clientWidth);
     assert.equal(track.scrolls.at(-1).behavior, "instant", "Honors reduced motion");
     assert.equal(choices().filter(n => n.props["aria-pressed"]).length, 1);
     assert.equal(choices()[index].props["aria-pressed"], true);
-    const detail = nodes(h.tree, n => n.props.id === "frontier-site-detail")[0];
-    assert.match(text(detail), index ? /規劃中.*尚未開放/ : /進入公共農田/);
-    assert.deepEqual(nodes(detail, n => n.props.to).map(n => n.props.to), index ? [] : ["/frontier/garden"]);
+    const slide = frontierActiveSlide(h);
+    assert.match(text(slide), index ? /規劃中/ : /前往農田/);
+    assert.deepEqual(nodes(slide, n => n.props.to).map(n => n.props.to), index ? [] : ["/frontier/garden"]);
+    const slides = nodes(h.tree, n => n.props.className === "frontier-slide");
+    assert.deepEqual(slides.map(n => n.props.inert), [0, 1, 2, 3].map(i => i !== index));
+    assert.equal(nodes(h.tree, n => n.props.className === "frontier-enter")[0].props.tabIndex, index ? -1 : 0, "Offscreen entrance cannot receive Tab focus");
   }
   assert.deepEqual(calls, []); assert.deepEqual(reads, []); assert.equal(timers.size, 0);
+});
+test("frontier garden entrance stays available after an image failure and translates without a second card", () => {
+  const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
+  nodes(h.tree, n => n.props.className === "frontier-garden-image")[0].props.onError(); h.render();
+  language.setUiLanguage("zh-CN"); h.render();
+  const entries = nodes(frontierActiveSlide(h), n => n.props.className === "frontier-enter");
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].props.to, "/frontier/garden");
+  assert.equal(entries[0].props.tabIndex, 0);
+  assert.match(text(entries[0]), /^前往农田→$/);
+  const css = readFileSync(resolve(root, "src/frontier.css"), "utf8");
+  assert.match(css, /\.frontier-enter\s*\{[^}]*min-height: 44px;[^}]*background: var\(--frontier-accent\);[^}]*color: var\(--frontier-bg\);/);
+  assert.match(css, /\.frontier-enter:focus-visible/);
+  assert.doesNotMatch(css, /frontier-detail|grid-template-columns/);
+  assert.deepEqual(calls, []); assert.deepEqual(reads, []);
 });
 test("frontier fallback keeps all destinations and language switch preserves the selection", () => {
   const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
@@ -438,7 +464,7 @@ test("frontier garden sky fills only its own card and cannot intercept carousel 
   assert.match(css, /mask-composite: intersect/);
   assert.deepEqual(calls, []);
 });
-test("frontier native swipes synchronize detail and clamp Safari overscroll at both ends", () => {
+test("frontier native swipes synchronize the active slide and clamp Safari overscroll at both ends", () => {
   const h = mount(load("src/pages/FrontierPage.tsx").FrontierPage);
   const track = frontierTrack(h);
   for (const [position, expected] of [[358, 1], [716, 2], [1074, 3], [1500, 3], [-120, 0]]) {
@@ -446,7 +472,9 @@ test("frontier native swipes synchronize detail and clamp Safari overscroll at b
     track.node.props.onScroll({ currentTarget: track.element }); h.render();
     assert.equal(frontierDots(h).findIndex(n => n.props["aria-pressed"]), expected);
     assert.equal(nodes(h.tree, n => n.props.className === "frontier-slide" && !n.props["aria-hidden"]).length, 1);
-    assert.match(text(nodes(h.tree, n => n.props.id === "frontier-site-detail")[0]), new RegExp(["公共農田", "公共魚池", "公共牧場", "市場"][expected]));
+    const name = new RegExp(["公共農田", "公共魚池", "公共牧場", "市場"][expected]);
+    assert.match(text(frontierActiveSlide(h)), name);
+    assert.match(text(nodes(h.tree, n => n.props.className === "frontier-selection-status")[0]), name);
   }
   assert.deepEqual(calls, []);
 });
@@ -465,6 +493,12 @@ test("frontier arrows, Home/End and dots support keyboard navigation without aut
   assert.equal(key("ArrowRight"), true); assert.equal(track.element.scrollLeft, 1074);
   assert.equal(key("Home"), true); assert.equal(track.element.scrollLeft, 0);
   assert.equal(key("ArrowDown"), false); assert.equal(timers.size, 0);
+  for (const value of ["Enter", "ArrowRight", "End"]) {
+    nodes(h.tree, n => n.props.id === "frontier-track")[0].props.onKeyDown({ key: value,
+      target: { tagName: "A" }, currentTarget: track.element,
+      preventDefault() { assert.fail("Carousel must not intercept keys on its entrance link"); } });
+    assert.equal(track.element.scrollLeft, 0);
+  }
   const matchMedia = windowStub.matchMedia;
   try {
     windowStub.matchMedia = () => ({ matches: false });
@@ -501,6 +535,200 @@ test("frontier anchor geometry fits its unchanged image ratio and ships its own 
   assert.ok(!css.includes(":root"));
 });
 const gardenApi = load("src/api/garden.ts");
+const privateApi = load("src/api/private-garden.ts");
+const { usePrivateGarden } = load("src/hooks/usePrivateGarden.ts");
+const { PrivateGardenPage, PrivateClearPanel } = load("src/pages/PrivateGardenPage.tsx");
+const privateFixtures = JSON.parse(readFileSync(resolve(root, "scripts/private-garden-preview/fixtures.json"), "utf8"));
+const { createPrivatePreview } = load("scripts/private-garden-preview/gateway.ts");
+const settlePrivate = async h => { await tick(); await tick(); await tick(); h.render(); };
+async function privateMount(component = usePrivateGarden, mode = "ready", override) {
+  const preview = createPrivatePreview(mode), gateway = override ?? preview.gateway;
+  auth.user = { ...auth.user, id: preview.userId, timezone: "Asia/Taipei" };
+  const h = mount(component === usePrivateGarden ? () => usePrivateGarden(gateway) : component, { gateway });
+  h.effects(); await settlePrivate(h); return { h, preview, gateway };
+}
+const firstPlot = d => d.plots[0];
+const privateIntent = (d, action = "water") => ({ plotId: firstPlot(d).id, action, ...(action === "steal" ? { batchId: Object.keys(firstPlot(d).planting.batches)[0] } : {}) });
+test("private garden parses real isolated four-plot and clear-proposal fixtures", () => {
+  for (const key of ["growing", "ready", "harvested", "clearBefore", "ownProposal", "revoked", "agentProposal", "rejected", "agentReproposal", "cleared"]) {
+    const f = privateFixtures[key]; assert.equal(privateApi.parsePrivateGarden(f, f.actor.id), f, key);
+  }
+  for (const mutate of [f => f.actor.id = "other", f => f.actor.kind = "agent", f => f.actor.household_id = "other", f => f.plots.pop(), f => f.plots[1].number = 1, f => f.plots[0].scope = "public", f => f.crops.pop(), f => f.plots[0].planting.moisture = "80", f => f.plots[0].planting.batches = [], f => f.time_multiplier = 0]) {
+    const f = structuredClone(privateFixtures.ready), owner = f.actor.id; mutate(f); assert.throws(() => privateApi.parsePrivateGarden(f, owner));
+  }
+});
+test("private adapter preserves auth transport and exact endpoint/action envelopes", async () => {
+  const signal = new AbortController().signal;
+  await privateApi.privateGardenApi.read(signal); expectCall("get", "/garden/private");
+  await privateApi.privateGardenApi.inventory("agent", 100, signal); expectCall("get", "/garden/inventory", { params: { owner: "agent", limit: 100, offset: 100 }, signal });
+  await privateApi.privateGardenApi.progress(signal); expectCall("get", "/garden/progress");
+  const c = privateApi.privateCommand(privateFixtures.ready, privateIntent(privateFixtures.ready, "steal"), "fixed-id");
+  await privateApi.privateGardenApi.act([c]); expectCall("post", "/garden/actions", { actions: [c] });
+  assert.deepEqual(Object.keys(c).sort(), ["action", "batch_id", "planting_id", "plot_id", "request_id"]);
+});
+test("private user can water healthy production-complete plants but never impersonates agent", () => {
+  const f = structuredClone(privateFixtures.ready), p = firstPlot(f); p.planting.status = "production_complete";
+  assert.ok(privateApi.privateCommand(f, privateIntent(f), "id"));
+  p.planting.status = "dead"; assert.equal(privateApi.privateCommand(f, privateIntent(f), "id"), null);
+  for (const action of ["plant", "harvest", "care", "fertilize", "fast_forward"]) { p.allowed_actions.push(action); assert.equal(privateApi.privateCommand(f, privateIntent(f, action), "id"), null); }
+});
+test("private stealing uses an opaque batch id and enforces per-batch eligibility", () => {
+  const f = structuredClone(privateFixtures.ready), intent = privateIntent(f, "steal");
+  const cmd = privateApi.privateCommand(f, intent, "id"); assert.ok(Object.isFrozen(cmd)); assert.equal(cmd.batch_id, intent.batchId);
+  firstPlot(f).planting.batches[intent.batchId].stolen = true; assert.equal(privateApi.privateCommand(f, intent, "id"), null);
+  firstPlot(f).planting.batches[intent.batchId].stolen = false; assert.equal(privateApi.privateCommand(f, { ...intent, batchId: "wrong" }, "id"), null);
+  firstPlot(f).steal_available = false; assert.equal(privateApi.privateCommand(f, intent, "id"), null);
+});
+test("private clear commands distinguish proposer even when revoke is allowed for both", () => {
+  const own = privateFixtures.ownProposal, other = privateFixtures.agentProposal;
+  const command = (d, action, more = {}) => privateApi.privateCommand(d, { plotId: firstPlot(d).id, action, proposalId: firstPlot(d).planting.clear_proposal.id, ...more }, "id");
+  assert.ok(command(own, "revoke_clear")); assert.equal(command(own, "consent_clear", { accept: true }), null);
+  assert.equal(command(other, "revoke_clear"), null); assert.equal(command(other, "consent_clear", { accept: false }).accept, false);
+  assert.ok(command(other, "consent_clear", { accept: true }));
+  assert.equal(command(other, "consent_clear", { accept: true, proposalId: "old" }), null);
+  const f = privateFixtures.clearBefore, base = { plotId: firstPlot(f).id, action: "propose_clear", reason: "  想休耕  ", consent: true };
+  assert.equal(privateApi.privateCommand(f, base, "id").reason, "想休耕");
+  for (const changed of [{ consent: false }, { reason: "  " }, { reason: "字".repeat(501) }]) assert.equal(privateApi.privateCommand(f, { ...base, ...changed }, "id"), null);
+});
+test("private quantities preserve fraction precision including tiny and huge shares", () => {
+  assert.equal(privateApi.formatGardenQuantity("200/3"), "66.667 g");
+  assert.equal(privateApi.formatGardenQuantity("2637"), "2.637 kg");
+  assert.equal(privateApi.formatGardenQuantity("1/1000000000"), "< 0.001 g");
+  assert.equal(privateApi.formatGardenQuantity("900719925474099312345"), "900719925474099312.345 kg");
+  for (const value of ["1/0", "NaN", "-1", "2.5", "1e3", "Infinity"]) assert.equal(privateApi.quantityFraction(value), null);
+});
+test("private parsers reject mismatched inventory ownership and nonadvancing pagination", () => {
+  const f = privateFixtures.inventoryUser; assert.equal(privateApi.parseGardenInventory(f, "user", f.owner_id, 0), f);
+  assert.throws(() => privateApi.parseGardenInventory(f, "agent", f.owner_id, 0));
+  assert.throws(() => privateApi.parseGardenInventory(f, "user", "other", 0));
+  assert.throws(() => privateApi.parseGardenInventory({ ...f, has_more: true, next_offset: 100 }, "user", f.owner_id, 100));
+  assert.equal(privateApi.parseGardenProgress(privateFixtures.progress).completed_count, 1);
+  assert.throws(() => privateApi.parseGardenProgress({ ...privateFixtures.progress, completed_count: 12 }));
+});
+test("private receipts require per-action ok and matching plot, bare HTTP200 is unknown", () => {
+  const f = privateFixtures.ready, c = privateApi.privateCommand(f, privateIntent(f), "id");
+  for (const value of [{}, { results: [] }, { results: [{ ok: true }] }, { results: [{ ok: true, result: { plot: { id: "other", scope: "private" }, server_now: f.server_now } }] }]) assert.equal(privateApi.privateReceipts(value, [c])[0].ok, null);
+  assert.equal(privateApi.privateReceipts({ results: [{ ok: true, result: { plot: firstPlot(f), server_now: f.server_now, credited_g: "200/3" } }] }, [c])[0].credited, "200/3");
+});
+test("private double tap sends one immutable write then refreshes authoritative snapshots", async () => {
+  const { h, preview } = await privateMount(); const original = h.tree.submit;
+  original([privateIntent(h.tree.data, "steal")]); original([privateIntent(h.tree.data, "steal")]); await settlePrivate(h);
+  assert.equal(preview.writes.length, 1); assert.equal(h.tree.outcomes[0].receipt.credited, "2637");
+  assert.equal(h.tree.inventory.user.data.items[0].quantity_g, "2637"); assert.equal(h.tree.progress.data.completed_count, 0);
+  assert.equal(Object.values(firstPlot(h.tree.data).planting.batches)[0].remaining_g, 2637);
+  h.tree.submit([privateIntent(h.tree.data, "steal")]); assert.equal(preview.writes.length, 1); h.dispose();
+});
+test("private unknown response blocks new intents and retries same id/content without duplicate credit", async () => {
+  const { h, preview } = await privateMount(usePrivateGarden, "unknown");
+  h.tree.submit([privateIntent(h.tree.data, "steal")]); await settlePrivate(h); assert.equal(h.tree.uncertain, true);
+  h.tree.submit([privateIntent(h.tree.data)]); assert.equal(preview.writes.length, 1);
+  h.tree.retry(); await settlePrivate(h); assert.equal(h.tree.uncertain, false); assert.deepEqual(preview.writes[0], preview.writes[1]);
+  assert.equal(h.tree.inventory.user.data.items[0].quantity_g, "2637"); assert.equal(Object.values(firstPlot(h.tree.data).planting.batches)[0].stolen, true); h.dispose();
+});
+test("private mixed 200 results retain successful theft beside business403 and only retry unknown siblings", async () => {
+  const p = createPrivatePreview("four-plots"); let commands;
+  const gateway = { ...p.gateway, async act(cs) { commands = structuredClone(cs); const data = await p.gateway.read(new AbortController().signal); return { results: cs.map((c,i) => i === 0 ? { ok: true, result: { plot: data.plots.find(p => p.id === c.plot_id), server_now: data.server_now, credited_g: "2637" } } : i === 1 ? { ok: false, error: { code: "action_forbidden", status_code: 403, detail: "本筆操作無權限" } } : { ok: true }) }; } };
+  const { h } = await privateMount(usePrivateGarden, "four-plots", gateway);
+  h.tree.submit([privateIntent(h.tree.data, "steal"), ...h.tree.data.plots.slice(1,3).map(p => ({ plotId: p.id, action: "water" }))]); await settlePrivate(h);
+  assert.ok(h.tree.data); assert.equal(h.tree.error, ""); assert.deepEqual(h.tree.outcomes.map(o => o.receipt.ok), [true, false, null]);
+  const firstCommands = commands; gateway.act = async cs => { commands = structuredClone(cs); return { results: [{ ok: false, error: { code: "stale_planting", status_code: 409, detail: "已換株" } }] }; };
+  h.tree.retry(); await settlePrivate(h); assert.deepEqual(commands, [firstCommands[2]]); assert.equal(h.tree.outcomes[0].receipt.credited, "2637"); assert.equal(h.tree.uncertain, false); h.dispose();
+});
+test("private true whole-request403 removes private data while not claiming success", async () => {
+  const p = createPrivatePreview("ready"), gateway = { ...p.gateway, async act() { throw { response: { status: 403 } }; } };
+  const { h } = await privateMount(usePrivateGarden, "ready", gateway); h.tree.submit([privateIntent(h.tree.data)]); await settlePrivate(h);
+  assert.equal(h.tree.data, undefined); assert.equal(h.tree.inventory.user.data, undefined); assert.match(h.tree.error, /存取權限/); assert.equal(h.tree.outcomes[0].receipt.ok, false); h.dispose();
+});
+test("private stale409 refreshes, does not retry as unknown, and preserves explanation", async () => {
+  const { h } = await privateMount(usePrivateGarden, "stale"); h.tree.submit([privateIntent(h.tree.data)]); await settlePrivate(h);
+  assert.equal(h.tree.uncertain, false); assert.equal(h.tree.outcomes[0].receipt.status, 409); assert.match(h.tree.outcomes[0].receipt.detail, /已更換/); h.dispose();
+});
+test("private read refresh races and teardown cannot revive old data", async () => {
+  const p = createPrivatePreview("ready"), gateway = { ...p.gateway }; const { h } = await privateMount(usePrivateGarden, "ready", gateway);
+  const slow = deferred(); let firstSignal;
+  gateway.read = async signal => { firstSignal = signal; return slow.promise; }; h.tree.refresh(); h.render();
+  gateway.read = async () => { throw { response: { status: 403 } }; }; h.tree.refresh(); await settlePrivate(h);
+  assert.equal(firstSignal.aborted, true); assert.equal(h.tree.data, undefined);
+  slow.resolve(privateFixtures.ready); await settlePrivate(h); assert.equal(h.tree.data, undefined); h.dispose();
+});
+test("private A-B-A render identity fencing hides old data before effects", async () => {
+  const { h } = await privateMount(); const owner = auth.user.id;
+  auth.user.id = "another-owner"; h.render(); assert.equal(h.tree.data, undefined);
+  auth.user.id = owner; h.render(); assert.equal(h.tree.data, undefined); h.effects(); await settlePrivate(h); assert.equal(h.tree.data.actor.id, owner); h.dispose();
+});
+test("private account change ignores late action and does not leak inventory", async () => {
+  const p = createPrivatePreview("ready"), slow = deferred(), gateway = { ...p.gateway, act: () => slow.promise };
+  const { h } = await privateMount(usePrivateGarden, "ready", gateway); h.tree.submit([privateIntent(h.tree.data)]); h.render();
+  auth.user.id = "other"; h.render(); assert.equal(h.tree.data, undefined); assert.equal(h.tree.inventory.user.data, undefined); h.effects(); await settlePrivate(h);
+  slow.resolve({ results: [{ ok: true, result: { plot: firstPlot(privateFixtures.ready), server_now: privateFixtures.ready.server_now, credited_g: "2637" } }] });
+  await settlePrivate(h); assert.equal(h.tree.outcomes.length, 0); assert.equal(h.tree.data, undefined); h.dispose();
+});
+test("private inventory pages stay with their owner and merge without float addition", async () => {
+  const { h } = await privateMount(usePrivateGarden, "fractions");
+  assert.equal(h.tree.inventory.user.data.items[0].quantity_g, "200/3"); assert.equal(h.tree.inventory.agent.data.items[0].quantity_g, "1/1000000");
+  await h.tree.loadMore("user"); h.render(); assert.deepEqual(h.tree.inventory.user.data.items.map(i => i.quantity_g), ["200/3", "3000"]); assert.equal(h.tree.inventory.user.data.has_more, false); h.dispose();
+});
+test("private logged-out hook performs no reads or writes", async () => {
+  auth.user = null; const h = mount(usePrivateGarden); calls = []; h.effects(); await settlePrivate(h);
+  assert.equal(calls.length, 0); assert.match(h.tree.error, /請先登入/); h.dispose();
+});
+test("private no-agent service error guides back to cabin instead of pretending the login expired", async () => {
+  const {h}=await privateMount(usePrivateGarden,"no-agent");
+  assert.equal(h.tree.data,undefined); assert.equal(h.tree.inventory.user.data,undefined); assert.equal(h.tree.accessDenied,true);
+  assert.match(h.tree.error,/需要先有室友/); assert.doesNotMatch(h.tree.error,/重新登入/); h.dispose();
+  const error=privateApi.privateGardenHttpError({response:{status:403,data:{error:{code:"agent_required",detail:"先有室友"}}}});
+  assert.deepEqual(error,{status:403,code:"agent_required",detail:"先有室友"});
+});
+test("private catalog and guide have Simplified copy but resident proposal text stays exact", async () => {
+  language.setUiLanguage("zh-CN");
+  assert.equal(language.uiText("秀珍菇"),"秀珍菇"); assert.equal(language.uiText("馬鈴薯"),"马铃薯");
+  assert.equal(language.uiText("葉萵苣"),"叶莴苣");
+  const {h}=await privateMount(PrivateGardenPage); assert.match(text(h.tree),/双[方]?仓库|双方仓库/); h.dispose();
+  const f=structuredClone(privateFixtures.ownProposal); firstPlot(f).planting.clear_proposal.reason="居民原文：想讓這塊田休息";
+  const panel=mount(PrivateClearPanel,{data:f,plot:firstPlot(f),locked:false,submit(){}});
+  assert.match(text(panel.tree),/居民原文：想讓這塊田休息/); panel.dispose();
+});
+test("private page shows four real plots, purple-scoped design, collapsed logs and no agent controls", async () => {
+  const { h } = await privateMount(PrivateGardenPage, "four-plots");
+  assert.equal(nodes(h.tree, n => n.props.className === "private-plot").length, 4);
+  assert.equal(nodes(h.tree, n => n.props.className === "private-panel private-logs")[0].props.open, undefined);
+  const buttons = nodes(h.tree, n => n.type === "button").map(text).join("|"); assert.doesNotMatch(buttons, /播種|採收|施肥|照顧作物|快轉|切換身份/);
+  click(h, "作物圖鑑"); assert.equal(nodes(h.tree, n => n.type === "article").length, 12); assert.match(text(h.tree), /首收基準：約/); assert.match(text(h.tree), /不是目前田地的成熟倒數/);
+  for (let i = 2; i <= 6; i++) { click(h, `第 ${i} 級`); assert.equal(nodes(h.tree, n => n.type === "article").length, 12); assert.match(text(h.tree), /尚未開放種植/); }
+  const css = readFileSync(resolve(root, "src/private-garden.css"), "utf8"); assert.match(css, /--pg-bg:#090613/); assert.match(css, /color-scheme:dark/); assert.doesNotMatch(css, /:root/); h.dispose();
+});
+test("private crop history stays collapsed and inventory fractions require explicit expansion", async () => {
+  const { h } = await privateMount(PrivateGardenPage, "harvested");
+  const history = nodes(h.tree, n => n.props.className === "private-batch-history"); assert.equal(history.length, 1); assert.equal(history[0].props.open, undefined); h.dispose();
+  const { h: q } = await privateMount(PrivateGardenPage, "fractions"); click(q, "雙方倉庫");
+  const precise = nodes(q.tree, n => n.type === "button" && n.props.className === "private-exact-toggle"); assert.equal(precise.length, 2); precise.forEach(n => assert.equal(n.props["aria-expanded"], "false")); q.dispose();
+});
+test("private own proposal has revoke only, agent proposal requires explicit checked consent", () => {
+  const sent = []; let data = privateFixtures.ownProposal;
+  const own = mount(PrivateClearPanel, { data, plot: firstPlot(data), locked: false, submit: x => sent.push(x) });
+  assert.match(text(own.tree), /現在等室友自行回覆/); assert.doesNotMatch(nodes(own.tree,n=>n.type === "button").map(text).join(), /同意並挖除/);
+  click(own, "撤回我的提案"); assert.equal(sent[0][0].action, "revoke_clear"); own.dispose();
+  data = privateFixtures.agentProposal;
+  const other = mount(PrivateClearPanel, { data, plot: firstPlot(data), locked: false, submit: x => sent.push(x) });
+  assert.equal(button(other, "確認同意並挖除").props.disabled, true);
+  nodes(other.tree,n=>n.type === "input")[0].props.onChange({target:{checked:true}}); other.render(); click(other,"確認同意並挖除");
+  assert.equal(sent[1][0].accept, true); assert.equal(sent[1][0].proposalId, firstPlot(data).planting.clear_proposal.id); other.dispose();
+});
+test("private agent proposal rejection preserves plant; consent clears with existing credit retained", async () => {
+  for(const accept of [false, true]) {
+    const {h} = await privateMount(usePrivateGarden,"agent-proposal"), plot=firstPlot(h.tree.data);
+    const before=h.tree.inventory.user.data.items[0].quantity_g;
+    h.tree.submit([{plotId:plot.id,action:"consent_clear",proposalId:plot.planting.clear_proposal.id,accept}]); await settlePrivate(h);
+    assert.equal(firstPlot(h.tree.data).planting === null,accept); assert.equal(h.tree.inventory.user.data.items[0].quantity_g,before);
+    assert.equal(h.tree.progress.data.completed_count,0); h.dispose();
+  }
+});
+test("private FAB route is protected, separate from public garden and preview transports are blocked", () => {
+  const app=readFileSync(resolve(root,"src/App.tsx"),"utf8"), home=readFileSync(resolve(root,"src/pages/HomePage.tsx"),"utf8");
+  assert.match(app,/path="\/home\/garden" element={<PrivateGardenPage \/>}/); assert.ok(app.indexOf('path="/home/garden"')>app.indexOf('<ProtectedRoute'));
+  assert.match(home,/navigate\("\/home\/garden"\)/); assert.match(home,/uiText\("私人菜園"\)/);
+  const client=readFileSync(resolve(root,"scripts/private-garden-preview/client.ts"),"utf8"); assert.doesNotMatch(client,/fetch\(|axios|localStorage|sessionStorage/); assert.match(client,/throw Error/);
+});
 const { PublicGardenPage } = load("src/pages/PublicGardenPage.tsx");
 const { usePublicGarden } = load("src/hooks/usePublicGarden.ts");
 function publicGardenFixture(voting = false) {
@@ -675,10 +903,10 @@ test("guide surfaces the matching body excerpt and documents real current limita
 });
 test("guide renders real contents and does not read APIs, start timers or send reports on open", () => {
   const h = mount(GuidePage); h.effects(); h.render();
-  assert.equal(h.tree.props.title, "導覽手冊"); assert.equal(guideEntries(h).length, 31);
+  assert.equal(h.tree.props.title, "導覽手冊"); assert.equal(guideEntries(h).length, 32);
   assert.equal(calls.length, 0); assert.equal(reads.length, 0); assert.equal(timers.size, 0);
   assert.ok(nodes(h.tree, n => n.props.id === "guide-search")[0].props["aria-describedby"]);
-  assert.equal(nodes(h.tree, n => n.type === "summary").length, 32);
+  assert.equal(nodes(h.tree, n => n.type === "summary").length, guide.GUIDE_ARTICLES.length + 1);
   h.dispose();
 });
 test("guide tabs and search work together; clearing text retains chosen category", () => {
@@ -686,14 +914,14 @@ test("guide tabs and search work together; clearing text retains chosen category
   findGuide(h, "Sirius"); assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /找到 1 則相關說明/);
   click(h, "清除搜尋"); assert.equal(guideEntries(h).length, 12);
   assert.equal(button(h, "場域介紹").props["aria-pressed"], true);
-  click(h, "基本功能"); assert.equal(guideEntries(h).length, 11);
+  click(h, "基本功能"); assert.equal(guideEntries(h).length, 12);
   click(h, "問題排除"); assert.equal(guideEntries(h).length, 7);
 });
 test("no-result guide state can reset both filters or open contact without carrying stale query", () => {
   const h = mount(GuidePage); click(h, "場域介紹"); findGuide(h, "不可能找到的東西");
   assert.equal(guideEntries(h).length, 0); assert.match(text(h.tree), /沒有找到相關說明/);
   let focused = 0; nodes(h.tree, n => n.props.id === "guide-search")[0].props.ref.current = { focus() { focused++; } };
-  click(h, "查看全部說明"); assert.equal(guideEntries(h).length, 31); assert.equal(focused, 1);
+  click(h, "查看全部說明"); assert.equal(guideEntries(h).length, 32); assert.equal(focused, 1);
   findGuide(h, "再次找不到"); click(h, "前往 Bug 報錯");
   assert.equal(guideEntries(h).length, 1); assert.match(text(h.tree), /therookery1108@outlook\.com/);
   assert.equal(nodes(h.tree, n => n.props.id === "guide-search")[0].props.value, "");
@@ -744,7 +972,7 @@ test("guide navigation is protected and FAB opens it without making avatar edita
   answer = async (_method, url) => ({ data: url === "/home/dashboard" ? { agents: [], community_status: {} } : url === "/home/furniture" ? { clock: {}, photo_frame: null } : [] });
   const h = mount(load("src/pages/HomePage.tsx").HomePage); h.effects(); await tick(); h.render();
   nodes(h.tree, n => n.props["aria-label"] === "展開快捷選單")[0].props.onClick(); h.render();
-  assert.equal(nodes(h.tree, n => n.props.id === "cabin-fab-menu")[0].props.children.filter(Boolean).length, 5);
+  assert.equal(nodes(h.tree, n => n.props.id === "cabin-fab-menu")[0].props.children.filter(Boolean).length, 6);
   click(h, "導覽手冊"); expectCall("navigate", "/guide");
   assert.equal(nodes(h.tree, n => n.props.id === "cabin-fab-menu").length, 0);
   assert.equal(nodes(h.tree, n => n.props.className === "cabin-agent-info")[0].props.onClick, undefined); h.dispose();

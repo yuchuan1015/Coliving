@@ -41,6 +41,11 @@ function collect(file) {
 }
 visitDirectory("src");
 collect("src/i18n/LanguageControl.tsx");
+// Checked-in garden catalog/system copy only, never resident proposal text or logs.
+for (const row of JSON.parse(fs.readFileSync("src/data/garden-reference.json", "utf8"))) {
+  [row.name, row.category, row.description].forEach(value => messages.add(value));
+}
+for (const value of JSON.parse(fs.readFileSync("src/data/garden-system-copy.json", "utf8"))) messages.add(value);
 const terms = [
   ["帐户", "账户"], ["帐号", "账号"], ["登录", "登录"], ["登入", "登录"],
   ["注册", "注册"], ["登出", "退出登录"], ["设定", "设置"], ["设定值", "设置值"],

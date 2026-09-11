@@ -13,14 +13,14 @@
   font-size: 15px;
   line-height: 1.7;
 }
-.frontier-header { max-width: 960px; margin: 0 auto 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.frontier-header { max-width: 640px; margin: 0 auto 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
 .frontier-back { min-height: 44px; display: inline-flex; align-items: center; padding: 8px 16px; border: 1px solid var(--frontier-line); border-radius: 999px; color: var(--frontier-text); text-decoration: none; white-space: nowrap; }
 .frontier-code { margin-left: auto; color: var(--frontier-muted); font-size: 13px; letter-spacing: .12em; }
 .frontier-title { flex-basis: 100%; min-width: 0; }
 .frontier-title h1 { margin: 0; color: var(--frontier-accent); font-size: 24px; font-weight: 400; letter-spacing: .08em; }
 .frontier-title h1 span { color: var(--frontier-text); }
 .frontier-title p { margin: 4px 0 0; color: var(--frontier-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.frontier-layout { max-width: 960px; margin: auto; display: grid; gap: 16px; }
+.frontier-layout { max-width: 640px; margin: auto; }
 .frontier-system { min-width: 0; position: relative; isolation: isolate; width: 100%; border: 1px solid var(--frontier-line); border-radius: 24px; background: #03070c; overflow: hidden; }
 /* Full-card sky uses only the leftmost 1/7 of the original artwork, outside
    the garden dome. It never stretches a second giant dome behind the first. */
@@ -46,7 +46,10 @@
 }
 .frontier-slide-code { color: var(--frontier-accent); font-size: 13px; letter-spacing: .14em; }
 .frontier-slide h2 { margin: 4px 0; font-size: 24px; font-weight: 400; letter-spacing: .08em; }
-.frontier-slide-state { color: var(--frontier-muted); font-size: 14px; }
+.frontier-slide-state { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; color: var(--frontier-muted); font-size: 14px; }
+.frontier-enter { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-width: 160px; max-width: 100%; min-height: 44px; box-sizing: border-box; margin-top: 12px; padding: 8px 24px; border: 1px solid var(--frontier-accent); border-radius: 999px; background: var(--frontier-accent); color: var(--frontier-bg); font-size: 15px; text-decoration: none; cursor: pointer; touch-action: manipulation; }
+.frontier-enter:active { background: var(--frontier-text); }
+.frontier-selection-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .frontier-controls { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 12px; max-width: 380px; margin: auto; }
 .frontier-dots { position: relative; display: flex; }
 .frontier-dots::before { content: ""; position: absolute; top: 50%; left: 22px; right: 22px; height: 1px; background: var(--frontier-line); }
@@ -55,21 +58,12 @@
 .frontier-dot[aria-pressed="true"] span { background: var(--frontier-accent); border-color: var(--frontier-accent); outline: 1px solid var(--frontier-accent); outline-offset: 4px; }
 .frontier-arrow { font-size: 28px; }
 .frontier-arrow:disabled { opacity: .3; cursor: default; }
-.frontier-back:focus-visible, .frontier-dot:focus-visible, .frontier-arrow:focus-visible { outline: 2px solid var(--frontier-accent); outline-offset: 2px; border-radius: 999px; }
+.frontier-back:focus-visible, .frontier-enter:focus-visible, .frontier-dot:focus-visible, .frontier-arrow:focus-visible { outline: 2px solid var(--frontier-accent); outline-offset: 2px; border-radius: 999px; }
 .frontier-track:focus-visible { outline: 2px solid var(--frontier-accent); outline-offset: -3px; }
-.frontier-detail { padding: 24px; background: #0b171c; border: 1px solid var(--frontier-line); border-radius: 16px; overflow-wrap: anywhere; }
-.frontier-detail-code { color: var(--frontier-accent); font-size: 13px; letter-spacing: .12em; }
-.frontier-detail-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
-.frontier-detail h2 { margin: 0; font-size: 18px; font-weight: 400; }
-.frontier-detail-title > span { font-size: 13px; color: var(--frontier-muted); border: 1px solid var(--frontier-line); border-radius: 999px; padding: 0 8px; }
-.frontier-detail p { margin: 8px 0 0; }
-.frontier-detail .frontier-notice { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--frontier-line); color: var(--frontier-muted); font-size: 13px; }
 .frontier-image-error { padding: 0 16px 8px; margin: 0; font-size: 14px; color: var(--frontier-muted); }
 .frontier-planet-placeholder { display: grid; place-items: center; width: 100%; height: 100%; border: 1px solid var(--frontier-line); border-radius: 50%; font-size: 32px; color: var(--frontier-muted); }
 @media (min-width: 720px) {
   .frontier-page { padding: 32px; }
-  .frontier-layout { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-  .frontier-detail { position: sticky; top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .frontier-page *, .frontier-page *::before, .frontier-page *::after { scroll-behavior: auto; animation: none; transition: none; }
