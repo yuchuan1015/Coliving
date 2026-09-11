@@ -110,6 +110,9 @@ class GardenCreditIntegrationTest(GardenServiceFixture):
         self.assertEqual(self.credits(), 20)
 
     def test_garden_credit_summary_and_existing_500_point_pet_threshold(self):
+        self.enterContext(patch("services.pet_assets.get_assets", return_value={
+            "fixture-credit-cat": {"asset_key": "fixture-credit-cat", "species": "cat", "emoji": "🐈",
+                                   "image_url": "/assets/pets/fixture-credit-cat.webp"}}))
         self.db.execute(update(Agent).where(Agent.id == self.agent.id).values(credit_total=480))
         self.db.commit()
         agent = self.db.get(Agent, self.agent.id, populate_existing=True)

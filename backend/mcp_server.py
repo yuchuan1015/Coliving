@@ -582,19 +582,21 @@ def my_pets(token: str) -> str:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         pets = pet_service.get_alive_pets(db, agent)
         result = [pet_service.get_pet_status(db, p) for p in pets]
-        max_pets = pet_service.get_max_pets(agent)
+        from services import pet_capacity
+        capacity = pet_capacity.get_capacity(db, agent)
+        max_pets = capacity["max_pets"]
         db.commit()
         if not result:
             if max_pets == 0:
-                return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "message": "信用不足，累積 500 信用可以養寵物"}, ensure_ascii=False)
-            return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "message": "你還沒有寵物，用 adopt_pet 領養一隻吧"}, ensure_ascii=False)
-        return json.dumps({"success": True, "pets": result, "max_pets": max_pets}, ensure_ascii=False)
+                return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "capacity": capacity, "message": "信用不足，累積 500 信用可以養寵物"}, ensure_ascii=False)
+            return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "capacity": capacity, "message": "你還沒有寵物，若尚有名額可從圖庫領養；等待到家的許願也占用名額"}, ensure_ascii=False)
+        return json.dumps({"success": True, "pets": result, "max_pets": max_pets, "capacity": capacity}, ensure_ascii=False)
     finally:
         db.close()
 
 
-def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
-    """領養一隻寵物。需要信用 ≥500。指定名字、物種和 emoji。"""
+def adopt_pet(token: str, name: str, species: str = "", emoji: str = "", asset_key: str | None = None) -> str:
+    """領養已發布圖庫中的寵物；信用與等待到家的許願共同核算名額。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -603,16 +605,20 @@ def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
         agent = agent_service.get_user_agent(db, user_id)
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
-        result = pet_service.adopt(db, agent, name, species, emoji)
+        result = pet_service.adopt(db, agent, name, species, emoji, asset_key)
         if isinstance(result, str):
             return json.dumps({"success": False, "error": result}, ensure_ascii=False)
+        from services.pet_capacity import valid_mcp_actor
+        if not valid_mcp_actor(db, token, user_id, agent.id):
+            db.rollback()
+            return json.dumps({"success": False, "error": "鑰匙或室友綁定已失效，請重新確認"}, ensure_ascii=False)
         db.flush()
         status = pet_service.get_pet_status(db, result)
         db.commit()
         return json.dumps({
             "success": True,
             "pet": status,
-            "message": f"你領養了{species}「{name}」{emoji}！記得每天照顧牠。",
+            "message": f"你領養了{status['species']}「{status['name']}」{status['emoji']}！記得每天照顧牠。",
         }, ensure_ascii=False)
     finally:
         db.close()
@@ -2661,19 +2667,25 @@ def weilan(action: str, density: str = '', table_id: str = "", title: str = "", 
     return json.dumps({"success": False, "error": f"weilan 沒有「{action}」這個 action", "actions": ['tables', 'read_table', 'open', 'join', 'leave', 'close', 'read', 'say', 'start', 'game', 'act', 'pass']}, ensure_ascii=False)
 
 @mcp.tool()
-def pet(action: str, name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "", ctx: Context = None, pet_id: str | None = None) -> str:
+def pet(action: str, name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "", ctx: Context = None, pet_id: str | None = None, asset_key: str | None = None) -> str:
     """寵物。action 可選：
 - my_pets（無參數）：查看你的寵物狀態
-- adopt（name, species, emoji）：領養一隻寵物
+- catalog：查看已發布寵物圖庫（沒有想要的物種／外觀請居民在網頁提出許願）
+- adopt（name, asset_key；舊 species/emoji 僅接受唯一已發布匹配）：領養一隻寵物
 - interact（act，pet_id 或 pet_name）：和寵物互動；同名活寵須用 my_pets 回傳的 id 指定 pet_id"""
     token = _token_from_ctx(ctx)
     if action == "my_pets":
         return my_pets(token=token)
+    elif action == "catalog":
+        if not _verify_mcp_token(token):
+            return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
+        from services import pet_assets
+        return json.dumps({"success": True, **pet_assets.catalog()}, ensure_ascii=False)
     elif action == "adopt":
-        return adopt_pet(token=token, name=name, species=species, emoji=emoji)
+        return adopt_pet(token=token, name=name, species=species, emoji=emoji, asset_key=asset_key)
     elif action == "interact":
         return pet_interact(token=token, pet_name=pet_name, action=act, pet_id=pet_id)
-    return json.dumps({"success": False, "error": f"pet 沒有「{action}」這個 action", "actions": ['my_pets', 'adopt', 'interact']}, ensure_ascii=False)
+    return json.dumps({"success": False, "error": f"pet 沒有「{action}」這個 action", "actions": ['my_pets', 'catalog', 'adopt', 'interact']}, ensure_ascii=False)
 
 @mcp.tool()
 def memory(action: str, query: str = '', force: bool = False, text: str = "", limit: int = 10, ctx: Context = None) -> str:

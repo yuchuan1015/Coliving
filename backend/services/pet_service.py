@@ -2,7 +2,7 @@ import hashlib
 import random
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session, object_session
 
 from models.agent import Agent
@@ -10,7 +10,7 @@ from models.mail import Mail
 from models.pet import Pet
 from models.pet_entitlement import PetEntitlement
 from models.user import User
-from services import activity_service
+from services import activity_service, pet_assets, pet_capacity
 
 PET_THRESHOLDS = [500, 1000]
 
@@ -193,6 +193,7 @@ def _status(pet: Pet, events: list[dict]) -> dict:
         "name": pet.name,
         "species": pet.species,
         "emoji": pet.emoji,
+        "asset_key": pet.asset_key,
         "hunger": round(pet.hunger, 1),
         "cleanliness": round(pet.cleanliness, 1),
         "happiness": round(pet.happiness, 1),
@@ -207,37 +208,46 @@ def _status(pet: Pet, events: list[dict]) -> dict:
     }
 
 
-def adopt(db: Session, agent: Agent, name: str, species: str, emoji: str) -> Pet | str:
+def adopt(db: Session, agent: Agent, name: str, species: str = "", emoji: str = "", asset_key: str | None = None) -> Pet | str:
+    expected_owner_id = agent.user_id
     # MCP and REST must enforce the same existing text limits. Species remains
     # free text; this is not a new species catalog or an appearance restriction.
-    for value, label, maximum in ((name, "名字", 64), (species, "物種", 64), (emoji, "emoji", 8)):
+    for value, label, maximum in ((name, "名字", 64),):
         if not isinstance(value, str) or not value.strip() or len(value) > maximum:
             return f"{label}需填寫 1 到 {maximum} 個字元，不能只有空白"
+    asset = pet_assets.resolve_asset(species, emoji, asset_key)
+    if asset is None:
+        return "請選擇已發布圖庫中的小夥伴；其他物種或外觀請使用許願申請"
     # Both REST and MCP commit after this helper. Serialize on the owner before
     # reading the credit/exception and live-pet count, so simultaneous requests
     # cannot spend the same first-pet slot twice.
-    db.flush()
-    locked = db.execute(update(Agent).where(Agent.id == agent.id,
-        Agent.user_id.in_(select(User.id).where(User.is_active.is_(True))))
-        .values(credit_total=Agent.credit_total).execution_options(synchronize_session=False))
-    if locked.rowcount != 1:
+    locked = pet_capacity.lock_agent(db, agent.id)
+    if locked is None or locked.user_id != expected_owner_id:
         return "帳號已停用或室友不存在"
-    db.refresh(agent, attribute_names=["credit_total"])
-    max_pets = get_max_pets(agent)
+    agent = locked
+    capacity = pet_capacity.get_capacity(db, agent)
+    max_pets = capacity["max_pets"]
     if max_pets == 0:
         return "信用不足，需要累積 500 信用才能養寵物"
 
-    alive = get_alive_pets(db, agent)
-    if len(alive) >= max_pets:
+    if capacity["available_slots"] == 0:
+        if capacity["reserved_pets"]:
+            return "寵物名額已用滿，等待到家的許願也占用名額"
         if max_pets == 1:
             return "你已經有一隻寵物了，累積 1000 信用可以養第二隻"
         return "你已經有兩隻寵物了"
 
+    return _new_pet(db, agent, name, asset["species"], asset["emoji"], asset["asset_key"])
+
+
+def _new_pet(db: Session, agent: Agent, name: str, species: str, emoji: str, asset_key: str) -> Pet:
+    """Internal constructor: caller must hold a new slot or its locked wish reservation."""
     pet = Pet(
         agent_id=agent.id,
         name=name,
         species=species,
         emoji=emoji,
+        asset_key=asset_key,
         lifespan_days=roll_lifespan(),
     )
     db.add(pet)

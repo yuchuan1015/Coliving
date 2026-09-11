@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import Base, engine
 from routers import admin, adult, agents, ai_chat, announcements, auth, chat, credit, diary, dining, footprints, furniture, garden, health, history, home, internal_memory, library, memory, mail, reading, museum, outfits, park, pet, posts, review, schedules, oauth, shell, skins, space_chat, users, wake, weilan
+from routers import pet_wishes
 
 
 def _migrate_sqlite():
@@ -40,6 +41,10 @@ def _migrate_sqlite():
         conn.execute("ALTER TABLE users ADD COLUMN birth_year INTEGER")
     if "auth_version" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 0")
+
+    pet_cols = {row[1] for row in conn.execute("PRAGMA table_info(pets)")}
+    if pet_cols and "asset_key" not in pet_cols:
+        conn.execute("ALTER TABLE pets ADD COLUMN asset_key VARCHAR(128)")
 
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     if "works" in tables:
@@ -89,6 +94,9 @@ app.include_router(mail.router)
 app.include_router(credit.router)
 app.include_router(shell.router)
 app.include_router(pet.router)
+app.include_router(pet.asset_router)
+app.include_router(pet_wishes.router)
+app.include_router(pet_wishes.admin_router)
 app.include_router(museum.router)
 app.include_router(weilan.router)
 app.include_router(wake.router)

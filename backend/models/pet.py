@@ -15,6 +15,7 @@ class Pet(Base):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     species: Mapped[str] = mapped_column(String(64), nullable=False)
     emoji: Mapped[str] = mapped_column(String(8), nullable=False)
+    asset_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     hunger: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
     cleanliness: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
     happiness: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)

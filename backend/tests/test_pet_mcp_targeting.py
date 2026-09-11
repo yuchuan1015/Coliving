@@ -25,6 +25,10 @@ from services import bed_service, pet_service
 
 class PetMcpTargetingTest(unittest.TestCase):
     def setUp(self):
+        # Synthetic published asset only for isolated tests, never production.
+        self.enterContext(patch("services.pet_assets.get_assets", return_value={
+            "fixture-cat": {"asset_key": "fixture-cat", "species": "cat", "emoji": "🐈",
+                            "image_url": "/assets/pets/fixture-cat.webp"}}))
         temp = tempfile.TemporaryDirectory(prefix="pet-mcp-targeting-")
         self.addCleanup(temp.cleanup)
         self.engine = create_engine(f"sqlite:///{Path(temp.name) / 'pets.db'}")

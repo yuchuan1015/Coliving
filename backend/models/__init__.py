@@ -39,5 +39,7 @@ from models.garden_credit import GardenCreditDay, GardenCreditSlot, GardenCredit
 from models.garden_market import GardenMarketBatch, GardenMarketLot
 from models.garden_sale import GardenSale
 from models.shell_wallet import ShellWallet, ShellEntry
+from models.pet_entitlement import PetEntitlement
+from models.pet_wish import PetWish, PetWishReceipt
 
 __all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit", "Book", "BookParagraph", "BookHighlight", "BookNote", "SpaceMessage", "DMReport", "OAuthClient", "OAuthRequest", "OAuthGrant", "Photo", "UsageLog"]
