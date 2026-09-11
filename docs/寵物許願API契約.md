@@ -63,7 +63,7 @@ preparation 使 pending 進入 preparing，並可更新準備資料；expected_v
 
 新增 `GET /api/pet-assets`（登入）回 `{items:[{asset_key,species,emoji,image_url}],catalog_version}`。唯讀，僅列可信、已發布的 registry 資產。`image_url` 為同站固定 `/assets/pets/…` 路徑，不接受住戶／管理 API 任意 URL 或本機檔案路徑。
 
-registry 初始為空，不將未交付圖片硬編成可發布資產；隔離測試使用專用 fixture。圖片任务交付後由工程核對並登錄，同步到前端。
+registry 於初版為空；2026-09-12 已完成 28 張驗收圖片的本地接線，catalog version 為 `rookery-pets-v1-20260912`，詳見 `寵物圖庫接線紀錄.md`。尚未推送或部署。一般隔離測試使用專用 fixture，圖庫整合測試另以本地真實登錄驗證領養及許願到家。空圖庫行為仍受測試保護。
 
 普通 `POST /api/pets/adopt` 建議 body `{name,asset_key}`。回應 PetStatus 新增 `asset_key:string|null`（舊寵物保留 null，不改既有 species/emoji）。舊 `{name,species,emoji}` 請求僅可在唯一精確匹配已發布資產時領養，未知／多種外觀須選 asset_key 或改走許願；REST/MCP 都由後端強制，不能只擋前端自填。同時提供 key 與舊欄位時必須符合該資產。
 
