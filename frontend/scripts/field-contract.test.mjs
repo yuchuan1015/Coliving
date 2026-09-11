@@ -43,7 +43,7 @@ const emit = (registry, name) => { for (const fn of registry.get(name) ?? []) fn
 const windowStub = { location: { origin: "https://example.test", pathname: "/", search: "", replace: value => calls.push({ method: "redirect", args: [value] }) }, setInterval: () => 1, clearInterval() {}, ...events(windowEvents), clearTimeout: id => timers.delete(id), setTimeout: (fn, delay) => { const id = timers.size + 1; timers.set(id, { fn, delay }); return id; }, matchMedia: () => ({ matches: true }) };
 windowStub.scrollTo = () => {};
 const sessionValues = new Map();
-const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value) };
+const sessionStorageStub = { getItem: key => sessionValues.get(key) ?? null, setItem: (key, value) => sessionValues.set(key, value), removeItem: key => sessionValues.delete(key) };
 const documentStub = { hidden: false, activeElement: null, ...events(documentEvents) };
 const navigatorStub = { clipboard: { writeText: async value => { calls.push({ method: "copy", args: [value] }); } } };
 class TestFormData extends FormData {
@@ -694,6 +694,185 @@ const { usePrivateGarden } = load("src/hooks/usePrivateGarden.ts");
 const { PrivateGardenPage, PrivateClearPanel } = load("src/pages/PrivateGardenPage.tsx");
 const privateFixtures = JSON.parse(readFileSync(resolve(root, "scripts/private-garden-preview/fixtures.json"), "utf8"));
 const { createPrivatePreview } = load("scripts/private-garden-preview/gateway.ts");
+const marketApi = load("src/api/garden-market.ts");
+const { useGardenMarket } = load("src/hooks/useGardenMarket.ts");
+const { GardenWarehouse } = load("src/components/GardenWarehouse.tsx");
+const { createMarketPreview } = load("scripts/garden-market-preview/gateway.ts");
+async function marketMount(mode = "ready", override) {
+  const f = createMarketPreview(mode), gateway = override?.(f) ?? f.gateway;
+  const props = { userId: f.userId, active: true, locked: false, gateway, sold: 0 };
+  const h = mount(() => useGardenMarket(props.userId, props.active, props.locked, props.gateway, () => props.sold++));
+  h.effects(); await settlePrivate(h); return { h, f, props };
+}
+async function marketQuote(h, value) {
+  h.tree.select("carrot"); h.render();
+  if (value !== undefined) { h.tree.changeQuantity(value); h.render(); }
+  await h.tree.requestQuote(); h.render();
+}
+test("market quantities preserve decimals/fractions and enforce the whole 128-character input limit", () => {
+  for (const value of ["1", "0.5", "200/3", "00001.00", "1/" + "9".repeat(126), "0." + "0".repeat(125) + "1"]) assert.equal(marketApi.validSaleQuantity(value, "9999"), true, value);
+  for (const value of ["0", "-1", "+1", ".5", "1.", "1e2", "NaN", "1/0", " 1", "1 ", "1,000", "1/" + "9".repeat(127), "10000"]) assert.equal(marketApi.validSaleQuantity(value, "9999"), false, value);
+  assert.equal(marketApi.sameSaleQuantity("0.5", "1/2"), true);
+  assert.equal(marketApi.validSaleQuantity("67", "200/3"), false);
+  assert.equal(marketApi.validSaleQuantity("66.666", "200/3"), true);
+});
+test("market transport whitelists exact POST fields and never posts an owner or price", async () => {
+  const c = { crop_id: "carrot", quantity_g: "200/3", quote_id: "a".repeat(64), request_id: crypto.randomUUID(), owner: "agent", price: 999 }, signal = new AbortController().signal;
+  await marketApi.gardenMarketApi.read("agent", 100, signal, "resident-a"); expectCall("get", "/garden/market", { _expectedUserId: "resident-a", params: { owner: "agent", offset: 100, limit: 100 }, signal, timeout: 15000 });
+  await marketApi.gardenMarketApi.quote(c, signal, "resident-a"); expectCall("post", "/garden/market/quote", { crop_id: "carrot", quantity_g: "200/3" }); assert.equal(calls.at(-1).args[2]._expectedUserId, "resident-a");
+  await marketApi.gardenMarketApi.sell(c, "resident-a"); expectCall("post", "/garden/market/sell", { crop_id: c.crop_id, quantity_g: c.quantity_g, quote_id: c.quote_id, request_id: c.request_id }); assert.equal(calls.at(-1).args[2]._expectedUserId, "resident-a");
+});
+test("market parser rejects foreign ownership, invalid values and pagination; agent can have value without permission", async () => {
+  const f = createMarketPreview(), raw = await f.gateway.read("user", 0, new AbortController().signal);
+  for (const change of [x => x.owner_id = "other", x => x.owner = "agent", x => x.items[0].quantity_g = "-1", x => x.items[0].shells_display = "NaN", x => x.has_more = true, x => x.wallet.shell_balance_exact = "1/0", x => x.items.push(x.items[0])]) {
+    const x = structuredClone(raw); change(x); assert.throws(() => marketApi.parseGardenMarket(x, "user", f.userId, 0));
+  }
+  const agent = marketApi.parseGardenMarket(await f.gateway.read("agent", 0), "agent", f.userId, 0);
+  assert.equal(agent.can_sell, false); assert.equal(agent.items[0].can_sell, false); assert.equal(agent.items[0].shells_display, "6.67");
+  const unverified = structuredClone(raw); unverified.items[0].can_sell = false; delete unverified.items[0].shells_display; delete unverified.items[0].shells_exact;
+  assert.equal(marketApi.parseGardenMarket(unverified, "user", f.userId, 0).items[0].shells_display, undefined);
+});
+test("market waits for inventory tab and never quotes or sells on read or selection", async () => {
+  const { h, f, props } = await marketMount(); assert.equal(f.calls.filter(c => c.kind === "read").length, 2);
+  h.tree.select("carrot"); h.render(); assert.equal(h.tree.quantity, "2637"); assert.equal(f.calls.length, 2);
+  props.active = false; h.render(); h.effects(); await settlePrivate(h); assert.equal(f.calls.length, 2); h.dispose();
+  const isolated = createMarketPreview(); const hidden = mount(() => useGardenMarket(isolated.userId, false, false, isolated.gateway)); hidden.effects(); await settlePrivate(hidden); assert.equal(isolated.calls.length, 0); hidden.dispose();
+});
+test("partial quote keeps exact input; changing quantity invalidates confirmation", async () => {
+  const { h, f } = await marketMount("fractions"); await marketQuote(h, "0.5"); assert.equal(h.tree.quote.quantity_g, "5/10"); assert.equal(f.calls.at(-1).kind, "quote");
+  h.tree.changeQuantity("1"); h.render(); assert.equal(h.tree.quote, undefined); h.tree.confirm(); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0); h.dispose();
+});
+test("market confirmation double click sends once, stores exact request and refreshes authoritative wallets", async () => {
+  const { h, f, props } = await marketMount(); await marketQuote(h, "1"); h.tree.confirm(); h.tree.confirm(); await settlePrivate(h);
+  assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); assert.equal(h.tree.receipt.shells_display, "0.10"); assert.equal(h.tree.stores.user.data.wallet.display, "0.10");
+  assert.equal(h.tree.pending, undefined); assert.equal(sessionValues.size, 0); assert.equal(props.sold, 1); h.dispose();
+});
+test("lost partial-sale response retries the identical request ID, even across tab changes", async () => {
+  const { h, f, props } = await marketMount("unknown"); await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h);
+  const pending = h.tree.pending; assert.ok(pending); h.tree.select("carrot"); h.tree.confirm(); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1);
+  props.active = false; h.render(); h.effects(); await settlePrivate(h); props.active = true; h.render(); h.effects(); await settlePrivate(h);
+  assert.deepEqual(h.tree.pending, pending); h.tree.retry(); await settlePrivate(h);
+  const writes = f.calls.filter(c => c.kind === "sell"); assert.equal(writes.length, 2); assert.deepEqual(writes[0].body, writes[1].body); assert.equal(h.tree.stores.user.data.wallet.display, "0.10"); assert.equal(h.tree.pending, undefined); h.dispose();
+});
+test("unconfirmed sale survives remount without auto-selling and restores only for the same user", async () => {
+  const { h, f } = await marketMount("unknown"); await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); const pending = h.tree.pending; h.dispose();
+  const other = mount(() => useGardenMarket("other-user", false, false, f.gateway)); other.effects(); await settlePrivate(other); assert.equal(other.tree.pending, undefined); other.dispose();
+  const again = mount(() => useGardenMarket(f.userId, true, false, f.gateway)); again.effects(); await settlePrivate(again); assert.deepEqual(again.tree.pending, pending); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1);
+  again.tree.retry(); await settlePrivate(again); assert.equal(again.tree.pending, undefined); assert.equal(again.tree.stores.user.data.wallet.display, "0.10"); again.dispose();
+});
+test("stale quote clears confirmation, refreshes stock and requires a new quote and click", async () => {
+  const { h, f } = await marketMount("stale"); await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); assert.equal(h.tree.pending, undefined); assert.equal(h.tree.quote, undefined); assert.equal(h.tree.selected, undefined); assert.match(h.tree.error, /重新選擇數量/);
+  assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.tree.confirm(); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
+});
+test("idempotency conflict is not escaped by issuing another sale ID", async () => {
+  const { h, f } = await marketMount("ready", f => ({ ...f.gateway, sell: async () => { throw { response: { status: 409, data: { error: { code: "idempotency_conflict" } } } }; } }));
+  await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); assert.equal(h.tree.conflict, true); assert.ok(h.tree.pending); const stored = [...sessionValues.values()][0];
+  h.tree.retry(); h.tree.select("carrot"); h.tree.confirm(); await settlePrivate(h); assert.equal([...sessionValues.values()][0], stored); assert.equal(f.calls.filter(c => c.kind === "quote").length, 1); h.dispose();
+});
+test("malformed success is uncertain, not a receipt or locally credited wallet", async () => {
+  const { h } = await marketMount("ready", f => ({ ...f.gateway, sell: async () => ({ request_id: "wrong", wallet: { shell_balance_display: "999.00" } }) }));
+  await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); assert.ok(h.tree.pending); assert.equal(h.tree.receipt, undefined); assert.equal(h.tree.stores.user.data.wallet.display, "0.00"); h.dispose();
+});
+test("quote response must match identity crop and exact amount", async () => {
+  for (const change of [x => x.owner = "agent", x => x.owner_id = "other", x => x.crop_id = "tomato", x => x.quantity_g = "2", x => x.quote_id = "bad"]) {
+    const f = createMarketPreview(), request = { crop_id: "carrot", quantity_g: "1" }, q = await f.gateway.quote(request); change(q); assert.throws(() => marketApi.parseGardenQuote(q, f.userId, request));
+  }
+});
+test("a normalized response longer than 128 characters still sells using the original valid decimal", async () => {
+  const { h, f } = await marketMount(), value = "0." + "0".repeat(125) + "1"; await marketQuote(h, value);
+  assert.ok(h.tree.quote.quantity_g.length > 128); h.tree.confirm(); await settlePrivate(h); assert.equal(f.calls.filter(c => c.kind === "sell")[0].body.quantity_g, value); assert.ok(h.tree.receipt); h.dispose();
+});
+test("storage failure stops sale before POST and never silently loses an uncertain request", async () => {
+  const { h, f } = await marketMount(); await marketQuote(h, "1"); const save = sessionStorageStub.setItem;
+  try { sessionStorageStub.setItem = () => { throw Error("Quota"); }; h.tree.confirm(); await settlePrivate(h); assert.equal(h.tree.storageError, true); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0); } finally { sessionStorageStub.setItem = save; h.dispose(); }
+});
+test("market auth loss clears both warehouses and prevents new quotes", async () => {
+  const { h, f } = await marketMount("denied"); assert.equal(h.tree.denied, true); assert.equal(h.tree.stores.user.data, undefined); assert.equal(h.tree.stores.agent.data, undefined); h.tree.select("carrot"); await h.tree.requestQuote(); assert.equal(f.calls.filter(c => c.kind === "quote").length, 0); h.dispose();
+});
+test("unreleased market reports unavailable instead of fake money or disabling the old garden", async () => {
+  const { h } = await marketMount("unavailable"); assert.equal(h.tree.stores.user.unavailable, true); assert.equal(h.tree.stores.user.data, undefined); assert.equal(h.tree.denied, false); h.dispose();
+});
+test("late sale response cannot replace another user's warehouse", async () => {
+  const waiting = deferred(); const { h, props } = await marketMount("ready", f => ({ ...f.gateway, sell: () => waiting.promise })); await marketQuote(h, "1"); h.tree.confirm();
+  const pending = h.tree.pending; props.userId = "another"; h.render(); assert.equal(h.tree.stores.user.data, undefined); h.effects(); await settlePrivate(h); waiting.resolve({ ...pending }); await settlePrivate(h); assert.equal(h.tree.userId, "another"); assert.equal(h.tree.receipt, undefined); h.dispose();
+});
+test("a bare 404 or 400 after a lost sale never deletes its pending request", async () => {
+  for (const status of [400, 404, 422, 429, 500]) {
+    let rejectRetry = false;
+    const { h, f } = await marketMount("unknown", f => ({ ...f.gateway, sell: c => rejectRetry ? Promise.reject({ response: { status } }) : f.gateway.sell(c) }));
+    await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); const pending = h.tree.pending;
+    rejectRetry = true; h.tree.retry(); await settlePrivate(h); assert.deepEqual(h.tree.pending, pending); assert.equal(h.tree.receipt, undefined); assert.match(h.tree.error, /尚未確認/);
+    assert.deepEqual(JSON.parse([...sessionValues.values()].at(-1)), pending); h.tree.confirm(); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
+  }
+});
+test("restored pending can retry the same sale even when market GET is unavailable", async () => {
+  const { h, f } = await marketMount("unknown"); await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); const pending = h.tree.pending; h.dispose();
+  const g = { ...f.gateway, read: async () => { throw { response: { status: 503 } }; } };
+  const again = mount(() => useGardenMarket(f.userId, true, false, g)); again.effects(); await settlePrivate(again); assert.equal(again.tree.stores.user.data, undefined);
+  again.tree.retry(); await settlePrivate(again); assert.equal(again.tree.receipt.request_id, pending.request_id); assert.equal(again.tree.pending, undefined); assert.equal(again.tree.stores.user.data, undefined);
+  assert.deepEqual(f.calls.filter(c => c.kind === "sell").map(c => c.body), [pending, pending]); again.dispose();
+});
+test("actual transport identity mismatch preserves the original account outbox and clears private view", async () => {
+  let changed = false;
+  const { h, f } = await marketMount("unknown", f => ({ ...f.gateway, sell: (c, userId) => { assert.equal(userId, f.userId); if (changed) throw { code: "ROOKERY_SESSION_CHANGED" }; return f.gateway.sell(c); } }));
+  await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); const pending = h.tree.pending; changed = true;
+  h.tree.retry(); await settlePrivate(h); assert.deepEqual(h.tree.pending, pending); assert.equal(h.tree.denied, true); assert.equal(h.tree.stores.user.data, undefined); assert.equal(h.tree.stores.agent.data, undefined); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
+});
+test("an old refresh callback cannot abort or load over the new identity", async () => {
+  const { h, props } = await marketMount(); const oldRefresh = h.tree.refresh, f2 = createMarketPreview(), signals = [], wait = deferred();
+  props.userId = f2.userId; props.gateway = { ...f2.gateway, read: (owner, offset, signal) => { signals.push(signal); return wait.promise.then(() => f2.gateway.read(owner, offset)); } };
+  h.render(); h.effects(); assert.equal(signals.length, 2); await oldRefresh(); assert.ok(signals.every(s => !s.aborted)); assert.equal(signals.length, 2);
+  wait.resolve(); await settlePrivate(h); assert.equal(h.tree.stores.user.data.owner_id, f2.userId); assert.equal(h.tree.stores.user.loading, false); h.dispose();
+});
+test("cancel in-flight quote aborts it and old completion cannot unlock a newer quote", async () => {
+  const first = deferred(), second = deferred(), signals = []; let count = 0;
+  const { h, f } = await marketMount("ready", f => ({ ...f.gateway, quote: (c, signal) => { signals.push(signal); return (++count === 1 ? first : second).promise.then(() => f.gateway.quote(c)); } }));
+  h.tree.select("carrot"); h.render(); const p1 = h.tree.requestQuote(); h.render(); h.tree.close(); h.render(); assert.equal(signals[0].aborted, true); assert.equal(h.tree.busy, false); assert.equal(h.tree.selected, undefined);
+  h.tree.select("carrot"); h.render(); const p2 = h.tree.requestQuote(); h.render(); first.resolve(); await p1; h.render(); assert.equal(h.tree.busy, true); assert.equal(h.tree.quote, undefined);
+  second.resolve(); await p2; h.render(); assert.ok(h.tree.quote); assert.equal(h.tree.busy, false); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0); h.dispose();
+});
+test("cancel cannot unlock an in-flight sale even before React renders pending", async () => {
+  const wait = deferred(); const { h, f } = await marketMount("ready", f => ({ ...f.gateway, sell: c => wait.promise.then(() => f.gateway.sell(c)) }));
+  await marketQuote(h, "1"); h.tree.confirm(); h.tree.close(); h.tree.confirm(); h.render(); assert.equal(h.tree.busy, true); assert.ok(h.tree.pending);
+  wait.resolve(); await settlePrivate(h); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
+});
+test("market pagination deduplicates crops and preserves ownership while refresh cancels stale pages", async () => {
+  const wait = deferred(); let deferredPage = true, pageSignal;
+  const { h, f } = await marketMount("ready", f => ({ ...f.gateway, read: async (owner, offset, signal) => {
+    const r = await f.gateway.read(owner, 0); if (owner !== "user") return r;
+    if (!offset) return { ...r, has_more: true, next_offset: 100 };
+    pageSignal = signal; if (deferredPage) await wait.promise;
+    return { ...r, items: [...r.items, { ...r.items[0], crop_id: "tomato", crop_name: "番茄" }] };
+  } }));
+  h.tree.loadMore("user"); await tick(); h.render(); const refresh = h.tree.refresh(); assert.equal(pageSignal.aborted, true); wait.resolve(); await refresh; await settlePrivate(h); assert.equal(h.tree.stores.user.data.items.length, 1);
+  deferredPage = false; h.tree.loadMore("user"); await settlePrivate(h); assert.equal(h.tree.stores.user.data.items.length, 2); assert.equal(h.tree.stores.user.data.has_more, false); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0); h.dispose();
+});
+test("sale receipt replay never overwrites a newer wallet returned by GET", async () => {
+  const { h } = await marketMount("ready", f => ({ ...f.gateway, sell: async c => { const r = await f.gateway.sell(c); return { ...r, wallet: { shell_balance_exact: "999", shell_balance_display: "999.00" } }; } }));
+  await marketQuote(h, "1"); h.tree.confirm(); await settlePrivate(h); assert.equal(h.tree.stores.user.data.wallet.display, "0.10"); h.dispose();
+});
+test("warehouse UI has only user sale actions, explicit quote before confirmation and editable partial quantity", async () => {
+  const f = createMarketPreview(), props = { userId: f.userId, active: true, locked: false, gateway: f.gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } };
+  const h = mount(GardenWarehouse, props); h.effects(); await settlePrivate(h);
+  const agent = nodes(h.tree, n => n.type === "section" && n.props["aria-label"] === "室友的倉庫")[0]; assert.match(text(agent), /6.67/); assert.equal(nodes(agent, n => n.props.className === "private-button market-sell").length, 0);
+  click(h, "選擇出售數量"); assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, "2637"); click(h, "部分數量");
+  const input = nodes(h.tree, n => n.type === "input")[0]; input.props.onChange({ target: { value: "0.5" } }); h.render();
+  nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); await settlePrivate(h); assert.match(text(h.tree), /可獲得 0.05 貝/); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0);
+  click(h, "確認出售"); await settlePrivate(h); assert.match(text(h.tree), /出售完成/); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
+});
+test("sale UI uses dark accessible input, forbids bulk selling and stock that cannot be submitted exactly", async () => {
+  const f = createMarketPreview(), huge = "1/" + "9".repeat(127), gateway = { ...f.gateway, read: async (owner, offset) => { const r = await f.gateway.read(owner, offset); r.items[0].quantity_g = huge; return r; } };
+  const h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
+  assert.match(text(h.tree), /不會截斷數量/); assert.equal(nodes(h.tree, n => n.props.className === "private-button market-sell").length, 0); assert.doesNotMatch(text(h.tree), /全部作物一鍵|全倉出售/);
+  const css = readFileSync(resolve(root, "src/private-garden.css"), "utf8"); assert.match(css, /market-quantity\{[^}]*background:var\(--pg-bg\);color:var\(--pg-ink\)/); assert.match(css, /market-quantity\{[^}]*font-size:16px/); h.dispose();
+});
+test("market Simplified Chinese preserves exact values and rejects rather than truncates a long paste", async () => {
+  language.setUiLanguage("zh-CN");
+  const f = createMarketPreview(), h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway: f.gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
+  assert.match(text(h.tree), /更新仓库与售值/); click(h, "选择出售数量"); const input = nodes(h.tree, n => n.type === "input")[0]; assert.equal(input.props.maxLength, undefined);
+  const tooLong = "0." + "0".repeat(126) + "1"; input.props.onChange({ target: { value: tooLong } }); h.render(); assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, tooLong);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "取得报价")[0].props.disabled, true); assert.match(text(h.tree), /请填大于 0/); h.dispose();
+});
 const settlePrivate = async h => { await tick(); await tick(); await tick(); h.render(); };
 async function privateMount(component = usePrivateGarden, mode = "ready", override) {
   const preview = createPrivatePreview(mode), gateway = override ?? preview.gateway;
@@ -855,7 +1034,9 @@ test("private crop history stays collapsed and inventory fractions require expli
   const { h } = await privateMount(PrivateGardenPage, "harvested");
   const history = nodes(h.tree, n => n.props.className === "private-batch-history"); assert.equal(history.length, 1); assert.equal(history[0].props.open, undefined); h.dispose();
   const { h: q } = await privateMount(PrivateGardenPage, "fractions"); click(q, "雙方倉庫");
-  const precise = nodes(q.tree, n => n.type === "button" && n.props.className === "private-exact-toggle"); assert.equal(precise.length, 2); precise.forEach(n => assert.equal(n.props["aria-expanded"], "false")); q.dispose();
+  const child = components(q, "GardenWarehouse")[0]; assert.equal(child.props.active, true);
+  const warehouse = mount(GardenWarehouse, child.props); warehouse.effects(); await settlePrivate(warehouse);
+  const precise = nodes(warehouse.tree, n => n.type === "button" && n.props.className === "private-exact-toggle"); assert.equal(precise.length, 2); precise.forEach(n => assert.equal(n.props["aria-expanded"], "false")); warehouse.dispose(); q.dispose();
 });
 test("private own proposal has revoke only, agent proposal requires explicit checked consent", () => {
   const sent = []; let data = privateFixtures.ownProposal;
@@ -4252,7 +4433,7 @@ function authClientHarness(refresh) {
   const code = ts.transpileModule(readFileSync(resolve(root, "src/api/client.ts"), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
   const module = { exports: {} };
   new Function("require", "module", "exports", "localStorage", "window", code)(
-    name => name === "axios" ? { __esModule: true, default: axios } : oauthNavigation,
+    name => name === "axios" ? { __esModule: true, default: axios } : name === "./session-identity" ? load("src/api/session-identity.ts") : oauthNavigation,
     module, module.exports,
     { getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }, windowStub,
   );

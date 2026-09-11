@@ -95,6 +95,22 @@
 .private-inventory-list{list-style:none;padding:0;margin:18px 0}
 .private-inventory-list li{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #4a3a6266;padding:16px 0}
 .private-inventory-list li>strong{text-align:right;font-variant-numeric:tabular-nums}
+.garden-market>.private-section-heading{flex-wrap:wrap}
+.market-wallet,.market-item-heading,.market-item-value{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.market-wallet{margin:18px 0;padding:14px 0;border-block:1px solid var(--pg-line);color:var(--pg-muted)}
+.market-wallet strong{font-size:22px;color:var(--pg-green);font-variant-numeric:tabular-nums;text-align:right;min-width:0}
+.market-wallet small,.market-item-value{font-size:14px}
+.market-items{list-style:none;padding:0;margin:0}
+.market-items>li{padding:20px 0;border-bottom:1px solid var(--pg-line);min-width:0}
+.market-item-heading{align-items:flex-start}.market-item-heading>strong{text-align:right;font-variant-numeric:tabular-nums;min-width:0}
+.market-item-value{margin-top:10px;color:var(--pg-muted)}.market-item-value strong{color:var(--pg-green);text-align:right;min-width:0}
+.market-sell{margin-top:14px;width:100%}
+.market-order{margin-top:24px;padding-top:22px;border-top:1px solid var(--pg-green)}
+.private-garden-page .market-quantity{width:100%;min-height:48px;border:1px solid var(--pg-line);border-radius:12px;padding:10px 12px;background:var(--pg-bg);color:var(--pg-ink);-webkit-text-fill-color:var(--pg-ink);font-size:16px;color-scheme:dark}
+.private-garden-page .market-quantity:disabled{opacity:.6}.market-order #market-quantity-help{margin-top:8px}
+.market-quote{margin-top:20px;padding:18px;background:#1a221e;border:1px solid #74876066;border-radius:14px}
+.market-quote strong,.market-receipt{color:var(--pg-green)}.market-quote>p{margin-bottom:10px}.market-quote>.private-button,.market-quote-button{margin-top:16px;width:100%}
+.market-pending{border-color:#a3946b}.market-pending>.private-button{margin-top:14px}.market-pending>p{margin-top:10px}
 .private-progress-number{font-size:38px;color:var(--pg-green);margin-top:24px!important}
 .private-progress-number small{font-size:16px;color:var(--pg-muted)}
 .private-garden-page progress{display:block;width:100%;height:8px;margin:14px 0 18px;border:0;border-radius:8px;overflow:hidden;background:#31283e;color:var(--pg-green);accent-color:var(--pg-green)}
