@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { gardenMarketApi, parseGardenMarket, parseGardenQuote, parseGardenSale, validSaleQuantity, validSaleRequest,
+import { gardenMarketApi, hasSaleStock, parseGardenMarket, parseGardenQuote, parseGardenSale, validSaleQuantity, validSaleRequest,
   type GardenMarket, type GardenMarketGateway, type GardenQuote, type GardenSale, type MarketItem, type SaleRequest } from "../api/garden-market";
 import { privateGardenHttpError, type WarehouseOwner } from "../api/private-garden";
 import { isSessionIdentityError } from "../api/session-identity";
@@ -90,9 +90,9 @@ export function useGardenMarket(userId: string, active: boolean, locked: boolean
   const select = (cropId: string) => {
     if (!editable()) return;
     const market = snapshot.current.stores.user.data, item = market?.items.find(i => i.crop_id === cropId);
-    if (!market?.can_sell || market.owner !== "user" || market.owner_id !== userId || !item?.can_sell || !validSaleQuantity(item.quantity_g, item.quantity_g)) return;
+    if (!market?.can_sell || market.owner !== "user" || market.owner_id !== userId || !item?.can_sell || !hasSaleStock(item.quantity_g)) return;
     quoteRead.current?.abort();
-    setState(p => ({ ...p, selected: item, quantity: item.quantity_g, quote: undefined, receipt: undefined, error: "", conflict: false }));
+    setState(p => ({ ...p, selected: item, quantity: validSaleQuantity(item.quantity_g, item.quantity_g) ? item.quantity_g : "", quote: undefined, receipt: undefined, error: "", conflict: false }));
   };
   const changeQuantity = (quantity: string) => { if (editable()) { quoteRead.current?.abort(); setState(p => ({ ...p, quantity, quote: undefined, error: "" })); } };
   const close = () => { if (!controls.current.locked && !snapshot.current.denied) cancelQuote(); };

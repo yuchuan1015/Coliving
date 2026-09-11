@@ -45,6 +45,11 @@ export function validSaleQuantity(value: string, stock: string): boolean {
   const a = saleFraction(value), b = saleFraction(stock);
   return value.length <= 128 && !!a && !!b && a[0] > 0n && a[0] * b[1] <= b[0] * a[1];
 }
+// Response stock may exceed the request-length limit and still allow a partial sale.
+export function hasSaleStock(stock: string): boolean {
+  const amount = saleFraction(stock);
+  return !!amount && amount[0] > 0n;
+}
 export function saleQuantityLabel(value: string): string {
   const f = saleFraction(value);
   if (!f) return "—";

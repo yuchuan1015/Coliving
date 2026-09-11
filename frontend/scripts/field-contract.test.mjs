@@ -860,18 +860,77 @@ test("warehouse UI has only user sale actions, explicit quote before confirmatio
   nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); await settlePrivate(h); assert.match(text(h.tree), /可獲得 0.05 貝/); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0);
   click(h, "確認出售"); await settlePrivate(h); assert.match(text(h.tree), /出售完成/); assert.equal(f.calls.filter(c => c.kind === "sell").length, 1); h.dispose();
 });
-test("sale UI uses dark accessible input, forbids bulk selling and stock that cannot be submitted exactly", async () => {
+test("sale UI uses dark input and keeps partial sale available when the whole stock cannot be submitted exactly", async () => {
   const f = createMarketPreview(), huge = "1/" + "9".repeat(127), gateway = { ...f.gateway, read: async (owner, offset) => { const r = await f.gateway.read(owner, offset); r.items[0].quantity_g = huge; return r; } };
   const h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
-  assert.match(text(h.tree), /不會截斷數量/); assert.equal(nodes(h.tree, n => n.props.className === "private-button market-sell").length, 0); assert.doesNotMatch(text(h.tree), /全部作物一鍵|全倉出售/);
+  assert.match(text(h.tree), /仍可填寫部分數量；不會截斷庫存/); assert.equal(nodes(h.tree, n => n.props.className === "private-button market-sell").length, 1); assert.doesNotMatch(text(h.tree), /全部作物一鍵|全倉出售/);
+  click(h, "選擇出售數量"); assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, ""); assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "全部數量")[0].props.disabled, true); assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "部分數量")[0].props.disabled, false);
   const css = readFileSync(resolve(root, "src/private-garden.css"), "utf8"); assert.match(css, /market-quantity\{[^}]*background:var\(--pg-bg\);color:var\(--pg-ink\)/); assert.match(css, /market-quantity\{[^}]*font-size:16px/); h.dispose();
+});
+test("a real long remaining fraction after a 128-character micro sale still permits a fresh 100g partial sale", async () => {
+  const { h, f } = await marketMount(), tiny = "0." + "0".repeat(125) + "1";
+  assert.equal(tiny.length, 128); await marketQuote(h, tiny); h.tree.confirm(); await settlePrivate(h);
+  const remaining = h.tree.stores.user.data.items[0].quantity_g, denominator = 10n ** 126n;
+  assert.ok(remaining.length > 128); assert.equal(marketApi.sameSaleQuantity(remaining, `${2637n * denominator - 1n}/${denominator}`), true);
+  assert.equal(marketApi.hasSaleStock(remaining), true); assert.equal(marketApi.validSaleQuantity(remaining, remaining), false);
+  h.tree.select("carrot"); h.render(); assert.equal(h.tree.selected.quantity_g, remaining); assert.equal(h.tree.quantity, "");
+  h.tree.changeQuantity("100"); h.render(); await h.tree.requestQuote(); h.render(); assert.equal(h.tree.quote.shells_display, "10.00");
+  h.tree.confirm(); await settlePrivate(h); assert.deepEqual(f.calls.filter(c => c.kind === "sell").map(c => c.body.quantity_g), [tiny, "100"]);
+  assert.equal(marketApi.sameSaleQuantity(h.tree.stores.user.data.items[0].quantity_g, `${2537n * denominator - 1n}/${denominator}`), true); h.dispose();
+});
+test("partial-sale selection still rejects zero/invalid stock and backend read-only permission", async () => {
+  for (const amount of ["0", "0/123", "-1", "1/0", "NaN"]) assert.equal(marketApi.hasSaleStock(amount), false);
+  for (const change of [r => { r.items[0].quantity_g = "0"; }, r => { r.items[0].can_sell = false; }, r => { r.can_sell = false; }]) {
+    const { h } = await marketMount("ready", f => ({ ...f.gateway, read: async (owner, offset) => { const r = await f.gateway.read(owner, offset); if (owner === "user") change(r); return r; } }));
+    h.tree.select("carrot"); h.render(); assert.equal(h.tree.selected, undefined); h.dispose();
+  }
 });
 test("market Simplified Chinese preserves exact values and rejects rather than truncates a long paste", async () => {
   language.setUiLanguage("zh-CN");
   const f = createMarketPreview(), h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway: f.gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
   assert.match(text(h.tree), /更新仓库与售值/); click(h, "选择出售数量"); const input = nodes(h.tree, n => n.type === "input")[0]; assert.equal(input.props.maxLength, undefined);
+  assert.match(text(h.tree), /可填整数、小数或分数，例如 100、0.5、200\/3。/); assert.doesNotMatch(text(h.tree), /128|四舍五入的重量/);
   const tooLong = "0." + "0".repeat(126) + "1"; input.props.onChange({ target: { value: tooLong } }); h.render(); assert.equal(nodes(h.tree, n => n.type === "input")[0].props.value, tooLong);
-  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "取得报价")[0].props.disabled, true); assert.match(text(h.tree), /请填大于 0/); h.dispose();
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "取得报价")[0].props.disabled, true); assert.match(text(h.tree), /数量太长了，请填 128 字符以内的数量。/);
+  nodes(h.tree, n => n.type === "input")[0].props.onChange({ target: { value: "0" } }); h.render(); assert.match(text(h.tree), /请填大于 0/); assert.doesNotMatch(text(h.tree), /128/); h.dispose();
+});
+test("pending crop labels cover the 12 existing crops and have a safe unknown-ID fallback", () => {
+  const { privateCropLabels, privateCropLabel } = load("src/data/private-crop-icons.ts");
+  assert.equal(Object.keys(privateCropLabels).length, 12);
+  for (const crop of privateFixtures.growing.crops) assert.equal(privateCropLabel(crop.id), crop.name);
+  for (const id of ["future-crop", "constructor", "__proto__", "<script>"]) assert.equal(privateCropLabel(id), "這份收成");
+});
+test("pending name display works without market data and does not alter the immutable request or block retry", async () => {
+  for (const crop_id of ["carrot", "constructor"]) {
+    const f = createMarketPreview(), writes = [], reads = [], pending = { crop_id, quantity_g: "200/3", quote_id: "a".repeat(64), request_id: crypto.randomUUID() };
+    const storageKey = `rookery.garden.pending-sale.v1:${encodeURIComponent(f.userId)}`; sessionValues.set(storageKey, JSON.stringify(pending));
+    const gateway = { ...f.gateway, read: async (...args) => { reads.push(args); throw { response: { status: 503 } }; }, sell: async body => { writes.push(body); throw Error("Synthetic lost response"); } };
+    const h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
+    const pendingCard = nodes(h.tree, n => n.type === "section" && n.props["aria-label"] === "未確認的出售")[0];
+    assert.match(text(pendingCard), crop_id === "carrot" ? /作物：胡蘿蔔/ : /作物：這份收成/); assert.doesNotMatch(text(pendingCard), /carrot|constructor/);
+    assert.equal(reads.length, 2); const retry = nodes(pendingCard, n => n.type === "button" && text(n) === "確認這筆出售結果")[0]; assert.equal(retry.props.disabled, false);
+    retry.props.onClick(); await settlePrivate(h); assert.equal(reads.length, 2); assert.deepEqual(writes, [pending]); assert.deepEqual(JSON.parse(sessionValues.get(storageKey)), pending); assert.equal(f.calls.length, 0); h.dispose();
+  }
+});
+test("unknown sale uses a Simplified crop name and remains the same single sale after retry", async () => {
+  language.setUiLanguage("zh-CN");
+  const f = createMarketPreview("unknown"), h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway: f.gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
+  click(h, "选择出售数量"); nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); await settlePrivate(h); click(h, "确认出售"); await settlePrivate(h);
+  assert.match(text(h.tree), /作物：胡萝卜/); assert.doesNotMatch(text(h.tree), /carrot/); click(h, "确认这笔出售结果"); await settlePrivate(h);
+  const writes = f.calls.filter(c => c.kind === "sell"); assert.equal(writes.length, 2); assert.deepEqual(writes[0].body, writes[1].body); assert.match(text(h.tree), /仓库目前没有收成。/); assert.doesNotMatch(text(h.tree), /第一份收成/); h.dispose();
+});
+test("ordinary and micro quote values start collapsed, disclose exact value without an API call, and can collapse again", async () => {
+  for (const [amount, shown, exact] of [["100", "10.00", "100/10"], ["0.0001", "0.00", "1/100000"]]) {
+    const f = createMarketPreview(), h = mount(GardenWarehouse, { userId: f.userId, active: true, locked: false, gateway: f.gateway, onSold() {}, loadInventory() {}, inventory: { user: { error: "" }, agent: { error: "" } } }); h.effects(); await settlePrivate(h);
+    click(h, "選擇出售數量"); nodes(h.tree, n => n.type === "input")[0].props.onChange({ target: { value: amount } }); h.render(); nodes(h.tree, n => n.type === "form")[0].props.onSubmit({ preventDefault() {} }); await settlePrivate(h);
+    const quote = nodes(h.tree, n => n.props.className === "market-quote")[0]; assert.ok(text(quote).includes(`可獲得 ${shown} 貝`));
+    const disclosure = nodes(quote, n => n.props.className === "private-exact" && nodes(n, b => b.type === "button" && text(b) === "精確售值").length)[0];
+    const button = nodes(disclosure, n => n.type === "button")[0], detail = nodes(disclosure, n => n.props.hidden === true)[0];
+    assert.equal(button.props.type, "button"); assert.equal(button.props["aria-expanded"], "false"); assert.equal(text(detail), `${exact} 貝`);
+    const callsBefore = f.calls.length, sibling = { hidden: detail.props.hidden }, attributes = {}, target = { nextElementSibling: sibling, setAttribute(k, v) { attributes[k] = v; } };
+    button.props.onClick({ currentTarget: target }); assert.equal(sibling.hidden, false); assert.equal(attributes["aria-expanded"], "true");
+    button.props.onClick({ currentTarget: target }); assert.equal(sibling.hidden, true); assert.equal(attributes["aria-expanded"], "false"); assert.equal(f.calls.length, callsBefore); assert.equal(f.calls.filter(c => c.kind === "sell").length, 0); h.dispose();
+  }
 });
 const settlePrivate = async h => { await tick(); await tick(); await tick(); h.render(); };
 async function privateMount(component = usePrivateGarden, mode = "ready", override) {
