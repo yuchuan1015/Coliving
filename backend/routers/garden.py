@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from models.user import User
-from schemas.garden import GardenActions
-from services import garden_service
+from schemas.garden import GardenActions, GardenQuoteRequest, GardenSaleRequest
+from services import garden_service, garden_market
 from services.garden_mcp import execute_actions, service_error
 from utils.deps import get_current_user, get_db
 
@@ -47,6 +47,25 @@ def inventory(
 @router.get("/progress")
 def progress(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return _read(db, current_user.id, garden_service.get_progress)
+
+
+@router.get("/market")
+def market(owner: Literal["user", "agent"] = Query(default="user"),
+           limit: int = Query(default=100, ge=1, le=100), offset: int = Query(default=0, ge=0),
+           db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return _read(db, current_user.id, garden_market.get_market, owner=owner, limit=limit, offset=offset)
+
+
+@router.post("/market/quote")
+def market_quote(body: GardenQuoteRequest, db: Session = Depends(get_db),
+                 current_user: User = Depends(get_current_user)):
+    return _read(db, current_user.id, garden_market.quote, **body.model_dump())
+
+
+@router.post("/market/sell")
+def market_sell(body: GardenSaleRequest, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    return _read(db, current_user.id, garden_market.sell, **body.model_dump())
 
 
 @router.post("/actions")

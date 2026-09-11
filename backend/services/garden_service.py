@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.user import User
 from models.garden import GardenWorld, GardenPlot, GardenOperation, GardenStock, GardenLedger, GardenProgress, GardenLog
-from services import garden_catalog, garden_engine, time_service
+from services import garden_catalog, garden_engine, time_service, garden_pricing, garden_lots, garden_credit
 
 
 class GardenError(ValueError):
@@ -176,11 +176,12 @@ def _ledger(db, *, source_key, crop_id, planting_id, batch_id, kind, amount, now
         return
     if db.scalar(select(GardenLedger.id).where(GardenLedger.source_key == source_key)) is not None:
         return
-    db.add(GardenLedger(source_key=source_key, owner_key=owner.key if owner else None,
+    entry = GardenLedger(source_key=source_key, owner_key=owner.key if owner else None,
                        household_id=owner.household_id if owner else None,
                        crop_id=crop_id, planting_id=planting_id, batch_id=batch_id, kind=kind,
                        quantity_numerator=str(amount.numerator), quantity_denominator=str(amount.denominator),
-                       created_at=now))
+                       created_at=now)
+    db.add(entry)
     if owner:
         stock = db.get(GardenStock, (owner.key, crop_id))
         if stock is None:
@@ -191,6 +192,8 @@ def _ledger(db, *, source_key, crop_id, planting_id, batch_id, kind, amount, now
         stock.quantity_numerator = str(total.numerator)
         stock.quantity_denominator = str(total.denominator)
     db.flush()
+    if owner:
+        garden_lots.register_lot(db, entry)
 
 
 def _public_events(db, plot, state, events, now):
@@ -280,6 +283,10 @@ def _advance_plot(db, plot, world, now):
         previous = _dump(state)
         events = garden_engine.advance(state, now, epoch=time_service.aware(world.epoch_at),
                                        seed=world.seed, public=plot.scope == "public")
+        for event in events:
+            if event["kind"] in ("batch_ready", "public_harvest"):
+                garden_pricing.freeze_batch(db, crop_id=state["crop_id"], planting_id=state["planting_id"],
+                    batch_id=event["batch_id"], matured_at=_date(event["at"]))
         if plot.scope == "public":
             _public_events(db, plot, state, events, now)
         else:
@@ -512,6 +519,10 @@ def _perform(db, actor, plot, world, now, args):
                 batch["remaining_g"] -= quantity
             else:
                 quantity = garden_engine.harvest(state, args["batch_id"], now)
+            # A batch may already be ready when the economy release is installed.
+            # Its stored maturity timestamp still anchors the frozen lot price.
+            garden_pricing.freeze_batch(db, crop_id=state["crop_id"], planting_id=state["planting_id"],
+                batch_id=batch["id"], matured_at=_date(batch["matured_at"]))
             _ledger(db, source_key=f"{action}:{batch['id']}", crop_id=state["crop_id"],
                     planting_id=state["planting_id"], batch_id=batch["id"], kind=action,
                     amount=quantity, now=now, owner=actor)
@@ -550,6 +561,9 @@ def _perform(db, actor, plot, world, now, args):
                     state = None
                     extra["cleared"] = True
         plot.state_json = _dump(state) if state else None
+    credit_awarded = garden_credit.award(db, actor, scope=plot.scope, action=action,
+        epoch_at=time_service.aware(world.epoch_at), now=now, vote_id=args["vote_id"])
+    extra["credit_awarded"] = credit_awarded
     plot.revision += 1
     _log(db, plot, action, now, actor, args["planting_id"] or ((state or {}).get("planting_id")),
          batch_id=args["batch_id"], proposal_id=extra.get("proposal_id") or args["proposal_id"],

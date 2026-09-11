@@ -9,8 +9,8 @@ import logging
 
 from pydantic import ValidationError
 
-from schemas.garden import GardenAction, GardenActions, GardenInventoryQuery
-from services import garden_service
+from schemas.garden import GardenAction, GardenActions, GardenInventoryQuery, GardenQuoteRequest, GardenSaleRequest
+from services import garden_service, garden_market
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +74,18 @@ def dispatch(db, user_id: str, *, action: str, actions_json: str = "", owner: st
             return execute_actions(db, actor, body.actions)
         if action == "actions":
             return error_result("invalid_request", "批次動作需要 actions_json", 422)
+        if action == "market":
+            if any(value is not None for value in fields.values()):
+                return error_result("invalid_request", "收購處查詢不能夾帶動作參數", 422)
+            query = GardenInventoryQuery.model_validate({"owner": owner, "limit": limit, "offset": offset})
+            return {"ok": True, "result": garden_market.get_market(db, actor, **query.model_dump())}
+        if action in ("quote", "sell"):
+            if owner != "agent":
+                return error_result("forbidden_owner", "室友只能出售自己倉庫的收成", 403)
+            body_type = GardenQuoteRequest if action == "quote" else GardenSaleRequest
+            body = body_type.model_validate({k: v for k, v in fields.items() if v is not None})
+            operation = garden_market.quote if action == "quote" else garden_market.sell
+            return {"ok": True, "result": operation(db, actor, **body.model_dump())}
         if action in READ_ACTIONS:
             if any(value is not None for value in fields.values()):
                 return error_result("invalid_request", "查詢不能夾帶動作參數", 422)

@@ -2704,12 +2704,16 @@ def garden(action: str, plot_id: str | None = None, request_id: str | None = Non
            reason: str | None = None, accept: bool | None = None,
            vote_id: str | None = None, actions_json: str = "",
            owner: str = "agent", limit: int = 100, offset: int = 0,
+           quantity_g: str | None = None, quote_id: str | None = None,
            ctx: Context = None) -> str:
     """菜園：以已認證的 AI 室友身分操作。action 可選：
 - status / private：自己的四塊私田、批次及照顧需求
 - public：公田現況與本輪投票
 - inventory（owner=agent 或 user, limit, offset）：同戶分開記帳的倉庫
 - progress：同戶作物圖鑑進度
+- market（owner=agent 或 user）：倉庫收購價及各自貝餘額；只能出售自己倉庫
+- quote（crop_id, quantity_g）：取得出售報價；quantity_g 是克數字串，可用精確分數
+- sell（crop_id, quantity_g, quote_id, request_id）：確認報價後出售自己的收成、賺貝
 - plant（plot_id, crop_id, request_id）：私田種植
 - water / care（plot_id, planting_id, request_id）：澆水／照顧，依田地權限執行
 - harvest（plot_id, planting_id, batch_id, request_id）：私田當批剩餘實際採收
@@ -2719,7 +2723,8 @@ def garden(action: str, plot_id: str | None = None, request_id: str | None = Non
 - clear_dead_crop（plot_id, planting_id, request_id）：清除死亡私田作物
 - vote（plot_id, vote_id, crop_id, request_id）：公田投票，每身分一票
 - actions（actions_json）：1 到 4 筆上述動作的 JSON 陣列，每筆獨立交易並依輸入順序回報
-所有寫入都需要 request_id；不確定結果時以相同 request_id 和相同內容重試。
+出售須先 quote 核對金額再 sell；收成不會自動出售。只有 Agent 的公田貢獻會獲得信用。
+所有動作寫入都需要 request_id；不確定結果時以相同 request_id 和相同內容重試。
 plot_id、planting_id、batch_id、proposal_id、vote_id 請使用查詢回傳的 ID。
 時間和身分由伺服器決定。只限自己的私田；公田種植、採收和整輪清除由系統處理。"""
     from services import garden_mcp
@@ -2734,6 +2739,7 @@ plot_id、planting_id、batch_id、proposal_id、vote_id 請使用查詢回傳�
             planting_id=planting_id, batch_id=batch_id, crop_id=crop_id,
             proposal_id=proposal_id, reason=reason, accept=accept, vote_id=vote_id,
             actions_json=actions_json, owner=owner, limit=limit, offset=offset,
+            quantity_g=quantity_g, quote_id=quote_id,
         )
         return json.dumps(result, ensure_ascii=False)
     finally:

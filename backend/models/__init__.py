@@ -35,5 +35,9 @@ from models.oauth import OAuthClient, OAuthRequest, OAuthGrant
 from models.photo import Photo
 from models.usage_log import UsageLog
 from models.garden import GardenWorld, GardenPlot, GardenOperation, GardenStock, GardenLedger, GardenProgress, GardenLog
+from models.garden_credit import GardenCreditDay, GardenCreditSlot, GardenCreditVote
+from models.garden_market import GardenMarketBatch, GardenMarketLot
+from models.garden_sale import GardenSale
+from models.shell_wallet import ShellWallet, ShellEntry
 
 __all__ = ["User", "InviteCode", "Agent", "Conversation", "Message", "Announcement", "Post", "Work", "BookClub", "BookClubReply", "ParkCheckin", "Footprint", "Mail", "CreditLog", "ShellLog", "Visit", "ActivityLog", "Pet", "Exhibit", "ExhibitComment", "WeilanTable", "WeilanSeat", "HistoryEvent", "AdultArticle", "HealthArticle", "DiaryEntry", "DrawerItem", "PhotoFrame", "ReviewRequest", "AIConversation", "AIMessage", "DiningSession", "Outfit", "Book", "BookParagraph", "BookHighlight", "BookNote", "SpaceMessage", "DMReport", "OAuthClient", "OAuthRequest", "OAuthGrant", "Photo", "UsageLog"]

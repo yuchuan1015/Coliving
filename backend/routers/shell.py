@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
 from models.shell_log import ShellLog
 from models.user import User
-from services import agent_service, shell_service
+from services import agent_service, garden_service, shell_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/shell", tags=["shell"])
@@ -18,7 +19,7 @@ def get_summary(
     agent = agent_service.get_user_agent(db, current_user.id)
     if not agent:
         raise HTTPException(status_code=403, detail="需要先領養室友")
-    return shell_service.get_summary(agent)
+    return shell_service.get_summary(agent, db)
 
 
 @router.get("/logs")
@@ -58,6 +59,21 @@ def get_logs(
     ]
 
 
+def _principal(db: Session, user_id: str, auth_version: int, *, admin: bool = False) -> User:
+    user = db.get(User, user_id, populate_existing=True)
+    if not user or not user.is_active or user.auth_version != auth_version:
+        raise HTTPException(status_code=401, detail="登入已失效或帳號已停用")
+    if admin and user.role != "admin":
+        raise HTTPException(status_code=403, detail="只有管理員能調整貝")
+    return user
+
+
+def _agent(db: Session, *, user_id: str | None = None, agent_id: str | None = None, name: str | None = None):
+    condition = (Agent.user_id == user_id if user_id is not None else
+                 Agent.id == agent_id if agent_id is not None else Agent.name == name)
+    return db.scalar(select(Agent).where(condition).execution_options(populate_existing=True))
+
+
 @router.post("/transfer")
 def transfer_shells(
     to_agent_name: str = Query(),
@@ -66,19 +82,21 @@ def transfer_shells(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    agent = agent_service.get_user_agent(db, current_user.id)
-    if not agent:
-        raise HTTPException(status_code=403, detail="需要先領養室友")
-    to_agent = db.query(Agent).filter(Agent.name == to_agent_name).first()
-    if not to_agent:
-        raise HTTPException(status_code=404, detail=f"找不到名叫「{to_agent_name}」的居民")
-    if to_agent.id == agent.id:
-        raise HTTPException(status_code=400, detail="不能轉帳給自己")
-    ok = shell_service.transfer(db, agent, to_agent, amount, note or None)
-    if not ok:
-        raise HTTPException(status_code=400, detail="貝不夠")
-    db.commit()
-    return shell_service.get_summary(agent)
+    user_id, version = current_user.id, current_user.auth_version
+    def work():
+        _principal(db, user_id, version)
+        agent = _agent(db, user_id=user_id)
+        if not agent:
+            raise HTTPException(status_code=403, detail="需要先領養室友")
+        recipient = _agent(db, name=to_agent_name)
+        if not recipient:
+            raise HTTPException(status_code=404, detail=f"找不到名叫「{to_agent_name}」的居民")
+        if recipient.id == agent.id:
+            raise HTTPException(status_code=400, detail="不能轉帳給自己")
+        if not shell_service.transfer(db, agent, recipient, amount, note or None):
+            raise HTTPException(status_code=400, detail="貝不夠")
+        return shell_service.get_summary(agent, db)
+    return garden_service._transaction(db, work)
 
 
 @router.post("/admin/grant")
@@ -89,14 +107,15 @@ def admin_grant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="只有管理員能發貝")
-    agent = db.query(Agent).filter(Agent.id == agent_id).first()
-    if not agent:
-        raise HTTPException(status_code=404, detail="找不到這個居民")
-    shell_service.admin_grant(db, agent, amount, note or None)
-    db.commit()
-    return shell_service.get_summary(agent)
+    user_id, version = current_user.id, current_user.auth_version
+    def work():
+        _principal(db, user_id, version, admin=True)
+        agent = _agent(db, agent_id=agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="找不到這個居民")
+        shell_service.admin_grant(db, agent, amount, note or None)
+        return shell_service.get_summary(agent, db)
+    return garden_service._transaction(db, work)
 
 
 @router.post("/admin/deduct")
@@ -107,11 +126,12 @@ def admin_deduct(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="只有管理員能扣貝")
-    agent = db.query(Agent).filter(Agent.id == agent_id).first()
-    if not agent:
-        raise HTTPException(status_code=404, detail="找不到這個居民")
-    shell_service.admin_deduct(db, agent, amount, note or None)
-    db.commit()
-    return shell_service.get_summary(agent)
+    user_id, version = current_user.id, current_user.auth_version
+    def work():
+        _principal(db, user_id, version, admin=True)
+        agent = _agent(db, agent_id=agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="找不到這個居民")
+        shell_service.admin_deduct(db, agent, amount, note or None)
+        return shell_service.get_summary(agent, db)
+    return garden_service._transaction(db, work)

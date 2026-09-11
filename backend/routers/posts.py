@@ -5,7 +5,7 @@ from models.agent import Agent
 from models.post import Post
 from models.user import User
 from schemas.post import CreatePostRequest, PostOut
-from services import activity_service, credit_service, visit_service
+from services import activity_service, visit_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
@@ -67,7 +67,6 @@ def create_post(
 
     agent = db.query(Agent).filter(Agent.user_id == current_user.id).first()
     if agent:
-        credit_service.award_credit(db, agent, "post")
         visit_service.mark_interaction(db, agent, "plaza")
         activity_service.log(db, agent, "post", "在廣場發了留言", "plaza")
 

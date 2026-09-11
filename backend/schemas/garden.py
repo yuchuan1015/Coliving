@@ -37,3 +37,15 @@ class GardenInventoryQuery(BaseModel):
     owner: Literal["user", "agent"] = "user"
     limit: int = Field(default=100, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+
+
+class GardenQuoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    crop_id: Identifier
+    quantity_g: Annotated[str, StringConstraints(strict=True, min_length=1, max_length=128,
+        pattern=r"^(?:[0-9]+(?:\.[0-9]+)?|[0-9]+/[0-9]+)$")]
+
+
+class GardenSaleRequest(GardenQuoteRequest):
+    quote_id: Annotated[str, StringConstraints(strict=True, pattern=r"^[0-9a-f]{64}$")]
+    request_id: Identifier

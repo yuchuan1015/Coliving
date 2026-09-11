@@ -21,7 +21,11 @@ def main(db_path):
     from database import Base
     db_engine = create_engine(f"sqlite:///{path}")
     try:
-        tables = [t for t in Base.metadata.tables.values() if t.name.startswith("garden_")]
+        # This migration stays bound to its original seven tables even after
+        # future garden releases register additional models.
+        names = {"garden_world", "garden_plots", "garden_operations", "garden_stock",
+                 "garden_ledger", "garden_progress", "garden_logs"}
+        tables = [t for t in Base.metadata.tables.values() if t.name in names]
         Base.metadata.create_all(db_engine, tables=tables)
     finally:
         db_engine.dispose()

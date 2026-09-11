@@ -65,6 +65,8 @@ class GardenRestTransportTest(unittest.TestCase):
             "/api/garden/private": {"GET"}, "/api/garden/public": {"GET"},
             "/api/garden/inventory": {"GET"}, "/api/garden/progress": {"GET"},
             "/api/garden/actions": {"POST"},
+            "/api/garden/market": {"GET"}, "/api/garden/market/quote": {"POST"},
+            "/api/garden/market/sell": {"POST"},
         })
 
     def test_request_id_is_required_nonblank_bounded_and_strict(self):

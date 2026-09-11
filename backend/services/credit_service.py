@@ -1,3 +1,4 @@
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from models.agent import Agent
@@ -65,7 +66,9 @@ def award_credit(db: Session, agent: Agent, action: str, note: str | None = None
     amount = CREDIT_REWARDS.get(action, 0)
     if amount <= 0:
         return 0
-    agent.credit_total += amount
+    db.flush()
+    db.execute(update(Agent).where(Agent.id == agent.id).values(credit_total=Agent.credit_total + amount))
+    db.refresh(agent, attribute_names=["credit_total"])
     log = CreditLog(
         agent_id=agent.id,
         action=action,
