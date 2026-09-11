@@ -1,0 +1,4757 @@
+{
+  "schema_version": 1,
+  "asset_count": 28,
+  "status": "passed-visual-and-numeric",
+  "style_spec_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/寵物畫風規格.md",
+  "style_spec_sha256": "1624f30687b1eb3e41bad731baac69b70ce2ef3c792b9da7f57bd3c730099379",
+  "output_root": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1",
+  "script_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/process_cutouts.py",
+  "script_sha256": "4129f2cd6bbbebf755758c24cb93dfbc90b6610f3f25d7943b40f97e7a38199e",
+  "runtime": {
+    "python": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "numpy": "2.3.5",
+    "pillow": "12.3.0"
+  },
+  "constraints": {
+    "local_deterministic_only": true,
+    "originals_overwritten": false,
+    "redraw": false,
+    "frontend_integration": false
+  },
+  "assets": [
+    {
+      "id": "cat",
+      "name": "貓",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/cat.png",
+      "source_sha256": "b17d91dc6528da05c951270bc049a5fa44ce3bed509858626ff3a10452d746af",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/cat.png",
+      "output_sha256": "976cb72fbe8bceeb842c8dbf7919069172905f5635626c49f8c017a72cde03e2",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 999565,
+        "partial": 15496,
+        "opaque": 557455,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        224,
+        109,
+        1096,
+        1165
+      ],
+      "margins_ltrb": [
+        224,
+        109,
+        158,
+        89
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15471,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 555903,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 864,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "b17d91dc6528da05c951270bc049a5fa44ce3bed509858626ff3a10452d746af",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 46,
+          "area": 384,
+          "bbox": [
+            394,
+            468,
+            421,
+            488
+          ],
+          "seed": [
+            418,
+            477
+          ]
+        },
+        {
+          "component": 53,
+          "area": 413,
+          "bbox": [
+            597,
+            497,
+            626,
+            524
+          ],
+          "seed": [
+            611,
+            511
+          ]
+        },
+        {
+          "component": 56,
+          "area": 25,
+          "bbox": [
+            615,
+            500,
+            622,
+            505
+          ],
+          "seed": [
+            618,
+            502
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "976cb72fbe8bceeb842c8dbf7919069172905f5635626c49f8c017a72cde03e2",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:36.507505+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cat-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cat-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cat-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cat-closeups.png"
+      },
+      "master_bytes": 1580160,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/cat.png",
+        "output_sha256": "5c3fa92c71637275e29556c113fb746e87327aae4e97cc374e004d16fe25d5a6",
+        "bytes": 129643,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 91885,
+          "partial": 4680,
+          "opaque": 50891,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          67,
+          32,
+          338,
+          359
+        ],
+        "margins_ltrb": [
+          67,
+          32,
+          46,
+          25
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/cat.png",
+        "source_master_sha256": "976cb72fbe8bceeb842c8dbf7919069172905f5635626c49f8c017a72cde03e2",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/cat.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.423781+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "dog",
+      "name": "狗",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/dog.png",
+      "source_sha256": "ff3a04823c29a3be721fb167775739e202d9407f46fe5179dfb9401b33735576",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/dog.png",
+      "output_sha256": "88f9bec1014f2d014466e5b51cd75e89654e2716d49f91c2c5282cb5eb9ad29e",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 793524,
+        "partial": 18176,
+        "opaque": 760816,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        142,
+        21,
+        1156,
+        1232
+      ],
+      "margins_ltrb": [
+        142,
+        21,
+        98,
+        22
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 18151,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 758762,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 2425,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "ff3a04823c29a3be721fb167775739e202d9407f46fe5179dfb9401b33735576",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 14,
+          "area": 481,
+          "bbox": [
+            446,
+            298,
+            472,
+            324
+          ],
+          "seed": [
+            451,
+            311
+          ]
+        },
+        {
+          "component": 20,
+          "area": 490,
+          "bbox": [
+            653,
+            345,
+            679,
+            372
+          ],
+          "seed": [
+            663,
+            358
+          ]
+        },
+        {
+          "component": 29,
+          "area": 1400,
+          "bbox": [
+            650,
+            371,
+            732,
+            442
+          ],
+          "seed": [
+            707,
+            419
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "88f9bec1014f2d014466e5b51cd75e89654e2716d49f91c2c5282cb5eb9ad29e",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:36.644872+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 21 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/dog-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/dog-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/dog-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/dog-closeups.png"
+      },
+      "master_bytes": 2025056,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/dog.png",
+        "output_sha256": "0ea8d8afee740c9ba68a9a7cd8a22e686fdad0288b6d06d32410300ef65184b3",
+        "bytes": 170862,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 72305,
+          "partial": 5230,
+          "opaque": 69921,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          41,
+          4,
+          356,
+          379
+        ],
+        "margins_ltrb": [
+          41,
+          4,
+          28,
+          5
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/dog.png",
+        "source_master_sha256": "88f9bec1014f2d014466e5b51cd75e89654e2716d49f91c2c5282cb5eb9ad29e",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/dog.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.424763+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "pig",
+      "name": "豬",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/pig.png",
+      "source_sha256": "cd79361cb19ccd8dc4c9128f8e3db1b569c3cb386f9ec2fcd2f1970fa62be20a",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/pig.png",
+      "output_sha256": "0acafe09411e745f14cf75ac018468c8b56719699fb71619df21eb40adbbca43",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 764412,
+        "partial": 18456,
+        "opaque": 789648,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        36,
+        101,
+        1218,
+        1192
+      ],
+      "margins_ltrb": [
+        36,
+        101,
+        36,
+        62
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 18444,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 787609,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1111,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "cd79361cb19ccd8dc4c9128f8e3db1b569c3cb386f9ec2fcd2f1970fa62be20a",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 17,
+          "area": 527,
+          "bbox": [
+            330,
+            405,
+            358,
+            432
+          ],
+          "seed": [
+            352,
+            418
+          ]
+        },
+        {
+          "component": 24,
+          "area": 576,
+          "bbox": [
+            586,
+            446,
+            614,
+            474
+          ],
+          "seed": [
+            609,
+            459
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "0acafe09411e745f14cf75ac018468c8b56719699fb71619df21eb40adbbca43",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:36.764617+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/pig-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/pig-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/pig-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/pig-closeups.png"
+      },
+      "master_bytes": 2046386,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/pig.png",
+        "output_sha256": "88f51b7378759ef5d6128fbfa9ad8f288b49c8c87563ced860434c67aff5a6bf",
+        "bytes": 167405,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 69481,
+          "partial": 5549,
+          "opaque": 72426,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          9,
+          29,
+          375,
+          367
+        ],
+        "margins_ltrb": [
+          9,
+          29,
+          9,
+          17
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/pig.png",
+        "source_master_sha256": "0acafe09411e745f14cf75ac018468c8b56719699fb71619df21eb40adbbca43",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/pig.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.425665+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "cow",
+      "name": "牛",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/cow.png",
+      "source_sha256": "42cdd9af1713271562663458d743280937796440dcff7e32bde94264d3952350",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/cow.png",
+      "output_sha256": "039e27e5b8bab0eb2b0a18f756190dc36faddc9658b26e4de2287b29a5547ff0",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 849631,
+        "partial": 25200,
+        "opaque": 697685,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        53,
+        50,
+        1202,
+        1208
+      ],
+      "margins_ltrb": [
+        53,
+        50,
+        52,
+        46
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 25163,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 695257,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 741,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "42cdd9af1713271562663458d743280937796440dcff7e32bde94264d3952350",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 40,
+          "area": 319,
+          "bbox": [
+            330,
+            298,
+            352,
+            320
+          ],
+          "seed": [
+            350,
+            308
+          ]
+        },
+        {
+          "component": 66,
+          "area": 332,
+          "bbox": [
+            526,
+            336,
+            548,
+            357
+          ],
+          "seed": [
+            539,
+            346
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "039e27e5b8bab0eb2b0a18f756190dc36faddc9658b26e4de2287b29a5547ff0",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:36.886853+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cow-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cow-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cow-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cow-closeups.png"
+      },
+      "master_bytes": 1919177,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/cow.png",
+        "output_sha256": "484180ee2974b914a387b68dc41575a604ec0b3a5a62cee2a1376cb04e59e217",
+        "bytes": 170559,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 76669,
+          "partial": 7650,
+          "opaque": 63137,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          14,
+          13,
+          370,
+          372
+        ],
+        "margins_ltrb": [
+          14,
+          13,
+          14,
+          12
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/cow.png",
+        "source_master_sha256": "039e27e5b8bab0eb2b0a18f756190dc36faddc9658b26e4de2287b29a5547ff0",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/cow.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.426525+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "sheep",
+      "name": "羊",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/sheep.png",
+      "source_sha256": "770877c7538e7c3669bcf250924343dffe261360c95a1e56a9e13f10ba9aeb94",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/sheep.png",
+      "output_sha256": "f5e811237262dc76b52b1172d98eb111dd76fed23b3c439c77779366a3c05d63",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 812534,
+        "partial": 18309,
+        "opaque": 741673,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        36,
+        72,
+        1204,
+        1183
+      ],
+      "margins_ltrb": [
+        36,
+        72,
+        50,
+        71
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 18273,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 740026,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 791,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "770877c7538e7c3669bcf250924343dffe261360c95a1e56a9e13f10ba9aeb94",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 26,
+          "area": 370,
+          "bbox": [
+            344,
+            382,
+            367,
+            405
+          ],
+          "seed": [
+            352,
+            393
+          ]
+        },
+        {
+          "component": 34,
+          "area": 385,
+          "bbox": [
+            558,
+            412,
+            581,
+            436
+          ],
+          "seed": [
+            559,
+            424
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "f5e811237262dc76b52b1172d98eb111dd76fed23b3c439c77779366a3c05d63",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.011284+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/sheep-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/sheep-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/sheep-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/sheep-closeups.png"
+      },
+      "master_bytes": 1850006,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/sheep.png",
+        "output_sha256": "9bbdbfeba716d319d1664b00d8c1c285ff8a71b0aee474b0a0a82e424365bfd6",
+        "bytes": 159898,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 74077,
+          "partial": 5445,
+          "opaque": 67934,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          9,
+          20,
+          371,
+          365
+        ],
+        "margins_ltrb": [
+          9,
+          20,
+          13,
+          19
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/sheep.png",
+        "source_master_sha256": "f5e811237262dc76b52b1172d98eb111dd76fed23b3c439c77779366a3c05d63",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/sheep.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.427356+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "rabbit",
+      "name": "兔子",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/rabbit.png",
+      "source_sha256": "894ce85d7d0a2c276afaf77c90851e61b091f294dd7142e25c004595360e5848",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/rabbit.png",
+      "output_sha256": "4d33dd60639515557e6d28bf599cc7fb8af3101fe7bf256278c8fbb15744622f",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 959760,
+        "partial": 15573,
+        "opaque": 597183,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        229,
+        15,
+        1055,
+        1218
+      ],
+      "margins_ltrb": [
+        229,
+        15,
+        199,
+        36
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15558,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 595886,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 661,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "894ce85d7d0a2c276afaf77c90851e61b091f294dd7142e25c004595360e5848",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 33,
+          "area": 285,
+          "bbox": [
+            389,
+            479,
+            409,
+            499
+          ],
+          "seed": [
+            404,
+            488
+          ]
+        },
+        {
+          "component": 43,
+          "area": 303,
+          "bbox": [
+            588,
+            516,
+            608,
+            537
+          ],
+          "seed": [
+            598,
+            526
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "4d33dd60639515557e6d28bf599cc7fb8af3101fe7bf256278c8fbb15744622f",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.125026+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 15 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/rabbit-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/rabbit-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/rabbit-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/rabbit-closeups.png"
+      },
+      "master_bytes": 1724208,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/rabbit.png",
+        "output_sha256": "4f408ec328c3e5cede8b9109f800b89ba6df695f239787e61675c70378c21459",
+        "bytes": 136455,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 88161,
+          "partial": 4748,
+          "opaque": 54547,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          68,
+          2,
+          325,
+          375
+        ],
+        "margins_ltrb": [
+          68,
+          2,
+          59,
+          9
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/rabbit.png",
+        "source_master_sha256": "4d33dd60639515557e6d28bf599cc7fb8af3101fe7bf256278c8fbb15744622f",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/rabbit.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.428236+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "hamster",
+      "name": "倉鼠",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/hamster.png",
+      "source_sha256": "65e29e2308bb3f419de3139f263b67693a995b4a0ea5045c32e075c19efd69c2",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/hamster.png",
+      "output_sha256": "57b381300e447177727db188f7296481cc5bd82158879ff4ebfe264b1d52dc32",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 836206,
+        "partial": 13447,
+        "opaque": 722863,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        210,
+        60,
+        1058,
+        1188
+      ],
+      "margins_ltrb": [
+        210,
+        60,
+        196,
+        66
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 13436,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 721402,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1111,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "65e29e2308bb3f419de3139f263b67693a995b4a0ea5045c32e075c19efd69c2",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 11,
+          "area": 558,
+          "bbox": [
+            481,
+            376,
+            510,
+            405
+          ],
+          "seed": [
+            496,
+            391
+          ]
+        },
+        {
+          "component": 19,
+          "area": 535,
+          "bbox": [
+            699,
+            413,
+            729,
+            442
+          ],
+          "seed": [
+            705,
+            428
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "57b381300e447177727db188f7296481cc5bd82158879ff4ebfe264b1d52dc32",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.247433+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/hamster-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/hamster-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/hamster-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/hamster-closeups.png"
+      },
+      "master_bytes": 1895121,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/hamster.png",
+        "output_sha256": "5080f0ff0f46b1e4d8790c9df795d08edf1dbba49ee84c41f47c275dd82e6668",
+        "bytes": 154587,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 76819,
+          "partial": 4029,
+          "opaque": 66608,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          62,
+          16,
+          326,
+          366
+        ],
+        "margins_ltrb": [
+          62,
+          16,
+          58,
+          18
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/hamster.png",
+        "source_master_sha256": "57b381300e447177727db188f7296481cc5bd82158879ff4ebfe264b1d52dc32",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/hamster.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.429110+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "lizard",
+      "name": "蜥蜴",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/lizard.png",
+      "source_sha256": "13b815870a3b58f759af769343a45efeaa4763c7c30679c255d3ef63448aaf82",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/lizard.png",
+      "output_sha256": "7097fa60a799f22c73e603e7f67e65ae0c22e198c02532f731fc555edb15c4d4",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 959523,
+        "partial": 21299,
+        "opaque": 591694,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        50,
+        158,
+        1215,
+        1120
+      ],
+      "margins_ltrb": [
+        50,
+        158,
+        39,
+        134
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 21264,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 589814,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1129,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "13b815870a3b58f759af769343a45efeaa4763c7c30679c255d3ef63448aaf82",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 49,
+          "area": 536,
+          "bbox": [
+            239,
+            480,
+            266,
+            507
+          ],
+          "seed": [
+            265,
+            493
+          ]
+        },
+        {
+          "component": 66,
+          "area": 543,
+          "bbox": [
+            460,
+            538,
+            487,
+            566
+          ],
+          "seed": [
+            470,
+            552
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "7097fa60a799f22c73e603e7f67e65ae0c22e198c02532f731fc555edb15c4d4",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.364305+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/lizard-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/lizard-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/lizard-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/lizard-closeups.png"
+      },
+      "master_bytes": 1826667,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/lizard.png",
+        "output_sha256": "a9bf471ac508205355fec8650639196fb28ce3144024a92bb3d5574dc1044878",
+        "bytes": 154709,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 87623,
+          "partial": 6181,
+          "opaque": 53652,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          13,
+          46,
+          374,
+          345
+        ],
+        "margins_ltrb": [
+          13,
+          46,
+          10,
+          39
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/lizard.png",
+        "source_master_sha256": "7097fa60a799f22c73e603e7f67e65ae0c22e198c02532f731fc555edb15c4d4",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/lizard.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.429907+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "snake",
+      "name": "蛇",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/snake.png",
+      "source_sha256": "500e214bead6b05e5a8a05ace5f0f24b51bb48a937bf99aa974575922976a22d",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/snake.png",
+      "output_sha256": "0248d65b4e2e4dd86ade17b1b4aa00cc0de940e1c62e192e123ed873c45a283d",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 890396,
+        "partial": 17442,
+        "opaque": 664678,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        101,
+        136,
+        1203,
+        1169
+      ],
+      "margins_ltrb": [
+        101,
+        136,
+        51,
+        85
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 17425,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 663151,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 572,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "500e214bead6b05e5a8a05ace5f0f24b51bb48a937bf99aa974575922976a22d",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 2,
+          "area": 271,
+          "bbox": [
+            497,
+            243,
+            516,
+            263
+          ],
+          "seed": [
+            503,
+            253
+          ]
+        },
+        {
+          "component": 10,
+          "area": 294,
+          "bbox": [
+            671,
+            290,
+            691,
+            311
+          ],
+          "seed": [
+            679,
+            300
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "0248d65b4e2e4dd86ade17b1b4aa00cc0de940e1c62e192e123ed873c45a283d",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.477724+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/snake-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/snake-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/snake-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/snake-closeups.png"
+      },
+      "master_bytes": 1852023,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/snake.png",
+        "output_sha256": "8b3cfdecdf16307a7269192de92dd7c27442514e1a6e2662d5ff8b5931543494",
+        "bytes": 160420,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 81482,
+          "partial": 5180,
+          "opaque": 60794,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          29,
+          40,
+          370,
+          360
+        ],
+        "margins_ltrb": [
+          29,
+          40,
+          14,
+          24
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/snake.png",
+        "source_master_sha256": "0248d65b4e2e4dd86ade17b1b4aa00cc0de940e1c62e192e123ed873c45a283d",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/snake.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.430699+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "fish",
+      "name": "魚",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/fish.png",
+      "source_sha256": "300fbd2ffd6163e55509e0f77c4290f7136c7499c073248e8cd5c990f13a392d",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/fish.png",
+      "output_sha256": "44656d4e4dd5490821dbcaaf58ea90da90b36f24a1d7ece12bd8feb9a505bae0",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 804299,
+        "partial": 20109,
+        "opaque": 748108,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        38,
+        92,
+        1217,
+        1120
+      ],
+      "margins_ltrb": [
+        38,
+        92,
+        37,
+        134
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 20091,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 746719,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1188,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "300fbd2ffd6163e55509e0f77c4290f7136c7499c073248e8cd5c990f13a392d",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 27,
+          "area": 491,
+          "bbox": [
+            205,
+            550,
+            229,
+            578
+          ],
+          "seed": [
+            209,
+            564
+          ]
+        },
+        {
+          "component": 40,
+          "area": 648,
+          "bbox": [
+            460,
+            605,
+            490,
+            636
+          ],
+          "seed": [
+            466,
+            621
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "44656d4e4dd5490821dbcaaf58ea90da90b36f24a1d7ece12bd8feb9a505bae0",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.605293+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fish-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fish-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fish-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fish-closeups.png"
+      },
+      "master_bytes": 1998633,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/fish.png",
+        "output_sha256": "62a75fbd851a9e70148c1b575ed24a822dabf6b5df2fc6b032a9b97cb807dda8",
+        "bytes": 175050,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 73125,
+          "partial": 6015,
+          "opaque": 68316,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          10,
+          26,
+          375,
+          345
+        ],
+        "margins_ltrb": [
+          10,
+          26,
+          9,
+          39
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/fish.png",
+        "source_master_sha256": "44656d4e4dd5490821dbcaaf58ea90da90b36f24a1d7ece12bd8feb9a505bae0",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/fish.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.431580+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "bird",
+      "name": "鳥",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/bird.png",
+      "source_sha256": "f42fc65946ab86fee59f32ea6ea29e7ef08b8433fdd930af016707242d954f96",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/bird.png",
+      "output_sha256": "a27eaa45bce69dd36793bfca49f5eef04d0aa20d103ce9376664f54cdeb0cf67",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1004420,
+        "partial": 16843,
+        "opaque": 551253,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        138,
+        52,
+        1199,
+        1203
+      ],
+      "margins_ltrb": [
+        138,
+        52,
+        55,
+        51
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 16826,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 549614,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 550,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "f42fc65946ab86fee59f32ea6ea29e7ef08b8433fdd930af016707242d954f96",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 16,
+          "area": 271,
+          "bbox": [
+            334,
+            249,
+            354,
+            269
+          ],
+          "seed": [
+            349,
+            258
+          ]
+        },
+        {
+          "component": 18,
+          "area": 277,
+          "bbox": [
+            512,
+            299,
+            532,
+            319
+          ],
+          "seed": [
+            525,
+            308
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "a27eaa45bce69dd36793bfca49f5eef04d0aa20d103ce9376664f54cdeb0cf67",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.719708+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bird-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bird-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bird-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bird-closeups.png"
+      },
+      "master_bytes": 1710183,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/bird.png",
+        "output_sha256": "e196cbd252f279a4a8c2a75e35336b6644b800f1376f0110da576426601401e1",
+        "bytes": 131979,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 92265,
+          "partial": 4868,
+          "opaque": 50323,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          41,
+          14,
+          370,
+          371
+        ],
+        "margins_ltrb": [
+          41,
+          14,
+          14,
+          13
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/bird.png",
+        "source_master_sha256": "a27eaa45bce69dd36793bfca49f5eef04d0aa20d103ce9376664f54cdeb0cf67",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/bird.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.432372+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "fox",
+      "name": "狐狸",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/fox.png",
+      "source_sha256": "a56c21d932bdf981f6ddba01123dd00c6e18bcb6bf2d36f5cab3e652a39a5ccf",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/fox.png",
+      "output_sha256": "bdd7959480248f92e8b0dbfb5dbb1b4c4629125722f00252524f6c1101855dd7",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 926062,
+        "partial": 15310,
+        "opaque": 631144,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        189,
+        14,
+        1080,
+        1225
+      ],
+      "margins_ltrb": [
+        189,
+        14,
+        174,
+        29
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15292,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 629822,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 888,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "a56c21d932bdf981f6ddba01123dd00c6e18bcb6bf2d36f5cab3e652a39a5ccf",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 9,
+          "area": 432,
+          "bbox": [
+            399,
+            361,
+            424,
+            385
+          ],
+          "seed": [
+            406,
+            373
+          ]
+        },
+        {
+          "component": 18,
+          "area": 442,
+          "bbox": [
+            599,
+            399,
+            625,
+            424
+          ],
+          "seed": [
+            610,
+            411
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "bdd7959480248f92e8b0dbfb5dbb1b4c4629125722f00252524f6c1101855dd7",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.832559+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 14 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fox-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fox-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fox-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/fox-closeups.png"
+      },
+      "master_bytes": 1798732,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/fox.png",
+        "output_sha256": "ad79887ded30133019b0d72e1fe55bf0bbff25b9867c3a1861bd0f513b3d8498",
+        "bytes": 149553,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 85088,
+          "partial": 4500,
+          "opaque": 57868,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          56,
+          2,
+          333,
+          377
+        ],
+        "margins_ltrb": [
+          56,
+          2,
+          51,
+          7
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/fox.png",
+        "source_master_sha256": "bdd7959480248f92e8b0dbfb5dbb1b4c4629125722f00252524f6c1101855dd7",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/fox.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.433192+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "raccoon",
+      "name": "浣熊",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/raccoon.png",
+      "source_sha256": "269efe32f82793cab3127480c52de0aad41a7dd38efd6909ce1005c94508ec60",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/raccoon.png",
+      "output_sha256": "ba50e31f3e2c4a900fef85a8f8dd12ca24b4754b9456114c67fde02aa1858f15",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 796081,
+        "partial": 15948,
+        "opaque": 760487,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        98,
+        65,
+        1168,
+        1196
+      ],
+      "margins_ltrb": [
+        98,
+        65,
+        86,
+        58
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15933,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 758995,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 962,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "269efe32f82793cab3127480c52de0aad41a7dd38efd6909ce1005c94508ec60",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 32,
+          "area": 453,
+          "bbox": [
+            337,
+            398,
+            363,
+            423
+          ],
+          "seed": [
+            351,
+            410
+          ]
+        },
+        {
+          "component": 48,
+          "area": 471,
+          "bbox": [
+            560,
+            438,
+            586,
+            464
+          ],
+          "seed": [
+            569,
+            450
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "ba50e31f3e2c4a900fef85a8f8dd12ca24b4754b9456114c67fde02aa1858f15",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:37.952963+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raccoon-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raccoon-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raccoon-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raccoon-closeups.png"
+      },
+      "master_bytes": 2013007,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/raccoon.png",
+        "output_sha256": "664b626cddd28d17b1f7e6779d1518f988a2b1d6623f16cc1c40ae1d0e810118",
+        "bytes": 172992,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 72812,
+          "partial": 4681,
+          "opaque": 69963,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          28,
+          18,
+          360,
+          368
+        ],
+        "margins_ltrb": [
+          28,
+          18,
+          24,
+          16
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/raccoon.png",
+        "source_master_sha256": "ba50e31f3e2c4a900fef85a8f8dd12ca24b4754b9456114c67fde02aa1858f15",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/raccoon.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.434092+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "horse",
+      "name": "馬",
+      "batch": 1,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/horse.png",
+      "source_sha256": "a21451adbb0d1534552aa1cde9e705ac160303286d3a37fa8679ac2a1f257a95",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/horse.png",
+      "output_sha256": "8c7348bb6ae2bcf269d08b4de52ede96a36e11d5535a7732781fa90a55808c58",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 915757,
+        "partial": 28395,
+        "opaque": 628364,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        138,
+        24,
+        1174,
+        1224
+      ],
+      "margins_ltrb": [
+        138,
+        24,
+        80,
+        30
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 28342,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 625430,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 283,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "a21451adbb0d1534552aa1cde9e705ac160303286d3a37fa8679ac2a1f257a95",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 32,
+          "area": 132,
+          "bbox": [
+            295,
+            285,
+            309,
+            300
+          ],
+          "seed": [
+            306,
+            292
+          ]
+        },
+        {
+          "component": 42,
+          "area": 111,
+          "bbox": [
+            446,
+            314,
+            458,
+            328
+          ],
+          "seed": [
+            448,
+            320
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "8c7348bb6ae2bcf269d08b4de52ede96a36e11d5535a7732781fa90a55808c58",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.073330+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/horse-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/horse-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/horse-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/horse-closeups.png"
+      },
+      "master_bytes": 1831684,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/horse.png",
+        "output_sha256": "f61fedc5668467806a63efe239ee15526f9fc3ecd7b3eb8e7b54059d1a5d73ed",
+        "bytes": 153957,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 82618,
+          "partial": 8556,
+          "opaque": 56282,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          40,
+          5,
+          361,
+          377
+        ],
+        "margins_ltrb": [
+          40,
+          5,
+          23,
+          7
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/horse.png",
+        "source_master_sha256": "8c7348bb6ae2bcf269d08b4de52ede96a36e11d5535a7732781fa90a55808c58",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/horse.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.434871+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "octopus",
+      "name": "章魚",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/octopus.png",
+      "source_sha256": "5fca39333a3516f3b633d7cf81c929baa6eac5cc5ceca876b4a6b902ce9b1baf",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/octopus.png",
+      "output_sha256": "c0159651fca0284f872ebe1911efcb1e142f5e66b267088c47b0c88f73b265c0",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 848713,
+        "partial": 29297,
+        "opaque": 694506,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        45,
+        165,
+        1216,
+        1157
+      ],
+      "margins_ltrb": [
+        45,
+        165,
+        38,
+        97
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 29163,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 691722,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 883,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "5fca39333a3516f3b633d7cf81c929baa6eac5cc5ceca876b4a6b902ce9b1baf",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 163,
+          "area": 419,
+          "bbox": [
+            507,
+            561,
+            532,
+            586
+          ],
+          "seed": [
+            516,
+            573
+          ]
+        },
+        {
+          "component": 183,
+          "area": 424,
+          "bbox": [
+            721,
+            586,
+            744,
+            611
+          ],
+          "seed": [
+            725,
+            598
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "c0159651fca0284f872ebe1911efcb1e142f5e66b267088c47b0c88f73b265c0",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.192607+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "All eight original arm curls/tips and their separation remain visible; no geometry changes."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/octopus-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/octopus-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/octopus-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/octopus-closeups.png"
+      },
+      "master_bytes": 2233496,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/octopus.png",
+        "output_sha256": "29ba8b76b1751b5aab99a23a05951155c0cc1534e5c3e660c777e653d6c2959a",
+        "bytes": 173057,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 76635,
+          "partial": 8160,
+          "opaque": 62661,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          12,
+          49,
+          374,
+          356
+        ],
+        "margins_ltrb": [
+          12,
+          49,
+          10,
+          28
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/octopus.png",
+        "source_master_sha256": "c0159651fca0284f872ebe1911efcb1e142f5e66b267088c47b0c88f73b265c0",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/octopus.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.435914+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "raven",
+      "name": "渡鴉",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/raven.png",
+      "source_sha256": "2bfa2e330882d496d406aa61c84d6667734ad4d1dc062e188be4d221a415799a",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/raven.png",
+      "output_sha256": "1298e647fc834fd93615010f795332c8e0194078f579805f48181aa19e115373",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1017144,
+        "partial": 19590,
+        "opaque": 535782,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        150,
+        98,
+        1180,
+        1191
+      ],
+      "margins_ltrb": [
+        150,
+        98,
+        74,
+        63
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 19552,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 534186,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 444,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "2bfa2e330882d496d406aa61c84d6667734ad4d1dc062e188be4d221a415799a",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": [
+          [
+            487,
+            1015
+          ]
+        ]
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 9,
+          "area": 242,
+          "bbox": [
+            370,
+            224,
+            388,
+            242
+          ],
+          "seed": [
+            386,
+            232
+          ]
+        },
+        {
+          "component": 16,
+          "area": 188,
+          "bbox": [
+            524,
+            248,
+            541,
+            265
+          ],
+          "seed": [
+            525,
+            256
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "1298e647fc834fd93615010f795332c8e0194078f579805f48181aa19e115373",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.302711+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raven-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raven-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raven-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/raven-closeups.png"
+      },
+      "master_bytes": 1617045,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/raven.png",
+        "output_sha256": "0c961988ee8141d76c68dff5d0e01bcf95e01ed9f3d1f5d1bb59c36af83fcb7a",
+        "bytes": 121755,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 93283,
+          "partial": 5571,
+          "opaque": 48602,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          44,
+          28,
+          364,
+          367
+        ],
+        "margins_ltrb": [
+          44,
+          28,
+          20,
+          17
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/raven.png",
+        "source_master_sha256": "1298e647fc834fd93615010f795332c8e0194078f579805f48181aa19e115373",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/raven.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.436616+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "owl",
+      "name": "貓頭鷹",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/owl.png",
+      "source_sha256": "3f68ec6e2fc5f467bcd6c850087a95a41d03e89780c29647a257f299356a478d",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/owl.png",
+      "output_sha256": "a47b60943c445d0a7308b2dac50f2a385d132d177ac1386624de91d88ee20826",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 940611,
+        "partial": 13688,
+        "opaque": 618217,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        244,
+        93,
+        995,
+        1175
+      ],
+      "margins_ltrb": [
+        244,
+        93,
+        259,
+        79
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 13661,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 616798,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1338,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "3f68ec6e2fc5f467bcd6c850087a95a41d03e89780c29647a257f299356a478d",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 20,
+          "area": 663,
+          "bbox": [
+            469,
+            349,
+            500,
+            377
+          ],
+          "seed": [
+            482,
+            362
+          ]
+        },
+        {
+          "component": 28,
+          "area": 651,
+          "bbox": [
+            684,
+            380,
+            714,
+            410
+          ],
+          "seed": [
+            689,
+            395
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "a47b60943c445d0a7308b2dac50f2a385d132d177ac1386624de91d88ee20826",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.413782+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/owl-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/owl-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/owl-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/owl-closeups.png"
+      },
+      "master_bytes": 1703901,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/owl.png",
+        "output_sha256": "59a88b0861abdf8b931147be74a52649294d5be6224d179e3e6ce6fd5d75c4fb",
+        "bytes": 145208,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 86624,
+          "partial": 4052,
+          "opaque": 56780,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          73,
+          26,
+          307,
+          362
+        ],
+        "margins_ltrb": [
+          73,
+          26,
+          77,
+          22
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/owl.png",
+        "source_master_sha256": "a47b60943c445d0a7308b2dac50f2a385d132d177ac1386624de91d88ee20826",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/owl.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.437339+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "blue-whale",
+      "name": "藍鯨",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/blue-whale.png",
+      "source_sha256": "c7a9742fb2d5c6de3bf8f0fb8a66a16ce4a0e6cc9775a7910e645be2eb70241b",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/blue-whale.png",
+      "output_sha256": "8f42ad22c8714c84b73547b3ec05d50ea16b8c0b806ea25a110b6da96062a581",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1122581,
+        "partial": 15619,
+        "opaque": 434316,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        28,
+        266,
+        1232,
+        1012
+      ],
+      "margins_ltrb": [
+        28,
+        266,
+        22,
+        242
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15596,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 432926,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 158,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "c7a9742fb2d5c6de3bf8f0fb8a66a16ce4a0e6cc9775a7910e645be2eb70241b",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 44,
+          "area": 147,
+          "bbox": [
+            421,
+            582,
+            437,
+            595
+          ],
+          "seed": [
+            424,
+            588
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "8f42ad22c8714c84b73547b3ec05d50ea16b8c0b806ea25a110b6da96062a581",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.514879+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 22 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/blue-whale-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/blue-whale-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/blue-whale-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/blue-whale-closeups.png"
+      },
+      "master_bytes": 1554377,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/blue-whale.png",
+        "output_sha256": "53de5251174d120719830006200a75ea5e31547b70e426c294c315308ecba5d8",
+        "bytes": 105986,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 103494,
+          "partial": 4542,
+          "opaque": 39420,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          6,
+          79,
+          380,
+          312
+        ],
+        "margins_ltrb": [
+          6,
+          79,
+          4,
+          72
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/blue-whale.png",
+        "source_master_sha256": "8f42ad22c8714c84b73547b3ec05d50ea16b8c0b806ea25a110b6da96062a581",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/blue-whale.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.437989+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "orca",
+      "name": "虎鯨",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/orca.png",
+      "source_sha256": "f01db1e79500a47f2c559fab871b0f00693e9bcceeb1fbf6fad019aeb1f469d3",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/orca.png",
+      "output_sha256": "52c0fa70c54fdb36243a19014860c3d62da3714fe2b071e79b845213548b69ed",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 971735,
+        "partial": 17670,
+        "opaque": 583111,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        40,
+        145,
+        1238,
+        1115
+      ],
+      "margins_ltrb": [
+        40,
+        145,
+        16,
+        139
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 17651,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 581588,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 466,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "f01db1e79500a47f2c559fab871b0f00693e9bcceeb1fbf6fad019aeb1f469d3",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 33,
+          "area": 90,
+          "bbox": [
+            88,
+            505,
+            102,
+            521
+          ],
+          "seed": [
+            95,
+            514
+          ]
+        },
+        {
+          "component": 46,
+          "area": 323,
+          "bbox": [
+            376,
+            558,
+            399,
+            578
+          ],
+          "seed": [
+            384,
+            568
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "52c0fa70c54fdb36243a19014860c3d62da3714fe2b071e79b845213548b69ed",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.614043+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 16 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/orca-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/orca-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/orca-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/orca-closeups.png"
+      },
+      "master_bytes": 1643430,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/orca.png",
+        "output_sha256": "8a61e88b81cc462f7bc7ae68a4cfe9723bb90841c6353ceebfdcdd7766c8fd1e",
+        "bytes": 128061,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 89144,
+          "partial": 5080,
+          "opaque": 53232,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          10,
+          42,
+          382,
+          343
+        ],
+        "margins_ltrb": [
+          10,
+          42,
+          2,
+          41
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/orca.png",
+        "source_master_sha256": "52c0fa70c54fdb36243a19014860c3d62da3714fe2b071e79b845213548b69ed",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/orca.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.438687+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "jellyfish",
+      "name": "水母",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/jellyfish.png",
+      "source_sha256": "bb51d2bc78f6be0535053b7e5e84f43b36c262777c74aecbf8ef3f5e6fdb0ff3",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/jellyfish.png",
+      "output_sha256": "712963c5bc01335a77589b1496983ccb1a5c63affec29199693b964357e411ef",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1055723,
+        "partial": 26007,
+        "opaque": 490786,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        242,
+        82,
+        1027,
+        1185
+      ],
+      "margins_ltrb": [
+        242,
+        82,
+        227,
+        69
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 25980,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 488666,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 166,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "bb51d2bc78f6be0535053b7e5e84f43b36c262777c74aecbf8ef3f5e6fdb0ff3",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 12,
+          "area": 73,
+          "bbox": [
+            480,
+            397,
+            490,
+            408
+          ],
+          "seed": [
+            486,
+            402
+          ]
+        },
+        {
+          "component": 15,
+          "area": 68,
+          "bbox": [
+            713,
+            436,
+            723,
+            447
+          ],
+          "seed": [
+            718,
+            441
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "712963c5bc01335a77589b1496983ccb1a5c63affec29199693b964357e411ef",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.714490+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/jellyfish-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/jellyfish-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/jellyfish-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/jellyfish-closeups.png"
+      },
+      "master_bytes": 1671198,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/jellyfish.png",
+        "output_sha256": "c04d184702ac36bf93a9181be4535da605eb9af2568cac43b7902a0a1a74e7c2",
+        "bytes": 132715,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 95876,
+          "partial": 7997,
+          "opaque": 43583,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          72,
+          23,
+          317,
+          365
+        ],
+        "margins_ltrb": [
+          72,
+          23,
+          67,
+          19
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/jellyfish.png",
+        "source_master_sha256": "712963c5bc01335a77589b1496983ccb1a5c63affec29199693b964357e411ef",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/jellyfish.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.439416+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "turtle",
+      "name": "烏龜",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/turtle.png",
+      "source_sha256": "d24cd9d15b021ba80ed629653bfe57a3e30b6c30793f654737b8f9a5a028503e",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/turtle.png",
+      "output_sha256": "7eb82cc99529aa575c980da1d1eec0c9a5600aff9bc1cda32d117f03881bb8dc",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 912404,
+        "partial": 15081,
+        "opaque": 645031,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        68,
+        232,
+        1230,
+        1075
+      ],
+      "margins_ltrb": [
+        68,
+        232,
+        24,
+        179
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15048,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 643575,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 640,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "d24cd9d15b021ba80ed629653bfe57a3e30b6c30793f654737b8f9a5a028503e",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 15,
+          "area": 325,
+          "bbox": [
+            197,
+            477,
+            219,
+            498
+          ],
+          "seed": [
+            206,
+            487
+          ]
+        },
+        {
+          "component": 17,
+          "area": 306,
+          "bbox": [
+            388,
+            504,
+            408,
+            525
+          ],
+          "seed": [
+            400,
+            514
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "7eb82cc99529aa575c980da1d1eec0c9a5600aff9bc1cda32d117f03881bb8dc",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.820361+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/turtle-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/turtle-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/turtle-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/turtle-closeups.png"
+      },
+      "master_bytes": 1723213,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/turtle.png",
+        "output_sha256": "adc2c7e87479c0bbc7bf18cf4fb8b7b3238b53089b6ae7c51275a44763befa29",
+        "bytes": 154987,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 83865,
+          "partial": 4358,
+          "opaque": 59233,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          19,
+          69,
+          379,
+          332
+        ],
+        "margins_ltrb": [
+          19,
+          69,
+          5,
+          52
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/turtle.png",
+        "source_master_sha256": "7eb82cc99529aa575c980da1d1eec0c9a5600aff9bc1cda32d117f03881bb8dc",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/turtle.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.440222+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "wolf",
+      "name": "狼",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/wolf.png",
+      "source_sha256": "c6e501d49096cf8339edb4e9fc832b4fa19218216f1a603a61b601080a41771f",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/wolf.png",
+      "output_sha256": "c27aba51b162097bb46aab64944fbb0129a3433ef85c6fb2cccfc592bac708f0",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 895459,
+        "partial": 14850,
+        "opaque": 662207,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        199,
+        27,
+        1159,
+        1226
+      ],
+      "margins_ltrb": [
+        199,
+        27,
+        95,
+        28
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 14833,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 660301,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 459,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "c6e501d49096cf8339edb4e9fc832b4fa19218216f1a603a61b601080a41771f",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 6,
+          "area": 234,
+          "bbox": [
+            377,
+            309,
+            396,
+            328
+          ],
+          "seed": [
+            382,
+            318
+          ]
+        },
+        {
+          "component": 11,
+          "area": 214,
+          "bbox": [
+            541,
+            340,
+            558,
+            358
+          ],
+          "seed": [
+            549,
+            348
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "c27aba51b162097bb46aab64944fbb0129a3433ef85c6fb2cccfc592bac708f0",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:38.939175+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/wolf-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/wolf-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/wolf-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/wolf-closeups.png"
+      },
+      "master_bytes": 1880851,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/wolf.png",
+        "output_sha256": "6ec8f0a069a0878682811397740d78bfcd0e2b4331c1d76415b384b301c65f6e",
+        "bytes": 155543,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 82222,
+          "partial": 4447,
+          "opaque": 60787,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          59,
+          6,
+          357,
+          378
+        ],
+        "margins_ltrb": [
+          59,
+          6,
+          27,
+          6
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/wolf.png",
+        "source_master_sha256": "c27aba51b162097bb46aab64944fbb0129a3433ef85c6fb2cccfc592bac708f0",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/wolf.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.441131+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "deer",
+      "name": "鹿",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/deer.png",
+      "source_sha256": "3fed41fc0eda248f4678fa1b5bb0e74d8e45115d87eaed581e640ab854eb16e7",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/deer.png",
+      "output_sha256": "302447621a8c6c2e3f1d2be88333847bcc67a97ac13db378ecbffc4f733cf4ce",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1108569,
+        "partial": 26756,
+        "opaque": 437191,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        234,
+        18,
+        1026,
+        1226
+      ],
+      "margins_ltrb": [
+        234,
+        18,
+        228,
+        28
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 26705,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 434760,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 513,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "3fed41fc0eda248f4678fa1b5bb0e74d8e45115d87eaed581e640ab854eb16e7",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 81,
+          "area": 222,
+          "bbox": [
+            389,
+            393,
+            407,
+            411
+          ],
+          "seed": [
+            403,
+            401
+          ]
+        },
+        {
+          "component": 93,
+          "area": 252,
+          "bbox": [
+            557,
+            420,
+            575,
+            439
+          ],
+          "seed": [
+            567,
+            429
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "302447621a8c6c2e3f1d2be88333847bcc67a97ac13db378ecbffc4f733cf4ce",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.039660+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 18 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/deer-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/deer-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/deer-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/deer-closeups.png"
+      },
+      "master_bytes": 1644949,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/deer.png",
+        "output_sha256": "faf80b40ef2ad84bee0495cdab6549fc790b09ec176bc73afe7cc0730115c699",
+        "bytes": 122969,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 100775,
+          "partial": 8133,
+          "opaque": 38548,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          70,
+          3,
+          317,
+          378
+        ],
+        "margins_ltrb": [
+          70,
+          3,
+          67,
+          6
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/deer.png",
+        "source_master_sha256": "302447621a8c6c2e3f1d2be88333847bcc67a97ac13db378ecbffc4f733cf4ce",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/deer.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.441856+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "bear",
+      "name": "熊",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/bear.png",
+      "source_sha256": "141768c4c82fa23fa147457e7e67f1707ea583d1c13cf95499f7ceac72a185a2",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/bear.png",
+      "output_sha256": "2d102095a0493fe5680e91a5b322a695a1dc0d65ab1f98e7340970babc8fc67b",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 839850,
+        "partial": 14278,
+        "opaque": 718388,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        185,
+        65,
+        1104,
+        1188
+      ],
+      "margins_ltrb": [
+        185,
+        65,
+        150,
+        66
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 14252,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 717003,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 515,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "141768c4c82fa23fa147457e7e67f1707ea583d1c13cf95499f7ceac72a185a2",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 11,
+          "area": 256,
+          "bbox": [
+            449,
+            323,
+            468,
+            343
+          ],
+          "seed": [
+            453,
+            333
+          ]
+        },
+        {
+          "component": 15,
+          "area": 258,
+          "bbox": [
+            656,
+            353,
+            675,
+            372
+          ],
+          "seed": [
+            665,
+            362
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "2d102095a0493fe5680e91a5b322a695a1dc0d65ab1f98e7340970babc8fc67b",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.161970+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bear-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bear-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bear-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/bear-closeups.png"
+      },
+      "master_bytes": 1920138,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/bear.png",
+        "output_sha256": "65cbd332deddd96bb91a755545171e3d8bb563cc640cbbea412b1b657a571cd2",
+        "bytes": 157766,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 77085,
+          "partial": 4266,
+          "opaque": 66105,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          54,
+          18,
+          340,
+          366
+        ],
+        "margins_ltrb": [
+          54,
+          18,
+          44,
+          18
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/bear.png",
+        "source_master_sha256": "2d102095a0493fe5680e91a5b322a695a1dc0d65ab1f98e7340970babc8fc67b",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/bear.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.442701+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "butterfly",
+      "name": "蝴蝶",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/butterfly.png",
+      "source_sha256": "9f217bca319e28f5e42a6e2edd3b77791f4e54969bde1b7d9d4bbdaefd8f5f3c",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/butterfly.png",
+      "output_sha256": "2f6ee830055191642784ca7565b72262be79873781d89ac82a41b0dcd46fc470",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 809923,
+        "partial": 23742,
+        "opaque": 738851,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        42,
+        152,
+        1212,
+        1106
+      ],
+      "margins_ltrb": [
+        42,
+        152,
+        42,
+        148
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 23695,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 736708,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 196,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "9f217bca319e28f5e42a6e2edd3b77791f4e54969bde1b7d9d4bbdaefd8f5f3c",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": [
+          [
+            591,
+            582
+          ],
+          [
+            663,
+            584
+          ]
+        ]
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 89,
+          "area": 88,
+          "bbox": [
+            588,
+            525,
+            600,
+            537
+          ],
+          "seed": [
+            591,
+            531
+          ]
+        },
+        {
+          "component": 90,
+          "area": 84,
+          "bbox": [
+            654,
+            526,
+            665,
+            537
+          ],
+          "seed": [
+            659,
+            531
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "2f6ee830055191642784ca7565b72262be79873781d89ac82a41b0dcd46fc470",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.282948+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/butterfly-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/butterfly-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/butterfly-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/butterfly-closeups.png"
+      },
+      "master_bytes": 2005715,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/butterfly.png",
+        "output_sha256": "f05003e692e27fe46b6898c3059e21c39d6aaf5fd1e5fe475b6d97979951f265",
+        "bytes": 182073,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 73244,
+          "partial": 6863,
+          "opaque": 67349,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          11,
+          44,
+          373,
+          341
+        ],
+        "margins_ltrb": [
+          11,
+          44,
+          11,
+          43
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/butterfly.png",
+        "source_master_sha256": "2f6ee830055191642784ca7565b72262be79873781d89ac82a41b0dcd46fc470",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/butterfly.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.443576+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "goose",
+      "name": "鵝",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/goose.png",
+      "source_sha256": "cdde9930bef0c469f9ce76c90450d1bf776c41add88ba4ac86a75daa4fb0bb7e",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/goose.png",
+      "output_sha256": "054f31d73700e8b46e05262984b12b29a9961a4bcef7d7f462c7ac639452d5e2",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1118988,
+        "partial": 16000,
+        "opaque": 437528,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        242,
+        28,
+        1044,
+        1234
+      ],
+      "margins_ltrb": [
+        242,
+        28,
+        210,
+        20
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 15980,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 436038,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 196,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "cdde9930bef0c469f9ce76c90450d1bf776c41add88ba4ac86a75daa4fb0bb7e",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 13,
+          "area": 66,
+          "bbox": [
+            423,
+            113,
+            433,
+            122
+          ],
+          "seed": [
+            431,
+            117
+          ]
+        },
+        {
+          "component": 20,
+          "area": 44,
+          "bbox": [
+            526,
+            137,
+            534,
+            145
+          ],
+          "seed": [
+            532,
+            140
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "054f31d73700e8b46e05262984b12b29a9961a4bcef7d7f462c7ac639452d5e2",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.382940+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "Original composition has only 20 px minimum canvas margin; output is uncropped. Avoid circular UI clipping."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/goose-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/goose-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/goose-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/goose-closeups.png"
+      },
+      "master_bytes": 1528106,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/goose.png",
+        "output_sha256": "085a353795045ea34fd05c300ac65992f9313cb064b219e19d5921926739f3cf",
+        "bytes": 101885,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 103099,
+          "partial": 4736,
+          "opaque": 39621,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          72,
+          6,
+          322,
+          380
+        ],
+        "margins_ltrb": [
+          72,
+          6,
+          62,
+          4
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/goose.png",
+        "source_master_sha256": "054f31d73700e8b46e05262984b12b29a9961a4bcef7d7f462c7ac639452d5e2",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/goose.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.444238+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "duck",
+      "name": "鴨",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/duck.png",
+      "source_sha256": "1edc80003cefde9de396d842b50907678d51d2716acf1d4e1af33955d33ddb38",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/duck.png",
+      "output_sha256": "b025c14840e9c37be19d364c0e601a8c3c6b52e0540685bce2cc32d2fb25e3ab",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 1055731,
+        "partial": 16557,
+        "opaque": 500228,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        227,
+        77,
+        1087,
+        1193
+      ],
+      "margins_ltrb": [
+        227,
+        77,
+        167,
+        61
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 16529,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 498548,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 249,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "1edc80003cefde9de396d842b50907678d51d2716acf1d4e1af33955d33ddb38",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": []
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 16,
+          "area": 65,
+          "bbox": [
+            340,
+            235,
+            354,
+            245
+          ],
+          "seed": [
+            349,
+            238
+          ]
+        },
+        {
+          "component": 36,
+          "area": 80,
+          "bbox": [
+            510,
+            273,
+            527,
+            284
+          ],
+          "seed": [
+            517,
+            278
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "b025c14840e9c37be19d364c0e601a8c3c6b52e0540685bce2cc32d2fb25e3ab",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.481314+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/duck-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/duck-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/duck-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/duck-closeups.png"
+      },
+      "master_bytes": 1523430,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/duck.png",
+        "output_sha256": "6587890561f625ca4d3986b8cb6971c1063c23a320a31dd20be034f6a1c2ce17",
+        "bytes": 120031,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 97116,
+          "partial": 4811,
+          "opaque": 45529,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          67,
+          21,
+          335,
+          368
+        ],
+        "margins_ltrb": [
+          67,
+          21,
+          49,
+          16
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/duck.png",
+        "source_master_sha256": "b025c14840e9c37be19d364c0e601a8c3c6b52e0540685bce2cc32d2fb25e3ab",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/duck.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.444989+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    },
+    {
+      "id": "honeybee",
+      "name": "蜜蜂",
+      "batch": 2,
+      "source_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/honeybee.png",
+      "source_sha256": "af3ead0a4b6816ebb153ff62b91d54c28738e612970f9d5bfe431cb68667e01a",
+      "source_mode": "RGB",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/honeybee.png",
+      "output_sha256": "90b5bd3f5805349f74c033c37ccf09282e01bd39b2600c2e576998d70d2226e5",
+      "mode": "RGBA",
+      "alpha_counts": {
+        "transparent": 995475,
+        "partial": 26833,
+        "opaque": 550208,
+        "total": 1572516
+      },
+      "alpha_bbox_xyxy_exclusive": [
+        123,
+        103,
+        1139,
+        1152
+      ],
+      "margins_ltrb": [
+        123,
+        103,
+        115,
+        102
+      ],
+      "alpha_border_nonzero": 0,
+      "foreground_rgb": {
+        "changed_pixels": 26698,
+        "changes_outside_partial_alpha": 0,
+        "protected_interior_pixels": 547649,
+        "protected_interior_changed_pixels": 0,
+        "source_nonwhite_pixels_deleted": 0,
+        "protected_nearwhite_interior_pixels": 1187,
+        "white_recomposite_foreground_max_error": 0,
+        "white_recomposite_foreground_mean_error": 0.0
+      },
+      "source_sha256_after": "af3ead0a4b6816ebb153ff62b91d54c28738e612970f9d5bfe431cb68667e01a",
+      "source_untouched": true,
+      "background_method": "4-connected exterior near-white components + individually reviewed gap seeds + local edge unmatting",
+      "parameters": {
+        "background_min_channel": 245,
+        "background_max_chroma": 10,
+        "connectivity": 4,
+        "edge_band_pixels": 3,
+        "local_color_window": 7,
+        "alpha_model": "C = alpha * F + (1 - alpha) * white, sRGB sample space",
+        "alpha_quantization": "rounded coverage, bounded below by max(255-source_rgb); opaque when coverage>=0.97",
+        "exterior_cleanup": "no morphology on foreground; no area-based speck removal; no blur or erosion",
+        "foreground_policy": "all enclosed whites preserved unless explicitly seeded as backdrop",
+        "resampling": "none in full-size RGBA outputs",
+        "enclosed_backdrop_seeds_xy": [
+          [
+            522,
+            448
+          ]
+        ]
+      },
+      "preserved_enclosed_nearwhite_components": [
+        {
+          "component": 268,
+          "area": 495,
+          "bbox": [
+            319,
+            604,
+            344,
+            633
+          ],
+          "seed": [
+            326,
+            618
+          ]
+        },
+        {
+          "component": 278,
+          "area": 524,
+          "bbox": [
+            476,
+            637,
+            502,
+            666
+          ],
+          "seed": [
+            489,
+            650
+          ]
+        }
+      ],
+      "issues": [],
+      "qa": {
+        "status": "passed-visual-and-numeric",
+        "original_contact_sheet_inspected": true,
+        "purple_visual_inspected": true,
+        "checker_light_visual_inspected": true,
+        "closeup_visual_inspected": true,
+        "source_anatomy_and_texture_preserved": true,
+        "visual_review_record": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/visual_review.json",
+        "reviewed_output_sha256": "90b5bd3f5805349f74c033c37ccf09282e01bd39b2600c2e576998d70d2226e5",
+        "observation": "Directly inspected both original sheets, final purple/light/checker overviews, each 2x contour sheet, and all applicable anatomy/gap comparisons. White fur, eye highlights, wings and original texture retained; no continuous white halo or clipped appendage observed. Tiny pale flecks inside the original crayon contours intentionally retained. Main owner independently accepted purple/light overview and decoder/hash gates.",
+        "numeric_checks_verified_at_utc": "2026-09-11T22:03:39.593622+00:00"
+      },
+      "png_color_type": 6,
+      "notes": [
+        "Original internal pale/white crayon grain retained; it is not a new halo.",
+        "All six original leg tips, four wings and both antennae remain visible; no geometry changes."
+      ],
+      "qa_paths": {
+        "purple": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/honeybee-purple.png",
+        "light": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/honeybee-light.png",
+        "checker": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/honeybee-checker.png",
+        "closeups": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/honeybee-closeups.png"
+      },
+      "master_bytes": 2107591,
+      "web": {
+        "output_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web/honeybee.png",
+        "output_sha256": "9819781e621a2ed8a883e0261e18bc350f2ba73b91869aab735e9827ebfc9d54",
+        "bytes": 146224,
+        "dimensions": [
+          384,
+          384
+        ],
+        "mode": "RGBA",
+        "png_color_type": 6,
+        "alpha_counts": {
+          "transparent": 90507,
+          "partial": 7608,
+          "opaque": 49341,
+          "total": 147456
+        },
+        "alpha_bbox_xyxy_exclusive": [
+          36,
+          30,
+          351,
+          355
+        ],
+        "margins_ltrb": [
+          36,
+          30,
+          33,
+          29
+        ],
+        "alpha_border_nonzero": 0,
+        "source_master_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/honeybee.png",
+        "source_master_sha256": "90b5bd3f5805349f74c033c37ccf09282e01bd39b2600c2e576998d70d2226e5",
+        "master_unchanged": true,
+        "method": {
+          "library": "Pillow",
+          "resample": "RGBA Lanczos (premultiplied internally)",
+          "optimize": true,
+          "full_canvas_resize": true,
+          "crop": false,
+          "scale": 0.3062200956937799
+        },
+        "intended_display_px": 128,
+        "device_pixel_ratio": 3,
+        "stable_site_url": "/assets/pets/v1/honeybee.png",
+        "qa_status": "passed-contact-sheets-alpha-and-128px-preview",
+        "issues": [],
+        "visual_reviewed_at_utc": "2026-09-11T22:04:57.445975+00:00",
+        "visual_observation": "Inspected labeled purple/light/checker web overview and 128px purple/checker preview. No cut appendages, lost white interiors, or new white fringe observed."
+      }
+    }
+  ],
+  "aggregate": {
+    "transparent": 26005076,
+    "partial": 535971,
+    "opaque": 17489401,
+    "total": 44030448,
+    "foreground_rgb_changed_pixels": 535012,
+    "protected_interior_changed_pixels": 0,
+    "source_nonwhite_pixels_deleted": 0,
+    "source_sha256_unchanged": 28,
+    "border_nonzero_pixels": 0,
+    "reviewed_assets": 28,
+    "white_recomposite_foreground_max_error": 0,
+    "minimum_canvas_margin_px": 14
+  },
+  "support_scripts": [
+    {
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/make_qa.py",
+      "sha256": "7f47acbec07f30f905ffee9ee51f121bfc5cbacf9e26bf82a84f0c786cc055d0"
+    },
+    {
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/review_and_verify.py",
+      "sha256": "c3a4b1726b2ed207547e280e34a828bb62974da16af8861a9fb41bc67d249889"
+    }
+  ],
+  "source_manifests": [
+    {
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-04/hi/work/cenyu/ya-chao/reconcile-ui/docs/assets/pets/v1/manifest.json",
+      "sha256": "b9014767b36b680281a38d5becb11cc5087f0d49dd4aac973e8dca175d220c7a"
+    },
+    {
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/ni/outputs/pets-batch-2/manifest.json",
+      "sha256": "bb61b50a82c3cb1487e17194a8e38be9f43fa78506b423d760f755aa2616d988"
+    }
+  ],
+  "contact_sheets": [
+    {
+      "batch": 1,
+      "background": "purple",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-1-purple.png"
+    },
+    {
+      "batch": 1,
+      "background": "light",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-1-light.png"
+    },
+    {
+      "batch": 1,
+      "background": "checker",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-1-checker.png"
+    },
+    {
+      "batch": 2,
+      "background": "purple",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-2-purple.png"
+    },
+    {
+      "batch": 2,
+      "background": "light",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-2-light.png"
+    },
+    {
+      "batch": 2,
+      "background": "checker",
+      "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/cutouts-batch-2-checker.png"
+    }
+  ],
+  "unresolved_edge_issues": [],
+  "limitations": [
+    "Single-image deterministic unmatting estimates edge coverage from nearby original color; this is not recovery of unavailable original layered artwork.",
+    "Native faint/pale grain enclosed inside the crayon contour is intentionally retained. No global white deletion was performed.",
+    "Some originals have narrow margins (minimum 14 px). Full-size output is not clipped or recentered."
+  ],
+  "web_export": {
+    "asset_count": 28,
+    "status": "passed-contact-sheets-alpha-and-128px-preview",
+    "directory": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/web",
+    "script_path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/build_web.py",
+    "script_sha256": "5e126deb1c0164ee84faef8a3c75ffdb64089627ae60938f408048495d1c5d81",
+    "master_total_bytes": 50828483,
+    "web_total_bytes": 4136329,
+    "reduction_percent": 91.8621828631006,
+    "contact_sheets": [
+      {
+        "batch": 1,
+        "background": "purple",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-1-384px-purple.png",
+        "sha256": "ca6fea112c9b32f799c261c081f3bf9e414aa5b5f9a150fad4e2ded3057549d1"
+      },
+      {
+        "batch": 1,
+        "background": "light",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-1-384px-light.png",
+        "sha256": "fa4bbd475e573a18208258e94bc9cd5e01c30a8534f3e7c0408983e0a90a18d6"
+      },
+      {
+        "batch": 1,
+        "background": "checker",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-1-384px-checker.png",
+        "sha256": "edd1d06553ed2f4553cb5fdd6d28034263b14b00274da2904b4a473428f88d2c"
+      },
+      {
+        "batch": 1,
+        "background": "purple",
+        "preview_size": 128,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-1-128px-purple.png",
+        "sha256": "a997f5821e989a6b055703fc3c4ae2183d27f06eee497e1735a95e0c5cae9007"
+      },
+      {
+        "batch": 1,
+        "background": "checker",
+        "preview_size": 128,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-1-128px-checker.png",
+        "sha256": "6aa172faf5f9fa041d2a6c32f9fae666187b40abd2b205d65ceb1387be20d0ad"
+      },
+      {
+        "batch": 2,
+        "background": "purple",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-2-384px-purple.png",
+        "sha256": "fbc64488a327d6274143c95363dd1e2bd4e8c25fb696b3a7e5a9658ffe5499d9"
+      },
+      {
+        "batch": 2,
+        "background": "light",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-2-384px-light.png",
+        "sha256": "2e976036bd0a84505a626a4f786c3403a951368f79c48812b6ed7e61502c0921"
+      },
+      {
+        "batch": 2,
+        "background": "checker",
+        "preview_size": 384,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-2-384px-checker.png",
+        "sha256": "bf120fa54e3b6cf77f3b2651139640611337a8ccb9f3454249ae4dd6542e0aa7"
+      },
+      {
+        "batch": 2,
+        "background": "purple",
+        "preview_size": 128,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-2-128px-purple.png",
+        "sha256": "098411d55c8a838f8db28e95201f726128c6b7dd64000027172a317bfd4c1d05"
+      },
+      {
+        "batch": 2,
+        "background": "checker",
+        "preview_size": 128,
+        "path": "/Users/linyuchuan/Documents/Codex/2026-09-12/pet-cutouts-v1/qa/web-batch-2-128px-checker.png",
+        "sha256": "767e4910769a8dd1ef5a91bba959e8def072a4b671fc7d87d02760b7c8f28850"
+      }
+    ],
+    "masters_unchanged": true
+  }
+}

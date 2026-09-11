@@ -16,6 +16,8 @@
 .pet-list-copy .pet-open-label { color: var(--c-moon); margin-top: 4px; }
 .pet-portrait { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; flex: none; background: rgb(201 167 255 / .07); border: 1px solid var(--c-snow); font-size: 64px; line-height: 1; overflow: hidden; }
 .pet-portrait.is-compact { width: 64px; height: 64px; font-size: 32px; }
+/* Full-body cutouts must not lose ears, wings or tails to the old emoji circle. */
+.pet-portrait.has-art { border-color: transparent; border-radius: 0; overflow: visible; background: transparent; }
 .pet-detail { display: grid; gap: 18px; }
 .pet-hero { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 12px 0; }
 .pet-hero h3 { font-size: 1.5rem; font-weight: 500; margin: 0; }
@@ -59,7 +61,7 @@
 .pet-wish-summary dd { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pet-wish-rule { padding: 12px; border-left: 2px solid var(--c-moon); background: rgb(201 167 255 / .06); }
 .pet-wish-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
-.pet-portrait img { width: 100%; height: 100%; object-fit: contain; }
+.pet-portrait img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .pet-wish-list { display: grid; gap: 12px; }
 .pet-wish-list h4 { margin: 0; font-size: 1rem; font-weight: 500; }
 .cabin-panel :is(.pet-wish-card,.pet-wish-entry) { display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 16px; min-height: 64px; text-align: left; color: var(--c-moon); border-radius: 18px; }

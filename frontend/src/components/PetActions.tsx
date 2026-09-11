@@ -9,10 +9,11 @@ import { useUiLanguage } from "../i18n/useUiLanguage";
 import { getUiLanguage, uiText } from "../i18n/core";
 import "../pets.css";
 
-// Real saved emoji remains the fallback until the separately produced image catalog is approved.
+// Match only the server's asset key; never infer a saved pet's appearance from its species.
 function PetPortrait({ pet, asset, compact = false }: { pet: Pick<PetStatus, "name" | "emoji">; asset?: PetAsset; compact?: boolean }) {
   const [failed, setFailed] = useState("");
-  return <span className={`pet-portrait${compact ? " is-compact" : ""}`} role="img" aria-label={uiText`${pet.name}的圖示`}>{asset && failed !== asset.image_url ? <img src={asset.image_url} alt="" onError={() => setFailed(asset.image_url)} /> : pet.emoji}</span>;
+  const showArt = asset && failed !== asset.image_url;
+  return <span className={`pet-portrait${compact ? " is-compact" : ""}${showArt ? " has-art" : ""}`} role="img" aria-label={uiText`${pet.name}的圖示`}>{showArt ? <img src={asset.image_url} alt="" width={compact ? 64 : 128} height={compact ? 64 : 128} loading={compact ? "lazy" : "eager"} decoding="async" onError={() => setFailed(asset.image_url)} /> : pet.emoji}</span>;
 }
 const meters = [{ key: "hunger", label: "飽足" }, { key: "cleanliness", label: "清潔" }, { key: "happiness", label: "心情" }, { key: "health", label: "健康" }] as const;
 export function PetActions({ userId, onBusyChange, gateway }: { userId: string; onBusyChange: (busy: boolean) => void; gateway?: PetGateway }) {

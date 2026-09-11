@@ -3020,6 +3020,59 @@ const petFixture = { id: "cat/1", name: "小貓", species: "cat", emoji: "🐈",
 const petCapacity = (max = 1, active = 0, reserved = 0) => ({ max_pets: max, active_pets: active, reserved_pets: reserved, occupied_pets: active + reserved, available_slots: Math.max(0, max - active - reserved), can_adopt: active + reserved < max, can_wish: active + reserved < max });
 const withCapacity = list => ({ ...list, capacity: petCapacity(list.max_pets, list.pets.filter(p => p.is_alive).length) });
 const petTestAsset = { asset_key: "cat-v1", species: "貓", emoji: "🐈", image_url: "/assets/pets/cat-v1.png" };
+const { createPetPreview } = load("scripts/pet-preview/gateway.ts");
+const previewCatalog = { schema_version: 1, catalog_version: "unit-test", assets: [{ ...petTestAsset, published: true }] };
+const previewOptions = { catalog: previewCatalog, delayMs: 0 };
+test("pet memory preview selects published catalog images without any network or guessed appearance", async () => {
+  const gateway = createPetPreview("empty", previewOptions), signal = new AbortController().signal;
+  const catalog = await gateway.wishes.assets(signal, "local-pet-preview");
+  assert.deepEqual(catalog.items, [petTestAsset]);
+  const adopted = await gateway.adopt({ name: "小花", asset_key: "cat-v1" }, "local-pet-preview");
+  assert.equal(adopted.asset_key, "cat-v1"); assert.equal(adopted.species, "貓"); assert.equal(adopted.name, "小花");
+  assert.equal((await gateway.list(signal, "local-pet-preview")).pets[0].asset_key, "cat-v1");
+  assert.equal(calls.length, 0);
+  const unpublished = createPetPreview("empty", { ...previewOptions, catalog: { ...previewCatalog, assets: [{ ...petTestAsset, published: false }] } });
+  assert.equal((await unpublished.wishes.assets(signal, "local-pet-preview")).items.length, 0);
+  await assert.rejects(unpublished.adopt({ name: "小花", asset_key: "cat-v1" }, "local-pet-preview"));
+  await assert.rejects(unpublished.adopt({ name: "小花", species: "貓", emoji: "🐈" }, "local-pet-preview"));
+});
+test("pet memory preview turns a held wish into the same pictured pet once and replays receipts", async () => {
+  const gateway = createPetPreview("admin", previewOptions), desk = gateway.wishes, signal = new AbortController().signal;
+  const prepared = await desk.prepare("preview-wish", { expected_version: 1, asset_key: "cat-v1", preparation_note: "圖片已備妥" }, "admin");
+  assert.equal(prepared.capacity.available_slots, 0); assert.equal(prepared.capacity.reserved_pets, 1);
+  const body = { client_request_id: "arrival-1", expected_version: 2 };
+  const arrived = await desk.arrive("preview-wish", body, "admin");
+  assert.equal(arrived.wish.status, "arrived"); assert.equal(arrived.wish.asset_key, "cat-v1");
+  assert.equal(arrived.capacity.active_pets, 2); assert.equal(arrived.capacity.reserved_pets, 0);
+  const replay = await desk.arrive("preview-wish", body, "admin");
+  const alias = await desk.arrive("preview-wish", { ...body, client_request_id: "arrival-2" }, "another-admin");
+  assert.equal(replay.receipt.pet_id, arrived.receipt.pet_id); assert.equal(alias.receipt.pet_id, arrived.receipt.pet_id);
+  assert.equal(alias.receipt.client_request_id, "arrival-2"); assert.equal(alias.receipt.accepted_at, arrived.receipt.accepted_at);
+  assert.equal((await gateway.list(signal, "local-pet-preview")).pets.length, 2);
+  await assert.rejects(desk.lookup("arrival-1", "admin"), e => e.response.status === 404);
+  await assert.rejects(desk.arrive("preview-wish", { ...body, expected_version: 3 }, "admin"));
+  await assert.rejects(desk.arrive("preview-wish", { ...body, client_request_id: "arrival-3", expected_version: 3 }, "admin"));
+  assert.equal(calls.length, 0);
+});
+test("pet memory preview cannot prepare unavailable art or arrive without a prepared asset", async () => {
+  const desk = createPetPreview("admin", previewOptions).wishes;
+  await assert.rejects(desk.prepare("preview-wish", { expected_version: 1, asset_key: "missing", preparation_note: "" }, "admin"));
+  await assert.rejects(desk.arrive("preview-wish", { expected_version: 1, client_request_id: "early" }, "admin"));
+  await desk.prepare("preview-wish", { expected_version: 1, asset_key: null, preparation_note: "準備中" }, "admin");
+  await assert.rejects(desk.arrive("preview-wish", { expected_version: 2, client_request_id: "no-asset" }, "admin"));
+});
+test("pet preview scopes receipt IDs to operation and lookup returns only the original create receipt", async () => {
+  const desk = createPetPreview("empty", previewOptions).wishes;
+  const submission = { client_request_id: "same-id", requested_name: "小星", requested_species: "貓", appearance_description: "灰虎斑" };
+  const created = await desk.create(submission, "same-user");
+  await desk.prepare(created.wish.id, { expected_version: 1, asset_key: "cat-v1", preparation_note: "" }, "same-user");
+  const arrived = await desk.arrive(created.wish.id, { client_request_id: "same-id", expected_version: 2 }, "same-user");
+  assert.equal(arrived.receipt.operation, "arrive");
+  for (const response of [await desk.lookup("same-id", "same-user"), await desk.create(submission, "same-user")]) {
+    assert.equal(response.receipt.operation, "create"); assert.equal(response.receipt.pet_id, null);
+    assert.equal(response.wish.pet_id, arrived.wish.pet_id); assert.equal(response.wish.status, "arrived");
+  }
+});
 const petWrites = () => calls.filter(c => c.method === "post");
 async function openPetPanel(list = { pets: [petFixture], max_pets: 1 }, props = {}) {
   answer = async method => ({ data: method === "get" ? structuredClone(withCapacity(list)) : { ...petFixture, hunger: 80, health: 75 } });
@@ -3031,6 +3084,38 @@ function openPetDetail(h, id = 0) { nodes(h.tree, n => n.props?.className === "p
 function petForm(h) { const forms = nodes(h.tree, n => n.type === "form"); assert.equal(forms.length, 1); return forms[0]; }
 async function submitPet(h) { await petForm(h).props.onSubmit({ preventDefault() {} }); h.render(); }
 function petInput(h, name, value) { nodes(h.tree, n => n.type === "input" && n.props.name === name)[0].props.onChange({ target: { value } }); h.render(); }
+
+test("pet portraits use bound catalog images in both list and detail, with lazy thumbnails", async () => {
+  const h = await openPetPanel({ pets: [{ ...petFixture, asset_key: petTestAsset.asset_key }], max_pets: 1 });
+  const entry = one(h, "PetPortrait"), thumbnail = mount(entry.type, entry.props);
+  const thumb = nodes(thumbnail.tree, n => n.type === "img")[0];
+  assert.match(thumbnail.tree.props.className, /has-art/);
+  assert.equal(thumb.props.src, petTestAsset.image_url);
+  assert.equal(thumb.props.loading, "lazy"); assert.equal(thumb.props.decoding, "async");
+  assert.equal(thumb.props.width, 64); assert.equal(thumb.props.height, 64);
+  openPetDetail(h);
+  const portrait = one(h, "PetPortrait"), detail = mount(portrait.type, portrait.props);
+  const full = nodes(detail.tree, n => n.type === "img")[0];
+  assert.equal(full.props.src, thumb.props.src); assert.equal(full.props.loading, "eager");
+  assert.equal(full.props.width, 128); assert.equal(full.props.height, 128);
+  thumbnail.dispose(); detail.dispose(); h.dispose();
+});
+test("unbound pet portraits retain saved emoji and image failures fall back without retries", async () => {
+  const h = await openPetPanel();
+  const entry = one(h, "PetPortrait"), props = { ...entry.props }, portrait = mount(entry.type, props);
+  assert.equal(nodes(portrait.tree, n => n.type === "img").length, 0);
+  assert.equal(text(portrait.tree), petFixture.emoji);
+  assert.doesNotMatch(portrait.tree.props.className, /has-art/);
+  props.asset = petTestAsset; portrait.render();
+  nodes(portrait.tree, n => n.type === "img")[0].props.onError(); portrait.render();
+  assert.equal(nodes(portrait.tree, n => n.type === "img").length, 0);
+  assert.equal(text(portrait.tree), petFixture.emoji);
+  assert.doesNotMatch(portrait.tree.props.className, /has-art/);
+  // A different delivered URL can recover, without retrying the broken URL in a loop.
+  props.asset = { ...petTestAsset, image_url: "/assets/pets/v2/cat.png" }; portrait.render();
+  assert.equal(nodes(portrait.tree, n => n.type === "img")[0].props.src, props.asset.image_url);
+  portrait.dispose(); h.dispose();
+});
 
 test("pet list is read only until detail action and confirmation, follows server capacity", async () => {
   const h = await openPetPanel();
