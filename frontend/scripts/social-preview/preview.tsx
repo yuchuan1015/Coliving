@@ -12,7 +12,7 @@ import { FieldPanel } from "../../src/fields/shared";
 import { AccountSettingsPage } from "../../src/pages/AccountSettingsPage";
 import { ResidentDirectory, ResidentCardPage } from "../../src/pages/ResidentDirectory";
 import { DMReportsPage } from "../../src/pages/DMReportsPage";
-import { WardrobeActions, DiningActions, PetActions } from "../../src/components/FurnitureActions";
+import { WardrobeActions, DiningActions } from "../../src/components/FurnitureActions";
 import { ExternalMemorySettings } from "../../src/components/ExternalMemorySettings";
 import "../../src/index.css";
 import "../../src/social.css";
@@ -48,7 +48,7 @@ api.defaults.adapter = async config => {
 const denied = async (): Promise<never> => { throw Error("本地預覽不會更改真實帳號。"); };
 function FurniturePreview() {
   const [busy, setBusy] = useState(false);
-  return <main className="field-app"><div className="field-shell"><fieldset className="field-settings" disabled={busy}><FieldPanel title="衣櫃"><WardrobeActions onBusyChange={setBusy} /></FieldPanel><FieldPanel title="餐桌"><DiningActions onBusyChange={setBusy} /></FieldPanel><FieldPanel title="寵物"><PetActions onBusyChange={setBusy} /></FieldPanel><FieldPanel title="外部記憶"><ExternalMemorySettings agent={agent} mcps={agent.external_mcps} onSaved={() => {}} onBusyChange={setBusy} /></FieldPanel></fieldset></div></main>;
+  return <main className="field-app"><div className="field-shell"><fieldset className="field-settings" disabled={busy}><FieldPanel title="衣櫃"><WardrobeActions onBusyChange={setBusy} /></FieldPanel><FieldPanel title="餐桌"><DiningActions onBusyChange={setBusy} /></FieldPanel><FieldPanel title="寵物"><a href="../pet-preview/index.html">開啟艙室寵物預覽</a></FieldPanel><FieldPanel title="外部記憶"><ExternalMemorySettings agent={agent} mcps={agent.external_mcps} onSaved={() => {}} onBusyChange={setBusy} /></FieldPanel></fieldset></div></main>;
 }
 createRoot(document.getElementById("root")!).render(<AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateLocation: denied, updateBirthYear: denied, updateDisplayName: denied, refreshUser: async () => user }}><MemoryRouter>
   <aside style={{ padding: 16, background: "#080618", color: "#c9a7ff", textAlign: "center" }}>本地功能預覽 · 全部為範例資料 · 不會寫入真實帳號</aside>

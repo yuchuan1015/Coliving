@@ -11,6 +11,9 @@ import { ChatPage } from "../../src/pages/ChatPage";
 import { GuidePage } from "../../src/pages/GuidePage";
 import type { ChatUsage, UsageTotals } from "../../src/api/chat";
 import { HomePage } from "../../src/pages/HomePage";
+import { CabinPanelDialog } from "../../src/components/CabinPanelDialog";
+import { createPetPreview } from "../pet-preview/gateway";
+import { PetWishesAdminPage } from "../../src/pages/PetWishesAdminPage";
 import { DiaryPage } from "../../src/pages/DiaryPage";
 import { DrawerPage } from "../../src/pages/DrawerPage";
 import { MailboxPage } from "../../src/pages/MailboxPage";
@@ -30,6 +33,7 @@ import { LanguageDocument } from "../../src/i18n/LanguageControl";
 
 const created = "2026-09-09T03:00:00Z";
 const params = new URLSearchParams(location.search);
+const petPreview = createPetPreview(params.get("pet-state") ?? "ready");
 const economyState = params.get("economy-state") ?? "ready";
 const compactChat = params.get("page") === "chat" && params.get("chat-layout") === "1";
 const managementState = params.get("management-state") ?? "ready";
@@ -65,7 +69,7 @@ if (compactChat) chatMessages = [
 ];
 const user: UserMe = { id: "preview-user", username: "preview", display_name: "星際旅人", role: "resident", created_at: created, is_active: true, last_login_at: null, timezone: "Asia/Taipei", note_to_agent: "每次醒來，先看看窗外。\n有喜歡的風景，就帶回來給我看看。" };
 let agent: AgentPublic = { id: "preview-agent", name: "星際室友", persona: "僅供本地展示，不是真實帳號。", llm_provider: "claude", llm_model: "claude-opus-4-6", has_api_key: false, avatar_emoji: "☾", status: "active", ob_enabled: false, external_mcps: [], active_skin_id: null, created_at: created, updated_at: null, dm_code_public: true };
-if (["admin", "reports"].includes(params.get("page") ?? "") && reportState !== "denied") user.role = "admin";
+if (["admin", "reports", "pet-wishes"].includes(params.get("page") ?? "") && reportState !== "denied") user.role = "admin";
 let photos: CabinPhoto[] = ["life", "memory", "shared"].map((zone, i) => ({ id: String(i), caption: ["範例照片 · 出發前的艙室", "範例照片 · 留下文字的角落", "範例照片 · 等你一起吃飯"][i], url: "/ya-chao-assets/cabin-" + zone + "-v1.webp", is_displayed: i === 0, width: 792, height: 1124, bytes: 100000, created_at: created }));
 let displayedId: string | null = "0";
 let sequence = 3;
@@ -85,7 +89,21 @@ api.defaults.adapter = async config => {
   const path = config.url ?? "", method = config.method ?? "get";
   const payload = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
   let data: unknown;
-  if (path.startsWith("/admin/dm-reports")) {
+  if (method === "get" && path === "/pets") data = await petPreview.list(new AbortController().signal, user.id);
+  else if (method === "post" && path === "/pets/adopt") data = await petPreview.adopt(payload, user.id);
+  else if (method === "post" && /^\/pets\/[^/]+\/interact$/.test(path)) data = await petPreview.interact(decodeURIComponent(path.split("/")[2]!), config.params.action, user.id);
+  else if (method === "get" && path === "/pet-assets") data = await petPreview.wishes!.assets(new AbortController().signal, user.id);
+  else if (path.startsWith("/pet-wishes") || path.startsWith("/admin/pet-wishes")) {
+    const admin = path.startsWith("/admin/"), parts = path.split("/"), base = admin ? 3 : 2, id = decodeURIComponent(parts[base] ?? ""), suffix = parts[base + 1];
+    if (method === "get" && !id) data = await petPreview.wishes!.list(admin, config.params?.offset ?? 0, config.params?.status ?? "", new AbortController().signal, user.id);
+    else if (method === "get" && id === "by-request") data = await petPreview.wishes!.lookup(decodeURIComponent(suffix ?? ""), user.id);
+    else if (method === "get" && id) data = await petPreview.wishes!.detail(admin, id, new AbortController().signal, user.id);
+    else if (method === "post" && !id && !admin) data = await petPreview.wishes!.create(payload, user.id);
+    else if (method === "patch" && suffix === "preparation" && admin) data = await petPreview.wishes!.prepare(id, payload, user.id);
+    else if (method === "post" && suffix === "arrive" && admin) data = await petPreview.wishes!.arrive(id, payload, user.id);
+    else throw Error("Unknown local pet-wish operation");
+  }
+  else if (path.startsWith("/admin/dm-reports")) {
     const url = new URL(path, "http://preview.invalid");
     const id = decodeURIComponent(url.pathname.split("/")[3] ?? "");
     const report = reports.find(row => row.id === id);
@@ -168,13 +186,13 @@ api.defaults.adapter = async config => {
 };
 const denied = async (): Promise<never> => { throw Error("本地預覽"); };
 if (params.get("page") === "clock") sessionStorage.setItem("cabin-zone", "0");
-const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ settings: "/settings", reports: "/admin/dm-reports", admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
+const initialPage = params.get("frame-check") === "1" ? "/frame-detail" : ({ "pet-wishes": "/admin/pet-wishes", pet: "/pet-preview", home: "/", settings: "/settings", reports: "/admin/dm-reports", admin: "/admin", advanced: "/agent/advanced", adopt: "/adopt", schedules: "/schedules", diary: "/home/diary", drawer: "/home/drawer", mailbox: "/mailbox", clock: "/", chat: "/chat/preview-agent", guide: "/guide" } as Record<string, string>)[params.get("page") ?? ""] ?? "/home/photos";
 createRoot(document.getElementById("root")!).render(<StrictMode><LanguageDocument /><AuthContext.Provider value={{ user, isLoading: false, login: denied, register: denied, logout() {}, updateBirthYear: denied, updateLocation: denied, updateDisplayName: denied, refreshUser: async () => user }}><MemoryRouter initialEntries={[initialPage]}>
   {!compactChat && <>
   <aside style={{ background: "#090711", color: "#c9b6e1", fontSize: 12, padding: 12, textAlign: "center" }}>本地範例 · 文字和照片皆為示範 · 不會修改正式帳號</aside>
   {params.get("page") === "chat" && <nav aria-label="本地用量情境" style={{ display: "flex", flexWrap: "wrap", gap: 16, padding: 16, background: "#090711", color: "#d2b0fc", fontSize: 13 }}>{Object.entries({ unknown: "未知單價", known: "完整數值", partial: "資料不完整", empty: "尚無紀錄", zero: "真實零", error: "讀取失敗", memory: "記憶引導", offline: "記憶庫離線" }).map(([value, label]) => <a key={value} href={`?page=chat&usage=${value}`} aria-current={usageCase === value ? "page" : undefined}>{label}</a>)}</nav>}
   <nav style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px 16px", padding: 12, background: "#090711", color: "#d2b0fc" }}><Link to="/home/photos">相簿預覽</Link><Link to="/agent/edit">鏡子預覽</Link><Link to="/home/diary">日記本</Link><Link to="/home/drawer">抽屜</Link><Link to="/mailbox">星際信箱</Link><Link to="/">艙室預覽</Link><Link to="/adopt">領養室友</Link><Link to="/admin">系統儀表板</Link><Link to="/agent/advanced">進階設定</Link></nav>
   </>}
-  <Routes><Route path="/settings" element={<AccountSettingsPage />} /><Route path="/admin/dm-reports" element={<DMReportsPage />} /><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
+  <Routes><Route path="/admin/pet-wishes" element={<PetWishesAdminPage />} /><Route path="/pet-preview" element={<div className="cabin-home"><CabinPanelDialog panel="pet" summary={null} now={new Date(created)} onClose={() => { location.search = "?page=home"; }} onRefreshWeather={async () => {}} /></div>} /><Route path="/settings" element={<AccountSettingsPage />} /><Route path="/admin/dm-reports" element={<DMReportsPage />} /><Route path="/admin" element={<AdminPage />} /><Route path="/agent/advanced" element={<AdvancedAgentPage />} /><Route path="/adopt" element={<AdoptPage />} /><Route path="/schedules" element={<SchedulesPage />} /><Route path="/guide" element={<GuidePage />} /><Route path="/chat/:agentId" element={<ChatPage />} /><Route path="/home/photos" element={<PhotoFramePage />} /><Route path="/home/diary" element={<DiaryPage />} /><Route path="/home/drawer" element={<DrawerPage />} /><Route path="/mailbox" element={<MailboxPage />} /><Route path="/agent/edit" element={<EditAgentPage />} /><Route path="/frame-detail" element={<FrameDetail photo={photos[0]} />} /><Route path="*" element={<HomePage />} /></Routes>
   {!compactChat && <details style={{ padding: 16, background: "#090711", color: "#c9b6e1", fontSize: 12 }}><summary>本地模擬操作紀錄</summary><div id="mock-log" /><Link to="/frame-detail">相框對位檢查</Link></details>}
 </MemoryRouter></AuthContext.Provider></StrictMode>);

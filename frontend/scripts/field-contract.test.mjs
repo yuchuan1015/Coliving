@@ -2853,7 +2853,7 @@ test("report route uses the cabin shell and returns to admin, not the home fallb
   const preview = readFileSync(resolve(root, "scripts/album-preview/preview.tsx"), "utf8");
   assert.ok(preview.includes('<Route path="/admin/dm-reports" element={<DMReportsPage />} />'));
   assert.ok(preview.includes('reports: "/admin/dm-reports"'));
-  assert.ok(preview.includes('["admin", "reports"].includes(params.get("page")'));
+  assert.ok(preview.includes('["admin", "reports", "pet-wishes"].includes(params.get("page")'));
 });
 test("report filters retain endpoint values while status badges translate and names stay raw", () => {
   auth.user.role = "admin"; language.setUiLanguage("zh-CN");
@@ -3015,18 +3015,348 @@ test("active dining offers an explicit end, never a duplicate invite", async () 
   assert.equal(components(h, "FieldForm").length, 1); assert.match(text(h.tree), /等待室友/);
   await submit(h, "確認結束用餐", {}); expectCall("post", "/home/dining/end");
 });
-test("pet capacity follows server data and interactions use action query params", async () => {
-  fixture("/pets", { pets: [{ id: "cat/1", name: "貓", species: "cat", emoji: "🐈", is_alive: true }], max_pets: 1 });
-  const h = mount(furnitureActions.PetActions, { onBusyChange() {} });
-  assert.equal(components(h, "FieldForm").length, 1);
-  await submit(h, "確認與 貓 互動", { action: "feed" }); expectCall("post", "/pets/cat%2F1/interact");
-  assert.equal(calls.at(-1).args[1], null); assert.deepEqual(calls.at(-1).args[2], { params: { action: "feed" } });
-  await assert.rejects(submit(h, "確認與 貓 互動", { action: "kill" }), /互動方式/);
+const petModel = load("src/api/pets.ts"), { usePets } = load("src/hooks/usePets.ts");
+const petFixture = { id: "cat/1", name: "小貓", species: "cat", emoji: "🐈", hunger: 40, cleanliness: 75, happiness: 70, health: 61.7, is_alive: true, age_days: 12 };
+const petCapacity = (max = 1, active = 0, reserved = 0) => ({ max_pets: max, active_pets: active, reserved_pets: reserved, occupied_pets: active + reserved, available_slots: Math.max(0, max - active - reserved), can_adopt: active + reserved < max, can_wish: active + reserved < max });
+const withCapacity = list => ({ ...list, capacity: petCapacity(list.max_pets, list.pets.filter(p => p.is_alive).length) });
+const petTestAsset = { asset_key: "cat-v1", species: "貓", emoji: "🐈", image_url: "/assets/pets/cat-v1.png" };
+const petWrites = () => calls.filter(c => c.method === "post");
+async function openPetPanel(list = { pets: [petFixture], max_pets: 1 }, props = {}) {
+  answer = async method => ({ data: method === "get" ? structuredClone(withCapacity(list)) : { ...petFixture, hunger: 80, health: 75 } });
+  const gateway = { ...petModel.petApi, wishes: { list: async () => ({ items: [], has_more: false, next_offset: null, capacity: withCapacity(list).capacity }), assets: async () => ({ items: [petTestAsset], catalog_version: "test-only" }) } };
+  const h = mount(furnitureActions.PetActions, { userId: "test-user", onBusyChange() {}, gateway, ...props });
+  h.effects(); await tick(); h.render(); return h;
+}
+function openPetDetail(h, id = 0) { nodes(h.tree, n => n.props?.className === "pet-list-card")[id].props.onClick(); h.render(); }
+function petForm(h) { const forms = nodes(h.tree, n => n.type === "form"); assert.equal(forms.length, 1); return forms[0]; }
+async function submitPet(h) { await petForm(h).props.onSubmit({ preventDefault() {} }); h.render(); }
+function petInput(h, name, value) { nodes(h.tree, n => n.type === "input" && n.props.name === name)[0].props.onChange({ target: { value } }); h.render(); }
+
+test("pet list is read only until detail action and confirmation, follows server capacity", async () => {
+  const h = await openPetPanel();
+  assert.equal(petWrites().length, 0); assert.equal(nodes(h.tree, n => n.type === "form").length, 0);
+  assert.equal(one(h, "PetCapacityLine").props.capacity.occupied_pets, 1); assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "領養小夥伴").length, 0);
+  openPetDetail(h); click(h, "餵食"); assert.equal(petWrites().length, 0);
+  await submitPet(h); expectCall("post", "/pets/cat%2F1/interact");
+  const config = calls.at(-1).args[2]; assert.equal(calls.at(-1).args[1], null);
+  assert.deepEqual(config.params, { action: "feed" }); assert.equal(config._expectedUserId, "test-user"); assert.equal(config.timeout, 15000);
+  assert.match(text(h.tree), /照顧完成/); assert.match(text(h.tree), /飽足/); assert.doesNotMatch(text(h.tree), /飢餓|壽命|死因/);
+  assert.deepEqual(nodes(h.tree, n => n.type === "progress").map(n => n.props.value), [80, 75, 70, 75]);
 });
-test("pet adoption uses exact fields and cannot be auto-triggered from scenery", async () => {
-  fixture("/pets", { pets: [], max_pets: 1 }); const h = mount(furnitureActions.PetActions, { onBusyChange() {} });
-  assert.equal(calls.length, 0); await submit(h, "確認領養小夥伴", { name: " 小貓 ", species: "cat", emoji: "🐈" });
-  expectCall("post", "/pets/adopt", { name: "小貓", species: "cat", emoji: "🐈" });
+test("pet ordinary adoption chooses a published asset and sends only trimmed name and key", async () => {
+  const h = await openPetPanel({ pets: [], max_pets: 1 }); assert.equal(petWrites().length, 0);
+  click(h, "領養小夥伴");
+  petInput(h, "name", " 小貓 "); click(h, "貓");
+  assert.ok(nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.required);
+  nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  await submitPet(h); const sent = petWrites()[0]; assert.equal(sent.args[0], "/pets/adopt"); assert.deepEqual(sent.args[1], { name: "小貓", asset_key: "cat-v1" });
+  assert.equal(petWrites().length, 1); assert.equal(sent.args[2]._expectedUserId, "test-user");
+  assert.equal(nodes(h.tree, n => n.props?.name === "species" || n.props?.name === "emoji").length, 0);
+});
+test("pet adoption invalid blank and long inputs keep draft and show a validation error", async () => {
+  const h = await openPetPanel({ pets: [], max_pets: 1 }); click(h, "領養小夥伴");
+  petInput(h, "name", "   "); click(h, "貓"); nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  await submitPet(h); assert.equal(petWrites().length, 0); assert.match(text(h.tree), /請填寫/);
+  petInput(h, "name", "貓".repeat(65)); nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render(); await submitPet(h); assert.equal(petWrites().length, 0);
+  petInput(h, "name", "小貓");
+  assert.equal(nodes(h.tree, n => n.props?.name === "name")[0].props.value, "小貓");
+});
+test("pet canceled care and returning from detail never writes", async () => {
+  const h = await openPetPanel(); openPetDetail(h); click(h, "餵食"); click(h, "取消");
+  assert.equal(nodes(h.tree, n => n.type === "form").length, 0); click(h, "← 小夥伴清單"); assert.equal(petWrites().length, 0);
+});
+test("pet busy state blocks repeat submit refresh and navigation until reply", async () => {
+  const changes = [], wait = deferred(); const h = await openPetPanel(undefined, { onBusyChange: value => changes.push(value) });
+  openPetDetail(h); click(h, "餵食"); answer = () => wait.promise;
+  const send = petForm(h).props.onSubmit, first = send({ preventDefault() {} }); await send({ preventDefault() {} });
+  h.render(); assert.equal(petWrites().length, 1); assert.ok(button(h, "← 小夥伴清單").props.disabled); assert.ok(button(h, "更新狀態").props.disabled);
+  assert.deepEqual(changes, [true]); wait.resolve({ data: { ...petFixture, hunger: 80 } }); await first; h.render(); assert.deepEqual(changes, [true, false]);
+});
+test("pet unknown response never retries automatically and refresh is not a receipt", async () => {
+  const h = await openPetPanel(); openPetDetail(h); click(h, "餵食");
+  answer = async () => { throw Error("offline"); }; await submitPet(h); assert.equal(petWrites().length, 1);
+  assert.match(text(h.tree), /結果尚未確認/); assert.ok(button(h, "確認照顧").props.disabled);
+  await submitPet(h); assert.equal(petWrites().length, 1);
+  answer = async () => ({ data: { pets: [{ ...petFixture, hunger: 80 }], max_pets: 1 } });
+  click(h, "更新狀態"); await tick(); h.render();
+  assert.equal(petWrites().length, 1); assert.match(text(h.tree), /無法據此確認上一筆/); assert.equal(nodes(h.tree, n => n.type === "form").length, 0);
+});
+test("pet malformed successful write is uncertain, not a fabricated success", async () => {
+  for (const data of [{}, { ...petFixture, health: NaN }, { ...petFixture, id: "wrong-pet" }]) {
+    const h = await openPetPanel(); openPetDetail(h); click(h, "餵食"); answer = async () => ({ data }); await submitPet(h);
+    assert.match(text(h.tree), /結果尚未確認/); assert.doesNotMatch(text(h.tree), /照顧完成/); h.dispose();
+  }
+});
+test("pet lost adoption reply forces a list review before another adoption", async () => {
+  const list = { pets: [], max_pets: 2 }, h = await openPetPanel(list);
+  click(h, "領養小夥伴"); petInput(h, "name", "小貓"); click(h, "貓"); nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render();
+  answer = async method => {
+    if (method === "get") return { data: structuredClone(withCapacity(list)) };
+    list.pets.push({ ...petFixture }); throw Error("Success response lost");
+  };
+  await submitPet(h); assert.equal(petWrites().length, 1); assert.match(text(h.tree), /結果尚未確認/);
+  click(h, "更新狀態"); await tick(); await tick(); h.render();
+  assert.equal(nodes(h.tree, n => n.props?.className === "pet-list-card").length, 1);
+  assert.equal(nodes(h.tree, n => n.type === "form").length, 0);
+  assert.equal(one(h, "PetCapacityLine").props.capacity.occupied_pets, 1); assert.match(text(h.tree), /無法據此確認上一筆/);
+  assert.equal(petWrites().length, 1);
+  click(h, "領養小夥伴"); assert.equal(nodes(h.tree, n => n.type === "form").length, 1); assert.equal(petWrites().length, 1);
+});
+test("pet list error hides stale details and does not invent zero stats", async () => {
+  const h = await openPetPanel(); openPetDetail(h);
+  answer = async () => { throw { response: { status: 503, data: { detail: "暫時不可用" } } }; };
+  click(h, "更新狀態"); await tick(); h.render();
+  assert.equal(nodes(h.tree, n => n.type === "progress").length, 0); assert.equal(petWrites().length, 0); assert.match(text(h.tree), /暫時無法完成/);
+});
+test("pet inactive record cannot interact or occupy an alive slot", async () => {
+  const h = await openPetPanel({ pets: [{ ...petFixture, is_alive: false }], max_pets: 1 });
+  assert.equal(one(h, "PetCapacityLine").props.capacity.occupied_pets, 0); assert.ok(button(h, "領養小夥伴")); openPetDetail(h);
+  assert.match(text(h.tree), /目前無法互動/); assert.equal(nodes(h.tree, n => n.type === "form").length, 0);
+  assert.equal(nodes(h.tree, n => n.type === "button" && text(n) === "餵食").length, 0);
+});
+test("pet capacity zero prevents adoption while two distinct pets open by ID", async () => {
+  const empty = await openPetPanel({ pets: [], max_pets: 0 }); assert.match(text(empty.tree), /沒有空出的領養名額/);
+  assert.equal(nodes(empty.tree, n => n.type === "form").length, 0);
+  const h = await openPetPanel({ pets: [petFixture, { ...petFixture, id: "cat/2" }], max_pets: 2 });
+  openPetDetail(h, 1); click(h, "陪玩"); answer = async () => ({ data: { ...petFixture, id: "cat/2" } });
+  await submitPet(h); expectCall("post", "/pets/cat%2F2/interact");
+});
+test("pet parser validates stats boolean identity and optional age without coercion", () => {
+  for (const field of ["hunger", "cleanliness", "happiness", "health"]) for (const value of [-1, 101, NaN, Infinity, "40", null]) assert.throws(() => petModel.parsePet({ ...petFixture, [field]: value }));
+  for (const value of [{ ...petFixture, is_alive: "true" }, { ...petFixture, id: "" }, { ...petFixture, age_days: -1 }]) assert.throws(() => petModel.parsePet(value));
+  assert.throws(() => petModel.parsePets({ pets: [petFixture, petFixture], max_pets: 1 }));
+  assert.throws(() => petModel.parsePets({ pets: [], max_pets: "1" }));
+  assert.equal(petModel.validPetAction("__proto__"), false); assert.equal(petModel.validPetAction("kill"), false);
+  assert.deepEqual(Object.keys(petModel.PET_ACTIONS), ["feed", "clean", "play", "walk", "rest"]);
+});
+test("pet hook rejects invalid actions missing IDs inactive pets and full adoption", async () => {
+  let controller; const h = mount(() => { controller = usePets("test-user"); return null; });
+  answer = async () => ({ data: { pets: [petFixture], max_pets: 1 } }); h.effects(); await tick(); h.render();
+  await controller.interact("cat/1", "kill"); await controller.interact("missing", "feed"); await controller.adopt({ name: "小貓", species: "cat", emoji: "🐈" });
+  assert.equal(petWrites().length, 0);
+});
+test("pet late read and write cannot populate a different signed in user", async () => {
+  let controller; const props = { userId: "first" }, late = deferred();
+  answer = async () => ({ data: { pets: [petFixture], max_pets: 1 } });
+  const h = mount(p => { controller = usePets(p.userId); return null; }, props); h.effects(); await tick(); h.render();
+  answer = () => late.promise; const pending = controller.interact("cat/1", "feed");
+  props.userId = "second"; h.render(); assert.equal(controller.data, undefined);
+  answer = async () => ({ data: { pets: [], max_pets: 0 } }); h.effects(); await tick(); h.render();
+  late.resolve({ data: { ...petFixture, hunger: 99 } }); await pending; h.render();
+  assert.equal(controller.owner, "second"); assert.equal(controller.data.pets.length, 0); assert.equal(controller.notice, "");
+});
+test("pet UI uses same native cabin dialog with busy lock and no pet timers", () => {
+  const source = readFileSync(resolve(root, "src/components/PetActions.tsx"), "utf8");
+  const host = readFileSync(resolve(root, "src/components/CabinPanelDialog.tsx"), "utf8");
+  const hook = readFileSync(resolve(root, "src/hooks/usePets.ts"), "utf8");
+  assert.doesNotMatch(source, /<dialog|FieldDialog|setInterval|setTimeout|window\.confirm/);
+  assert.match(host, /key=\{user\?\.id/); assert.match(host, /onBusyChange=\{setCityBusy\}/); assert.match(host, /disabled=\{cityBusy\}/);
+  assert.doesNotMatch(hook, /setInterval|setTimeout|addEventListener|localStorage|sessionStorage/);
+  assert.doesNotMatch(source, /lifespan_days|cause_of_death|Math\.random|\/shell|\/credit/);
+});
+const wishModel = load("src/api/pet-wishes.ts"), { usePetWishes } = load("src/hooks/usePetWishes.ts");
+const { PetWishForm } = load("src/components/PetWishForm.tsx");
+const { PetWishesAdminPage, PetWishQueue, PetWishPreparation } = load("src/pages/PetWishesAdminPage.tsx");
+const wishDraft = { requested_name: "小星", requested_species: "雪貂", appearance_description: "奶油色，尾尖灰色。" };
+const wishFixture = { ...wishDraft, id: "wish/1", user_id: "test-user", agent_id: "test-agent", status: "pending", version: 1, created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-12T00:00:00Z", pet_id: null, arrived_at: null, asset_key: null, fulfillment_issue: null, preparation_note: "" };
+const wishKey = (id = "test-user", admin = false) => `rookery.pet-wish.${admin ? "arrive" : "create"}.v1:${encodeURIComponent(id)}`;
+function wishEnvironment(initial = [], max = 2) {
+  const env = { items: structuredClone(initial), max, active: 0, posts: [], reads: [], receipt: new Map(), assets: [petTestAsset] };
+  env.capacity = () => petCapacity(env.max, env.active, env.items.filter(w => w.status !== "arrived").length);
+  env.gateway = {
+    async list(admin, offset, status, signal, userId) { env.reads.push({ kind: "list", admin, offset, status, signal, userId }); const rows = env.items.filter(w => (admin || w.user_id === userId) && (!status || w.status === status)); return { items: structuredClone(rows.slice(offset, offset + 50)), has_more: rows.length > offset + 50, next_offset: rows.length > offset + 50 ? offset + 50 : null, ...(admin ? {} : { capacity: env.capacity() }) }; },
+    async assets() { return { items: structuredClone(env.assets), catalog_version: "unit-test-only" }; },
+    async detail(admin, id, signal, userId) { env.reads.push({ kind: "detail", admin, id, signal, userId }); const wish = env.items.find(w => w.id === id && (admin || w.user_id === userId)); if (!wish) throw { response: { status: 404 } }; return { wish: structuredClone(wish), capacity: env.capacity() }; },
+    async create(body, userId) { env.posts.push({ kind: "create", body: structuredClone(body), userId }); if (!env.receipt.has(body.client_request_id)) { const wish = { ...wishFixture, ...body, id: `created-${env.items.length}`, user_id: userId }; delete wish.client_request_id; env.items.push(wish); env.receipt.set(body.client_request_id, { operation: "create", client_request_id: body.client_request_id, wish_id: wish.id, pet_id: null, accepted_at: wish.created_at }); } const receipt = env.receipt.get(body.client_request_id); return { wish: structuredClone(env.items.find(w => w.id === receipt.wish_id)), receipt: structuredClone(receipt), capacity: env.capacity() }; },
+    async lookup(id, userId) { env.reads.push({ kind: "lookup", id, userId }); const receipt = env.receipt.get(id); if (!receipt) throw { response: { status: 404, data: { detail: { code: "submission_not_found" } } } }; return { wish: structuredClone(env.items.find(w => w.id === receipt.wish_id)), receipt: structuredClone(receipt), capacity: env.capacity() }; },
+    async prepare(id, body, userId) { env.posts.push({ kind: "prepare", id, body: structuredClone(body), userId }); const w = env.items.find(w => w.id === id); Object.assign(w, { asset_key: body.asset_key, preparation_note: body.preparation_note, status: "preparing", version: w.version + 1 }); return { wish: structuredClone(w), capacity: env.capacity() }; },
+    async arrive(id, body, userId) { env.posts.push({ kind: "arrive", id, body: structuredClone(body), userId }); const w = env.items.find(w => w.id === id); if (w.status !== "arrived") { Object.assign(w, { status: "arrived", version: w.version + 1, pet_id: "new-pet", arrived_at: w.created_at }); env.active++; } return { wish: structuredClone(w), receipt: { operation: "arrive", client_request_id: body.client_request_id, wish_id: id, pet_id: w.pet_id, accepted_at: w.arrived_at }, capacity: env.capacity() }; },
+  }; return env;
+}
+async function openWishHook(env = wishEnvironment(), admin = false, owner = admin ? "admin-user" : "test-user") {
+  const box = {}, props = { userId: owner, admin, gateway: env.gateway };
+  const h = mount(p => { box.current = usePetWishes(p.userId, p.admin, p.gateway); return null; }, props);
+  h.effects(); await tick(); h.render(); return { env, box, props, h };
+}
+const wishField = (h, name, value) => { const node = nodes(h.tree, n => n.props?.name === name)[0]; node.props.onChange({ target: { value } }); h.render(); };
+const wishConsent = h => { nodes(h.tree, n => n.type === "input" && n.props.type === "checkbox")[0].props.onChange({ target: { checked: true } }); h.render(); };
+test("wish form previews trimmed immutable terms before one explicit confirmation", async () => {
+  const sent = [], h = mount(PetWishForm, { locked: false, onConfirm: async value => { sent.push(value); return true; } });
+  for (const [key, value] of Object.entries(wishDraft)) wishField(h, key, ` ${value} `);
+  await submitPet(h); assert.equal(sent.length, 0); assert.match(text(h.tree), /確認你的願望|占用一個寵物名額|無法修改或取消/);
+  assert.equal(nodes(h.tree, n => n.type === "textarea").length, 0);
+  await submitPet(h); assert.equal(sent.length, 0); wishConsent(h); await submitPet(h); assert.deepEqual(sent, [wishDraft]);
+});
+test("wish draft allows Unicode code points but refuses blanks and overlong descriptions", async () => {
+  const validate = load("src/api/pet-wish-draft.ts").validWishDraft;
+  assert.equal(validate({ ...wishDraft, requested_name: "🐈".repeat(64) }), true);
+  for (const change of [{ requested_name: " " }, { requested_species: "🐈".repeat(65) }, { appearance_description: " " }, { appearance_description: "字".repeat(2001) }]) assert.equal(validate({ ...wishDraft, ...change }), false);
+  const h = mount(PetWishForm, { locked: false, onConfirm: async () => { throw Error("Must not send"); } }); await submitPet(h); assert.match(text(h.tree), /不能只有空白/);
+});
+test("wish open is GET only; submission reserves immediately from the response, not a Pet", async () => {
+  const { env, box, h } = await openWishHook(); assert.equal(env.posts.length, 0); assert.equal(box.current.list.capacity.reserved_pets, 0);
+  assert.equal(await box.current.create(wishDraft), true); h.render();
+  assert.equal(env.active, 0); assert.equal(box.current.list.capacity.reserved_pets, 1); assert.equal(box.current.list.items[0].status, "pending");
+  assert.equal(sessionValues.has(wishKey()), false); assert.equal(env.posts[0].body.requested_name, wishDraft.requested_name);
+  assert.deepEqual(Object.keys(env.posts[0].body).sort(), ["appearance_description", "client_request_id", "requested_name", "requested_species"]);
+});
+test("wish no slot or malformed draft cannot invoke POST", async () => {
+  const first = await openWishHook(wishEnvironment([wishFixture], 1)); assert.equal(await first.box.current.create(wishDraft), false); assert.equal(first.env.posts.length, 0); first.h.dispose();
+  const second = await openWishHook(); assert.equal(await second.box.current.create({ ...wishDraft, requested_species: "" }), false); assert.equal(second.env.posts.length, 0);
+});
+test("wish single flight prevents double submit and stores the original request before transport", async () => {
+  const env = wishEnvironment(), gate = deferred(), send = env.gateway.create;
+  env.gateway.create = async (body, userId) => { assert.deepEqual(JSON.parse(sessionValues.get(wishKey())).body, body); await gate.promise; return send(body, userId); };
+  const { box, h } = await openWishHook(env); const first = box.current.create(wishDraft); assert.equal(await box.current.create(wishDraft), false); h.render(); assert.equal(box.current.busy, true);
+  gate.resolve(); assert.equal(await first, true); h.render(); assert.equal(env.posts.length, 1); assert.equal(box.current.busy, false);
+});
+test("lost wish result remounts without a POST and reconciles the same saved receipt", async () => {
+  const env = wishEnvironment(), send = env.gateway.create; env.gateway.create = async (...args) => { await send(...args); throw Error("offline after commit"); };
+  const a = await openWishHook(env); await a.box.current.create(wishDraft); a.h.render(); const pending = a.box.current.pending;
+  assert.ok(pending); assert.equal(env.items.length, 1); a.h.dispose();
+  const b = await openWishHook(env); assert.equal(env.posts.length, 1); assert.deepEqual(b.box.current.pending, pending);
+  assert.equal(await b.box.current.lookup(), true); b.h.render(); assert.equal(b.box.current.pending, undefined); assert.equal(b.box.current.list.capacity.reserved_pets, 1); assert.equal(env.posts.length, 1);
+});
+test("404 receipt lookup keeps the original key and retry reuses identical content", async () => {
+  const env = wishEnvironment(), send = env.gateway.create; let attempt;
+  env.gateway.create = async (body) => { attempt = structuredClone(body); throw Error("offline"); };
+  const { box, h } = await openWishHook(env); await box.current.create(wishDraft); h.render(); await box.current.lookup(); h.render(); assert.match(box.current.error, /不代表原請求未送達/); assert.ok(box.current.pending);
+  env.gateway.create = send; assert.equal(await box.current.retry(), true); h.render(); assert.deepEqual(env.posts[0].body, attempt); assert.equal(env.items.length, 1);
+});
+test("replayed create receipt uses current arrived state and never restores reservation", async () => {
+  const env = wishEnvironment(), send = env.gateway.create; env.gateway.create = async (...args) => { await send(...args); throw Error("lost"); };
+  const { box, h } = await openWishHook(env); await box.current.create(wishDraft); h.render();
+  Object.assign(env.items[0], { status: "arrived", version: 4, pet_id: "cat-2", arrived_at: wishFixture.created_at, asset_key: petTestAsset.asset_key }); env.active = 1;
+  await box.current.lookup(); h.render(); assert.equal(box.current.result.receipt.pet_id, null); assert.equal(box.current.list.items[0].status, "arrived"); assert.equal(box.current.list.capacity.reserved_pets, 0);
+});
+test("wish full-capacity rejection is not accepted and refresh never invents a reservation", async () => {
+  const env = wishEnvironment(); env.gateway.create = async () => { throw { response: { status: 409, data: { detail: { code: "pet_capacity_unavailable" } } } }; };
+  const { box, h } = await openWishHook(env); await box.current.create(wishDraft); h.render(); assert.equal(box.current.pending, undefined); assert.match(box.current.error, /未被接受/); assert.equal(box.current.list, undefined); assert.equal(env.items.length, 0);
+});
+test("wish key conflicts block retries and never silently allocate another key", async () => {
+  const env = wishEnvironment(); let writes = 0; env.gateway.create = async () => { writes++; throw { response: { status: 409, data: { detail: { code: "idempotency_conflict" } } } }; };
+  const { box, h } = await openWishHook(env); await box.current.create(wishDraft); h.render(); assert.equal(box.current.conflict, true); await box.current.retry(); await box.current.create(wishDraft); assert.equal(writes, 1); assert.ok(sessionValues.has(wishKey()));
+});
+test("wish storage refusal fails closed before submitting", async () => {
+  const { env, box, h } = await openWishHook(), original = sessionStorageStub.setItem; sessionStorageStub.setItem = () => { throw Error("blocked"); };
+  try { await box.current.create(wishDraft); h.render(); assert.equal(box.current.storageError, true); assert.equal(env.posts.length, 0); } finally { sessionStorageStub.setItem = original; }
+});
+test("wish malformed success or other resident receipt stays uncertain", async () => {
+  for (const patch of [r => ({ ...r, receipt: { ...r.receipt, client_request_id: "wrong" } }), r => ({ ...r, wish: { ...r.wish, user_id: "other" } }), r => ({ ...r, receipt: { ...r.receipt, wish_id: "wrong" } })]) {
+    sessionValues.clear(); const env = wishEnvironment(), send = env.gateway.create; env.gateway.create = async (...args) => patch(await send(...args));
+    const { box, h } = await openWishHook(env); await box.current.create(wishDraft); h.render(); assert.ok(box.current.pending); assert.equal(box.current.result, undefined); assert.match(box.current.error, /尚未確認/); h.dispose();
+  }
+});
+test("wish late write cannot populate another account and cannot clear its pending key", async () => {
+  const env = wishEnvironment(), gate = deferred(), send = env.gateway.create; env.gateway.create = async (...args) => { const result = await send(...args); await gate.promise; return result; };
+  const { box, h, props } = await openWishHook(env); const pending = box.current.create(wishDraft); h.render(); props.userId = "second-user"; h.render(); assert.equal(box.current.list, undefined); h.effects(); await tick(); h.render(); gate.resolve(); await pending; h.render();
+  assert.equal(box.current.owner, "second-user"); assert.equal(box.current.result, undefined); assert.equal(box.current.list.items.length, 0); assert.ok(sessionValues.has(wishKey()));
+});
+test("admin arrival consumes reserved slot with zero extra availability and uses admin identity", async () => {
+  const env = wishEnvironment([{ ...wishFixture, status: "preparing", asset_key: petTestAsset.asset_key }], 1), { box, h } = await openWishHook(env, true);
+  await box.current.select(wishFixture.id); h.render(); assert.equal(box.current.detail.capacity.available_slots, 0);
+  assert.equal(await box.current.arrive(), true); h.render(); assert.equal(box.current.detail.wish.status, "arrived"); assert.equal(env.active, 1); assert.equal(box.current.detail.capacity.occupied_pets, 1); assert.equal(box.current.detail.capacity.reserved_pets, 0); assert.equal(env.posts[0].userId, "admin-user");
+  assert.equal(await box.current.arrive(), false); assert.equal(env.posts.length, 1);
+});
+test("admin cannot arrive while pending or without a trusted delivered image", async () => {
+  for (const w of [wishFixture, { ...wishFixture, status: "preparing", asset_key: "unavailable" }]) { const env = wishEnvironment([w]), { box, h } = await openWishHook(env, true); await box.current.select(w.id); h.render(); assert.equal(await box.current.arrive(), false); assert.equal(env.posts.length, 0); h.dispose(); }
+});
+test("admin preparation sends only version asset and private note, never changes the original wish", async () => {
+  const env = wishEnvironment([wishFixture]), { box, h } = await openWishHook(env, true); await box.current.select(wishFixture.id); h.render();
+  assert.equal(await box.current.prepare(null, "圖片製作中"), true); h.render(); assert.deepEqual(env.posts[0].body, { expected_version: 1, asset_key: null, preparation_note: "圖片製作中" });
+  assert.equal(box.current.detail.wish.requested_name, wishDraft.requested_name); assert.equal(box.current.detail.wish.status, "preparing");
+});
+test("unknown preparation disables further writes until explicit detail refresh", async () => {
+  const env = wishEnvironment([wishFixture]), save = env.gateway.prepare; env.gateway.prepare = async (...args) => { await save(...args); throw Error("lost"); };
+  const { box, h } = await openWishHook(env, true); await box.current.select(wishFixture.id); h.render(); await box.current.prepare(null, "記錄"); h.render(); assert.equal(box.current.preparationUnknown, true);
+  await box.current.prepare(null, "再送"); assert.equal(env.posts.length, 1); await box.current.select(wishFixture.id); h.render(); assert.equal(box.current.preparationUnknown, false); assert.equal(box.current.detail.wish.version, 2);
+});
+test("arrival lost response restores same key and single Pet after remount", async () => {
+  const env = wishEnvironment([{ ...wishFixture, status: "preparing", asset_key: petTestAsset.asset_key }], 1), send = env.gateway.arrive;
+  env.gateway.arrive = async (...args) => { await send(...args); throw Error("lost"); };
+  const a = await openWishHook(env, true); await a.box.current.select(wishFixture.id); a.h.render(); await a.box.current.arrive(); a.h.render(); const pending = a.box.current.pending; a.h.dispose(); env.gateway.arrive = send;
+  const b = await openWishHook(env, true); assert.deepEqual(b.box.current.pending, pending); await b.box.current.retry(); b.h.render(); assert.equal(env.active, 1); assert.equal(b.box.current.result.wish.pet_id, "new-pet"); assert.equal(env.posts[0].body.client_request_id, env.posts[1].body.client_request_id);
+});
+test("admin version conflict preserves reservation and requires reread before another arrival", async () => {
+  const env = wishEnvironment([{ ...wishFixture, status: "preparing", asset_key: petTestAsset.asset_key }], 1); env.gateway.arrive = async () => { throw { response: { status: 409, data: { detail: { code: "version_conflict" } } } }; };
+  const { box, h } = await openWishHook(env, true); await box.current.select(wishFixture.id); h.render(); await box.current.arrive(); h.render(); assert.equal(box.current.pending, undefined); assert.equal(box.current.preparationUnknown, true); assert.equal(env.capacity().reserved_pets, 1);
+});
+test("admin pet-wish page is role gated before mounting any data reader", () => {
+  const resident = mount(PetWishesAdminPage); assert.equal(components(resident, "PetWishQueue").length, 0); assert.match(text(resident.tree), /管理員權限/); assert.equal(calls.length, 0);
+  auth.user.role = "admin"; const admin = mount(PetWishesAdminPage); assert.equal(one(admin, "PetWishQueue").props.userId, auth.user.id); assert.equal(calls.length, 0);
+});
+test("arrival UI requires explicit confirmation and saved unchanged preparation", () => {
+  let arrivals = 0; const props = { detail: { wish: { ...wishFixture, status: "preparing", asset_key: petTestAsset.asset_key }, capacity: petCapacity(1, 0, 1) }, assets: [petTestAsset], catalogError: "", locked: false, onPrepare: async () => true, onArrive: async () => { arrivals++; return true; } };
+  const h = mount(PetWishPreparation, props); assert.equal(button(h, "確認到家並通知居民").props.disabled, true); wishConsent(h); click(h, "確認到家並通知居民"); assert.equal(arrivals, 1);
+  nodes(h.tree, n => n.type === "textarea")[0].props.onChange({ target: { value: "changed" } }); h.render(); assert.equal(button(h, "確認到家並通知居民").props.disabled, true); assert.match(text(h.tree), /先保存/);
+});
+test("terminal admin wish has no preparation cancellation or edit form", async () => {
+  const env = wishEnvironment([{ ...wishFixture, status: "arrived", asset_key: petTestAsset.asset_key, pet_id: "new-pet", arrived_at: wishFixture.created_at }]); env.active = 1;
+  const h = mount(PetWishQueue, { userId: "admin-user", gateway: env.gateway }); h.effects(); await tick(); h.render(); nodes(h.tree, n => n.props?.className === "pet-wish-card")[0].props.onClick(); await tick(); h.render();
+  assert.equal(components(h, "PetWishPreparation").length, 0); assert.equal(nodes(h.tree, n => n.type === "form").length, 0);
+});
+test("pet capacity parser accounts for reserved slots and accepts committed over-capacity without new slots", () => {
+  assert.deepEqual(petModel.parsePetCapacity(petCapacity(1, 0, 1)), petCapacity(1, 0, 1)); assert.deepEqual(petModel.parsePetCapacity(petCapacity(0, 1, 1)), petCapacity(0, 1, 1));
+  for (const patch of [{ reserved_pets: -1 }, { occupied_pets: 0 }, { available_slots: 1 }, { can_wish: true }, { can_adopt: "false" }]) assert.throws(() => petModel.parsePetCapacity({ ...petCapacity(1, 0, 1), ...patch }));
+});
+test("pet catalog validates exact server key and same-site paths including version filenames", () => {
+  assert.equal(wishModel.parsePetAssets({ catalog_version: "v1", items: [{ ...petTestAsset, image_url: "/assets/pets/v1.1/cat.v2.webp" }] }).length, 1);
+  for (const path of ["https://evil.example/cat.png", "//evil.example/cat.png", "/assets/pets/../cat.png", "/assets/pets/cat.png?token=x", "/Users/me/cat.png", "/assets/pets/%2e%2e/cat.png", "/assets/pets/cat.svg"]) assert.throws(() => wishModel.parsePetAssets({ catalog_version: "v1", items: [{ ...petTestAsset, image_url: path }] }));
+  for (const key of ["cat/v1", "cat.v1", "cat:v1", ""]) assert.equal(wishModel.validAssetKey(key), false);
+});
+test("wish gateway uses encoded paths exact bodies expected session identity and no DELETE", async () => {
+  const a = wishModel.petWishApi, signal = new AbortController().signal, body = { ...wishDraft, client_request_id: "same-key" }; answer = async () => ({ data: {} });
+  await a.create(body, "u"); expectCall("post", "/pet-wishes", body); assert.equal(calls.at(-1).args[2]._expectedUserId, "u");
+  await a.lookup("x/y", "u"); expectCall("get", "/pet-wishes/by-request/x%2Fy"); assert.equal(calls.at(-1).args[1].timeout, 15000);
+  await a.detail(true, "w/1", signal, "admin"); expectCall("get", "/admin/pet-wishes/w%2F1"); assert.equal(calls.at(-1).args[1]._expectedUserId, "admin");
+  await a.prepare("w/1", { expected_version: 2, asset_key: null, preparation_note: "" }, "admin"); expectCall("patch", "/admin/pet-wishes/w%2F1/preparation");
+  await a.arrive("w/1", { expected_version: 2, client_request_id: "same-arrival" }, "admin"); expectCall("post", "/admin/pet-wishes/w%2F1/arrive");
+  assert.equal(calls.filter(c => c.method === "delete").length, 0);
+});
+test("empty published catalog still offers wishing without registering unready art", async () => {
+  const env = wishEnvironment(); env.assets = []; const list = withCapacity({ pets: [], max_pets: 2 });
+  const h = mount(furnitureActions.PetActions, { userId: "test-user", onBusyChange() {}, gateway: { list: async () => list, adopt: async () => { throw Error("No catalog"); }, interact: async () => {}, wishes: env.gateway } }); h.effects(); await tick(); h.render(); click(h, "領養小夥伴");
+  assert.match(text(h.tree), /沒有開放領養的圖庫/); nodes(h.tree, n => n.props?.className === "pet-wish-entry")[0].props.onClick(); h.render(); assert.equal(components(h, "PetWishForm").length, 1); assert.equal(env.posts.length, 0);
+});
+test("pet wish hooks have no background polling or expiry; ordinary adoption fails closed without capacity", async () => {
+  const source = readFileSync(resolve(root, "src/hooks/usePetWishes.ts"), "utf8"); assert.doesNotMatch(source, /setInterval|setTimeout|localStorage|addEventListener/);
+  let c; const h = mount(() => { c = usePets("test-user"); return null; }); answer = async () => ({ data: { pets: [], max_pets: 1 } }); h.effects(); await tick(); h.render(); assert.equal(await c.adopt({ name: "cat", asset_key: "cat-v1" }), false); assert.equal(petWrites().length, 0);
+});
+test("wish receipt recovery takes over a delayed initial read without stuck loading", async () => {
+  const env = wishEnvironment(), request = { ...wishDraft, client_request_id: "recover-initial-read" };
+  await env.gateway.create(request, "test-user"); sessionValues.set(wishKey(), JSON.stringify({ kind: "create", body: request }));
+  const normalRead = env.gateway.list, gate = deferred(); let reads = 0;
+  env.gateway.list = async (...args) => { if (reads++ === 0) return gate.promise; return normalRead(...args); };
+  const { box, h } = await openWishHook(env); assert.equal(box.current.loading, true);
+  assert.equal(await box.current.lookup(), true); h.render(); assert.equal(box.current.loading, false); assert.equal(box.current.pending, undefined); assert.equal(box.current.list.items.length, 1);
+  gate.resolve({ items: [], has_more: false, next_offset: null, capacity: petCapacity(2) }); await tick(); h.render(); assert.equal(box.current.list.items.length, 1); assert.equal(box.current.list.capacity.reserved_pets, 1);
+});
+test("detail arrival reconciles list and capacity before going back, stale refresh cannot revert status", async () => {
+  const env = wishEnvironment([{ ...wishFixture, status: "preparing", version: 2 }], 1), { box, h } = await openWishHook(env);
+  Object.assign(env.items[0], { status: "arrived", version: 3, pet_id: "arrived-pet", arrived_at: wishFixture.created_at, asset_key: petTestAsset.asset_key }); env.active = 1;
+  await box.current.select(wishFixture.id); h.render(); assert.equal(box.current.list.items[0].status, "arrived"); assert.equal(box.current.list.capacity.reserved_pets, 0);
+  box.current.back(); h.render(); assert.equal(box.current.list.items[0].status, "arrived");
+  env.gateway.list = async () => ({ items: [{ ...wishFixture, status: "preparing", version: 2 }], has_more: false, next_offset: null, capacity: petCapacity(1, 1, 0) });
+  await box.current.refresh(); h.render(); assert.equal(box.current.list.items[0].status, "arrived"); assert.equal(box.current.list.items[0].version, 3);
+});
+test("pet panel identity change removes the old wish form immediately and new form is keyed to owner", async () => {
+  const env = wishEnvironment(), props = { userId: "test-user", onBusyChange() {}, gateway: { list: async () => withCapacity({ pets: [], max_pets: 2 }), interact: async () => {}, adopt: async () => {}, wishes: env.gateway } };
+  const h = mount(furnitureActions.PetActions, props); h.effects(); await tick(); h.render(); click(h, "領養小夥伴"); nodes(h.tree, n => n.props?.className === "pet-wish-entry")[0].props.onClick(); h.render();
+  const old = one(h, "PetWishForm"); assert.equal(old.key, "test-user");
+  props.userId = "new-user"; h.render(); assert.equal(components(h, "PetWishForm").length, 0); h.effects(); await tick(); h.render(); h.effects(); await tick(); h.render();
+  click(h, "領養小夥伴"); nodes(h.tree, n => n.props?.className === "pet-wish-entry")[0].props.onClick(); h.render(); assert.equal(one(h, "PetWishForm").key, "new-user");
+  assert.equal(await old.props.onConfirm(wishDraft), false); assert.equal(env.posts.length, 0);
+});
+test("wish response hides private preparation notes for residents and pending records reject extra fields", () => {
+  assert.equal(wishModel.parseWish({ ...wishFixture, preparation_note: "admin only" }, "test-user").preparation_note, undefined);
+  assert.equal(wishModel.parseWish({ ...wishFixture, preparation_note: "admin only" }).preparation_note, "admin only");
+  const pending = { kind: "create", body: { ...wishDraft, client_request_id: "test" } }; assert.equal(wishModel.validPendingWish(pending), true);
+  assert.equal(wishModel.validPendingWish({ ...pending, body: { ...pending.body, user_id: "other" } }), false);
+  assert.equal(wishModel.validPendingWish({ ...pending, untrusted: true }), false);
+});
+test("catalog authentication failure closes the whole wish desk rather than allowing stale writes", async () => {
+  const env = wishEnvironment(); env.gateway.assets = async () => { throw { response: { status: 401 } }; };
+  const { box, h } = await openWishHook(env); assert.equal(box.current.denied, true); assert.equal(box.current.list, undefined); assert.equal(await box.current.create(wishDraft), false); assert.equal(env.posts.length, 0); h.dispose();
 });
 test("directory uses only the server-provided public code, never private endpoints", () => {
   const app = readFileSync(resolve(root, "src/App.tsx"), "utf8");
@@ -3781,7 +4111,7 @@ test("real React server rendering serializes all eleven fields and registration 
     ["pages/AccountSettingsPage.tsx", "AccountSettingsPage", {}],
     ["components/FurnitureActions.tsx", "WardrobeActions", { onBusyChange() {} }],
     ["components/FurnitureActions.tsx", "DiningActions", { onBusyChange() {} }],
-    ["components/FurnitureActions.tsx", "PetActions", { onBusyChange() {} }],
+    ["components/FurnitureActions.tsx", "PetActions", { userId: "test-user", onBusyChange() {} }],
     ["pages/ResidentDirectory.tsx", "ResidentDirectory", {}],
     ["pages/DMReportsPage.tsx", "DMReportsPage", {}],
     ["components/ExternalMemorySettings.tsx", "ExternalMemorySettings", { agent: { id: "a", memory_mcp: "vault" }, mcps: [{ name: "vault" }], onSaved() {}, onBusyChange() {} }],

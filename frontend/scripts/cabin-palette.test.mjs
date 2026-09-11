@@ -11,6 +11,17 @@ const rules = selector => all.filter(([, s]) => s.trim() === selector).map(([, ,
 })));
 const rule = selector => { const matches = rules(selector); assert.ok(matches.length, selector); return matches[0]; };
 
+test("pet detail keeps purple tokens dark native inputs and fluid dialog geometry", () => {
+  const pets = read("src/pets.css");
+  assert.match(pets, /\.cabin-panel\.pet-dialog[^}]+width: min\(460px, calc\(100% - 24px\)\)/);
+  assert.match(pets, /overscroll-behavior: contain/);
+  assert.match(pets, /\.pet-adoption input:not\(\[type=checkbox\]\)[^}]+background: var\(--c-sky\)[^}]+color: var\(--c-frost\)[^}]+-webkit-text-fill-color: var\(--c-frost\)/);
+  assert.match(pets, /\.pet-care-options button[^}]+min-height: 48px/);
+  assert.match(pets, /progress::-webkit-progress-value[^}]+var\(--c-moon\)/);
+  assert.match(pets, /max-width: 359px[^]+grid-template-columns: 1fr/);
+  assert.doesNotMatch(pets, /#fff(?:fff)?\b|#d2a663|#64d6d7|animation:/i);
+});
+
 test("cabin references the unchanged login ink, accent and secondary-text tokens", () => {
   const home = rule(".cabin-home"), login = read("src/ya-home.css");
   for (const [local, shared, fallback] of [

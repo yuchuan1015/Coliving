@@ -1,4 +1,4 @@
-import { uiText, uiOptions } from "../i18n/core";
+import { uiText } from "../i18n/core";
 import { useUiLanguage } from "../i18n/useUiLanguage";
 import { useState } from "react";
 import api from "../api/client";
@@ -9,8 +9,7 @@ import { formText, useFieldResource } from "../fields/fieldData";
 interface ActionProps { onBusyChange: (busy: boolean) => void }
 interface Outfit { id: string; name: string; description?: string | null }
 interface Dining { active: boolean; session_id?: string; status?: string; description?: string }
-interface Pet { id: string; name: string; species: string; emoji: string; hunger: number; cleanliness: number; happiness: number; health: number; is_alive: boolean }
-const PET_ACTIONS = { feed: "餵食", clean: "清潔", play: "陪玩", walk: "散步", rest: "休息" };
+export { PetActions } from "./PetActions";
 
 export function WardrobeActions({ onBusyChange }: ActionProps) {
   useUiLanguage();
@@ -44,24 +43,5 @@ export function DiningActions({ onBusyChange }: ActionProps) {
       <label className="field-input">{uiText("餐點照片")}<input name="photo" type="file" required accept="image/jpeg,image/png,image/webp,image/gif" /></label><FieldInput name="description" label={uiText("今天吃什麼？（選填）")} max={2000} required={false} />
       <small>{uiText("照片會上傳到社區，供室友回應；有掛 API 金鑰時可能交給你選的供應商，並使用其額度。結束用餐後照片清除。")}</small><label className="field-check"><input type="checkbox" required />{uiText("我確認上傳這張照片並發出邀請。")}</label>
     </FieldForm>}
-  </div>;
-}
-
-export function PetActions({ onBusyChange }: ActionProps) {
-  useUiLanguage();
-  const list = useFieldResource<{ pets: Pet[]; max_pets: number }>("/pets"); const [notice, setNotice] = useState("");
-  return <div className="field-stack"><ResourceState resource={list} /><button onClick={list.refresh}>{uiText("更新寵物狀態")}</button><p role="status">{uiText(notice)}</p>
-    {list.data && <><p>{uiText("目前 ")}{list.data.pets.length} / {list.data.max_pets}{uiText(" 位小夥伴；領養資格以社區信用與後端檢查為準。")}</p>
-      {list.data.pets.map(p => <section className="field-item" key={p.id}><h3>{p.emoji} {p.name} · {p.species}</h3><p>{uiText("飢餓 ")}{p.hunger}{uiText(" · 清潔 ")}{p.cleanliness}{uiText(" · 心情 ")}{p.happiness}{uiText(" · 健康 ")}{p.health}</p>{p.is_alive && <FieldForm guarded label={uiText`確認與 ${p.name} 互動`} onBusyChange={onBusyChange} submit={async data => {
-        const action = formText(data, "action"); if (!(action in PET_ACTIONS)) throw new FormValidationError("請選擇互動方式。");
-        await api.post(`/pets/${encodeURIComponent(p.id)}/interact`, null, { params: { action } });
-      }} onDone={() => { setNotice("互動已完成，正在讀取小夥伴的狀態。"); list.refresh(); }}><FieldSelect name="action" label={uiText("想一起做什麼")} options={uiOptions(PET_ACTIONS)} /></FieldForm>}</section>)}
-      {list.data.pets.length < list.data.max_pets ? <FieldForm guarded label={uiText("確認領養小夥伴")} onBusyChange={onBusyChange} submit={async data => {
-        const name = formText(data, "name"), species = formText(data, "species"), emoji = formText(data, "emoji");
-        if (!name || !species || !emoji || name.length > 64 || species.length > 64 || [...emoji].length > 8) throw new FormValidationError("請填寫名字、種類與圖示，並符合字數限制。");
-        await api.post("/pets/adopt", { name, species, emoji });
-      }} onDone={() => { setNotice("新的小夥伴入住了。"); list.refresh(); }}><FieldInput name="name" label={uiText("名字")} max={64} /><FieldInput name="species" label={uiText("種類")} max={64} /><FieldInput name="emoji" label={uiText("圖示（Emoji）")} max={8} /><label className="field-check"><input type="checkbox" required />{uiText("我確認領養並照顧這位小夥伴。")}</label></FieldForm> : <p>{uiText("目前沒有空出的領養名額。")}</p>}
-      <small>{uiText("艙室底圖裡的貓咪只是空間示意，入住與狀態以這份清單為準。")}</small>
-    </>}
   </div>;
 }

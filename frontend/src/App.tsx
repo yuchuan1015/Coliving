@@ -35,6 +35,7 @@ import { PlazaField } from "./fields/PlazaField";
 import { AuthorizePage } from "./pages/AuthorizePage";
 import { DMReportsPage } from "./pages/DMReportsPage";
 import { ContentReviewsPage } from "./pages/ContentReviewsPage";
+import { PetWishesAdminPage } from "./pages/PetWishesAdminPage";
 import "./social.css";
 import { LanguageDocument } from "./i18n/LanguageControl";
 
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/dm-reports" element={<DMReportsPage />} />
               <Route path="/admin/content-reviews" element={<ContentReviewsPage />} />
+              <Route path="/admin/pet-wishes" element={<PetWishesAdminPage />} />
               <Route path="/schedules" element={<SchedulesPage />} />
               <Route path="/plaza" element={<PlazaField />} />
               <Route path="/frontier" element={<FrontierPage />} />

@@ -38,7 +38,7 @@ const fixture: Record<string, unknown> = {
   "/outfits/": [],
   "/outfits/current": { outfit: null },
   "/home/dining/current": { active: false },
-  "/pets": { pets: [], max_pets: 1 },
+  "/pets": { pets: [{ id: "preview-pet", name: "小麥", species: "貓", emoji: "🐈", hunger: 63, cleanliness: 82, happiness: 76, health: 73.7, is_alive: true, age_days: 12 }], max_pets: 1 },
 };
 const readOnly = async (): Promise<never> => {
   throw { isAxiosError: true, response: { status: 405, data: { detail: "這是配色預覽，不會登入或保存資料。" } } };
@@ -51,7 +51,7 @@ api.defaults.adapter = async config => {
   return { data: structuredClone(fixture[path]), status: 200, statusText: "Local fixture", headers: {}, config };
 };
 const screen = new URLSearchParams(location.search).get("screen");
-const start = screen === "login" ? "/login" : screen === "dining" ? "/dining" : "/";
+const start = screen === "login" ? "/login" : screen === "dining" ? "/dining" : screen === "pet" ? "/pet" : "/";
 createRoot(document.getElementById("root")!).render(
   <AuthContext.Provider value={{
     user, isLoading: false, login: readOnly, register: readOnly, logout() {},
@@ -62,6 +62,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dining" element={<div className="cabin-home"><CabinPanelDialog panel="dining" summary={null} now={new Date(stamp)} onClose={() => { location.search = ""; }} onRefreshWeather={async () => {}} /></div>} />
+        <Route path="/pet" element={<div className="cabin-home"><CabinPanelDialog panel="pet" summary={null} now={new Date(stamp)} petGateway={{ list: async () => structuredClone(fixture["/pets"]), adopt: readOnly, interact: readOnly }} onClose={() => { location.search = ""; }} onRefreshWeather={async () => {}} /></div>} />
         <Route path="*" element={<main className="ya-auth-page"><section className="ya-auth-card"><p>這個入口已連結；配色預覽不會開啟真實資料。</p><Link className="ya-module-back" to="/">返回艙室</Link></section></main>} />
       </Routes>
     </MemoryRouter>
