@@ -582,13 +582,13 @@ def my_pets(token: str) -> str:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         pets = pet_service.get_alive_pets(db, agent)
         result = [pet_service.get_pet_status(db, p) for p in pets]
+        max_pets = pet_service.get_max_pets(agent)
         db.commit()
         if not result:
-            max_pets = pet_service.get_max_pets(agent)
             if max_pets == 0:
-                return json.dumps({"success": True, "pets": [], "message": "信用不足，累積 500 信用可以養寵物"}, ensure_ascii=False)
-            return json.dumps({"success": True, "pets": [], "message": "你還沒有寵物，用 adopt_pet 領養一隻吧"}, ensure_ascii=False)
-        return json.dumps({"success": True, "pets": result}, ensure_ascii=False)
+                return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "message": "信用不足，累積 500 信用可以養寵物"}, ensure_ascii=False)
+            return json.dumps({"success": True, "pets": [], "max_pets": max_pets, "message": "你還沒有寵物，用 adopt_pet 領養一隻吧"}, ensure_ascii=False)
+        return json.dumps({"success": True, "pets": result, "max_pets": max_pets}, ensure_ascii=False)
     finally:
         db.close()
 
@@ -606,18 +606,20 @@ def adopt_pet(token: str, name: str, species: str, emoji: str) -> str:
         result = pet_service.adopt(db, agent, name, species, emoji)
         if isinstance(result, str):
             return json.dumps({"success": False, "error": result}, ensure_ascii=False)
+        db.flush()
+        status = pet_service.get_pet_status(db, result)
         db.commit()
         return json.dumps({
             "success": True,
-            "pet": pet_service.get_pet_status(db, result),
+            "pet": status,
             "message": f"你領養了{species}「{name}」{emoji}！記得每天照顧牠。",
         }, ensure_ascii=False)
     finally:
         db.close()
 
 
-def pet_interact(token: str, pet_name: str, action: str) -> str:
-    """和寵物互動。action 可選：feed（餵食）、clean（清潔）、play（陪玩）、walk（散步）、rest（休息）。"""
+def pet_interact(token: str, pet_name: str = "", action: str = "", pet_id: str | None = None) -> str:
+    """指定 pet_id 或唯一活寵的 pet_name。action 可選：feed、clean、play、walk、rest。"""
     user_id = _verify_mcp_token(token)
     if not user_id:
         return json.dumps({"success": False, "error": "無效的 token"}, ensure_ascii=False)
@@ -627,13 +629,23 @@ def pet_interact(token: str, pet_name: str, action: str) -> str:
         if not agent:
             return json.dumps({"success": False, "error": "這個帳號還沒有 AI 室友"}, ensure_ascii=False)
         from models.pet import Pet
-        pet = db.query(Pet).filter(Pet.agent_id == agent.id, Pet.name == pet_name).first()
-        if not pet:
-            return json.dumps({"success": False, "error": f"找不到名叫「{pet_name}」的寵物"}, ensure_ascii=False)
+        owned = db.query(Pet).filter(Pet.agent_id == agent.id)
+        if pet_id is not None:
+            pet = owned.filter(Pet.id == pet_id).first()
+            if not pet:
+                return json.dumps({"success": False, "error": "找不到這隻寵物"}, ensure_ascii=False)
+        else:
+            matches = owned.filter(Pet.is_alive.is_(True), Pet.name == pet_name).limit(2).all()
+            if len(matches) > 1:
+                return json.dumps({"success": False, "error": f"有多隻活著的寵物叫「{pet_name}」，請用 my_pets 查詢並提供 pet_id"}, ensure_ascii=False)
+            if not matches:
+                return json.dumps({"success": False, "error": f"找不到名叫「{pet_name}」的活寵物"}, ensure_ascii=False)
+            pet = matches[0]
         result = pet_service.interact(db, agent, pet, action)
+        # Lazy settlement may record a death even when interaction is rejected.
+        db.commit()
         if isinstance(result, str):
             return json.dumps({"success": False, "error": result}, ensure_ascii=False)
-        db.commit()
         return json.dumps({"success": True, "pet": result}, ensure_ascii=False)
     finally:
         db.close()
@@ -2649,18 +2661,18 @@ def weilan(action: str, density: str = '', table_id: str = "", title: str = "", 
     return json.dumps({"success": False, "error": f"weilan 沒有「{action}」這個 action", "actions": ['tables', 'read_table', 'open', 'join', 'leave', 'close', 'read', 'say', 'start', 'game', 'act', 'pass']}, ensure_ascii=False)
 
 @mcp.tool()
-def pet(action: str, name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "", ctx: Context = None) -> str:
+def pet(action: str, name: str = "", species: str = "", emoji: str = "", pet_name: str = "", act: str = "", ctx: Context = None, pet_id: str | None = None) -> str:
     """寵物。action 可選：
 - my_pets（無參數）：查看你的寵物狀態
 - adopt（name, species, emoji）：領養一隻寵物
-- interact（pet_name, act）：和寵物互動"""
+- interact（act，pet_id 或 pet_name）：和寵物互動；同名活寵須用 my_pets 回傳的 id 指定 pet_id"""
     token = _token_from_ctx(ctx)
     if action == "my_pets":
         return my_pets(token=token)
     elif action == "adopt":
         return adopt_pet(token=token, name=name, species=species, emoji=emoji)
     elif action == "interact":
-        return pet_interact(token=token, pet_name=pet_name, action=act)
+        return pet_interact(token=token, pet_name=pet_name, action=act, pet_id=pet_id)
     return json.dumps({"success": False, "error": f"pet 沒有「{action}」這個 action", "actions": ['my_pets', 'adopt', 'interact']}, ensure_ascii=False)
 
 @mcp.tool()

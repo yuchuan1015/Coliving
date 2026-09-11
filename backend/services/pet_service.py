@@ -10,7 +10,7 @@ from models.mail import Mail
 from models.pet import Pet
 from models.pet_entitlement import PetEntitlement
 from models.user import User
-from services import activity_service, credit_service
+from services import activity_service
 
 PET_THRESHOLDS = [500, 1000]
 
@@ -129,6 +129,15 @@ def _mail_owner(db: Session, pet: Pet, subject: str, content: str) -> None:
 def tick(db: Session, pet: Pet) -> list[dict]:
     """懶更新：衰減、隨機事件、老死／照顧不周判定。回這次發生的事件。
     事件和死亡會寫 activity_log 並寄系統信給住戶。不 commit。"""
+    # Status reads also mutate pets. Serialize every tick with interactions and
+    # reload after obtaining the write lock, so an older ORM snapshot cannot
+    # overwrite care performed by another request. The caller owns the commit.
+    db.flush()
+    locked = db.execute(update(Pet).where(Pet.id == pet.id)
+        .values(last_tick_at=Pet.last_tick_at).execution_options(synchronize_session=False))
+    if locked.rowcount != 1:
+        raise ValueError("找不到這隻寵物")
+    db.refresh(pet)
     if not pet.is_alive:
         return []
     now = datetime.now(timezone.utc)
@@ -174,6 +183,11 @@ def tick(db: Session, pet: Pet) -> list[dict]:
 
 def get_pet_status(db: Session, pet: Pet) -> dict:
     events = tick(db, pet)
+    return _status(pet, events)
+
+
+def _status(pet: Pet, events: list[dict]) -> dict:
+    """Serialize already-settled state without starting a second tick."""
     return {
         "id": pet.id,
         "name": pet.name,
@@ -194,6 +208,11 @@ def get_pet_status(db: Session, pet: Pet) -> dict:
 
 
 def adopt(db: Session, agent: Agent, name: str, species: str, emoji: str) -> Pet | str:
+    # MCP and REST must enforce the same existing text limits. Species remains
+    # free text; this is not a new species catalog or an appearance restriction.
+    for value, label, maximum in ((name, "名字", 64), (species, "物種", 64), (emoji, "emoji", 8)):
+        if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+            return f"{label}需填寫 1 到 {maximum} 個字元，不能只有空白"
     # Both REST and MCP commit after this helper. Serialize on the owner before
     # reading the credit/exception and live-pet count, so simultaneous requests
     # cannot spend the same first-pet slot twice.
@@ -227,12 +246,12 @@ def adopt(db: Session, agent: Agent, name: str, species: str, emoji: str) -> Pet
 
 
 def interact(db: Session, agent: Agent, pet: Pet, action: str) -> dict | str:
+    if pet.agent_id != agent.id:
+        return "找不到這隻寵物"
     if action not in ACTIONS:
         return f"無效的動作，可選：{', '.join(ACTIONS.keys())}"
-    if not pet.is_alive:
-        return f"{pet.name}已經不在了"
 
-    tick(db, pet)
+    events = tick(db, pet)
     if not pet.is_alive:
         return f"{pet.name}已經不在了"
 
@@ -253,4 +272,4 @@ def interact(db: Session, agent: Agent, pet: Pet, action: str) -> dict | str:
     label = ACTION_LABELS.get(action, action)
     activity_service.log(db, agent, "pet_interact", f"幫{pet.name}{label}")
 
-    return get_pet_status(db, pet)
+    return _status(pet, events)

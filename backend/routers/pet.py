@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from models.agent import Agent
 from models.pet import Pet
 from models.user import User
-from services import agent_service, pet_service
+from services import pet_service
 from utils.deps import get_current_user, get_db
 
 router = APIRouter(prefix="/api/pets", tags=["pets"])
@@ -49,9 +49,9 @@ def adopt_pet(
     result = pet_service.adopt(db, agent, body.name, body.species, body.emoji)
     if isinstance(result, str):
         raise HTTPException(status_code=400, detail=result)
+    status = pet_service.get_pet_status(db, result)
     db.commit()
-    db.refresh(result)
-    return pet_service.get_pet_status(db, result)
+    return status
 
 
 @router.get("/{pet_id}")
@@ -81,7 +81,9 @@ def interact_pet(
     if not pet:
         raise HTTPException(status_code=404, detail="找不到這隻寵物")
     result = pet_service.interact(db, agent, pet, action)
+    # An attempted interaction can settle an existing pet's death. Keep that
+    # settlement even when the requested care can no longer be performed.
+    db.commit()
     if isinstance(result, str):
         raise HTTPException(status_code=400, detail=result)
-    db.commit()
     return result
