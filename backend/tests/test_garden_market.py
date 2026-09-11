@@ -184,6 +184,38 @@ class GardenMarketTest(GardenServiceFixture):
         self.assertTrue(sold["ok"], sold)
         self.assertEqual(sold["result"]["wallet"]["shell_balance_exact"], "30/7")
 
+    def test_long_canonical_remaining_still_allows_an_ordinary_partial_sale(self):
+        self.harvest_mushroom()
+        app = FastAPI()
+        app.include_router(router.router)
+        app.dependency_overrides[get_db] = lambda: self.db
+        app.dependency_overrides[get_current_user] = lambda: self.households[0][0]
+        amount = "0." + "0" * 125 + "1"
+        self.assertEqual(len(amount), 128)
+        body = {"crop_id": "petite_oyster_mushroom", "quantity_g": amount}
+        with TestClient(app) as client:
+            quote_response = client.post("/api/garden/market/quote", json=body)
+            self.assertEqual(quote_response.status_code, 200, quote_response.text)
+            quoted = quote_response.json()
+            self.assertGreater(len(quoted["quantity_g"]), 128)
+            # Keep the original valid decimal input instead of substituting the
+            # longer canonical fraction returned for exact display/accounting.
+            sold = client.post("/api/garden/market/sell", json={**body,
+                "quote_id": quoted["quote_id"], "request_id": "tiny-sale"})
+            self.assertEqual(sold.status_code, 200, sold.text)
+            remaining = sold.json()["remaining_g"]
+            self.assertGreater(len(remaining), 128)
+            self.assertEqual(Fraction(remaining), 2637 - Fraction(amount))
+            inventory = client.get("/api/garden/market").json()
+            self.assertTrue(inventory["items"][0]["can_sell"])
+            self.assertEqual(inventory["items"][0]["quantity_g"], remaining)
+            partial = client.post("/api/garden/market/quote", json={**body, "quantity_g": "100"})
+            self.assertEqual(partial.status_code, 200, partial.text)
+            sold_partial = client.post("/api/garden/market/sell", json={**body, "quantity_g": "100",
+                "quote_id": partial.json()["quote_id"], "request_id": "ordinary-partial"})
+            self.assertEqual(sold_partial.status_code, 200, sold_partial.text)
+            self.assertEqual(Fraction(sold_partial.json()["remaining_g"]), 2537 - Fraction(amount))
+
     def test_migration_twice_adds_empty_tables_and_preserves_old_assets(self):
         path = Path(__file__).resolve().parents[1] / "migrations" / "024_garden_economy.py"
         spec = importlib.util.spec_from_file_location("migration024", path)
