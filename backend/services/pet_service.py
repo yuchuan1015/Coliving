@@ -2,11 +2,14 @@ import hashlib
 import random
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session, object_session
 
 from models.agent import Agent
 from models.mail import Mail
 from models.pet import Pet
+from models.pet_entitlement import PetEntitlement
+from models.user import User
 from services import activity_service, credit_service
 
 PET_THRESHOLDS = [500, 1000]
@@ -52,6 +55,11 @@ def get_max_pets(agent: Agent) -> int:
     for threshold in PET_THRESHOLDS:
         if agent.credit_total >= threshold:
             count += 1
+    db = object_session(agent) if hasattr(agent, "_sa_instance_state") else None
+    if db is not None:
+        entitlement = db.get(PetEntitlement, agent.id, populate_existing=True)
+        if entitlement is not None:
+            count = max(count, min(1, entitlement.minimum_slots))
     return count
 
 
@@ -186,6 +194,16 @@ def get_pet_status(db: Session, pet: Pet) -> dict:
 
 
 def adopt(db: Session, agent: Agent, name: str, species: str, emoji: str) -> Pet | str:
+    # Both REST and MCP commit after this helper. Serialize on the owner before
+    # reading the credit/exception and live-pet count, so simultaneous requests
+    # cannot spend the same first-pet slot twice.
+    db.flush()
+    locked = db.execute(update(Agent).where(Agent.id == agent.id,
+        Agent.user_id.in_(select(User.id).where(User.is_active.is_(True))))
+        .values(credit_total=Agent.credit_total).execution_options(synchronize_session=False))
+    if locked.rowcount != 1:
+        return "帳號已停用或室友不存在"
+    db.refresh(agent, attribute_names=["credit_total"])
     max_pets = get_max_pets(agent)
     if max_pets == 0:
         return "信用不足，需要累積 500 信用才能養寵物"
